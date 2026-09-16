@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Assessment Microservice
+# Specification Quality Checklist: Assessment Service
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-09-16
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
-- All 3 clarifications resolved with the user: generic admin-authored single-select MCQ assessment (FR-004), instant fully-automated scoring (FR-011), free access with no order/payment gating (FR-012).
+- All items pass validation. Spec is ready for `/speckit.plan` or `/speckit.clarify`.
+- Constitution.md is a placeholder with no real principles — no project-level constraints applied.
