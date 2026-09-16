@@ -95,7 +95,7 @@ An authorized administrator creates or updates the set of questions, answer opti
 ### Measurable Outcomes
 
 - **SC-001**: A user can complete the assessment, from start to seeing their result, in under 5 minutes.
-- **SC-002**: A result is available to the user within 3 seconds of submission for at least 95% of submissions.
+- **SC-002**: A result is available to the user within 3 seconds of submission for at least 100% of submissions.
 - **SC-003**: 100% of a user's completed submissions and their original results remain retrievable by that user at any later time, unaffected by subsequent question-set updates.
 - **SC-004**: An administrator can publish a new or updated question set and have it live for new sessions in under 15 minutes, without engineering assistance.
 - **SC-005**: At least 90% of users who start the assessment go on to submit it (low mid-assessment abandonment).
