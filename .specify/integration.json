@@ -1,0 +1,25 @@
+{
+  "version": "1.0.6",
+  "integration_state_schema": 1,
+  "installed_integrations": [
+    "opencode",
+    "claude",
+    "copilot"
+  ],
+  "integration_settings": {
+    "opencode": {
+      "script": "ps",
+      "invoke_separator": "."
+    },
+    "claude": {
+      "script": "ps",
+      "invoke_separator": "-"
+    },
+    "copilot": {
+      "script": "ps",
+      "invoke_separator": "-"
+    }
+  },
+  "integration": "opencode",
+  "default_integration": "opencode"
+}
