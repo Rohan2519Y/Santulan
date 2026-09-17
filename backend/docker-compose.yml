@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: santulan
+      POSTGRES_PASSWORD: santulan_dev_password
+      POSTGRES_DB: santulan_assessment
+    ports:
+      - "5433:5432"
+    volumes:
+      - santulan_pgdata:/var/lib/postgresql/data
+      - ./docker/init-app-role.sql:/docker-entrypoint-initdb.d/init-app-role.sql:ro
+
+volumes:
+  santulan_pgdata:

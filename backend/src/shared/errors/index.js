@@ -1,0 +1,30 @@
+const HttpError = require('./HttpError');
+const CODES = require('./codes');
+
+function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
+  if (err instanceof HttpError) {
+    return res.status(err.status).json({
+      error: { code: err.code, message: err.message, details: err.details || {} },
+    });
+  }
+
+  if (err && err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: { code: 'UPLOAD_TOO_LARGE', message: 'File exceeds the size limit', details: {} } });
+    }
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: err.message, details: {} } });
+  }
+
+  if (err && err.name === 'ZodError') {
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'Request validation failed', details: { issues: err.issues } },
+    });
+  }
+
+  console.error(err); // eslint-disable-line no-console
+  return res.status(500).json({
+    error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred', details: {} },
+  });
+}
+
+module.exports = { HttpError, CODES, errorHandler };

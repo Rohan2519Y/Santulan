@@ -1,0 +1,51 @@
+const prisma = require('../../../shared/prisma');
+const { HttpError } = require('../../../shared/errors');
+const profileService = require('../services/profile.service');
+const { retryReportGeneration } = require('../services/report.service');
+
+async function findOwnedReport(reportId, participantProfileId) {
+  const report = await prisma.report.findUnique({ where: { id: reportId } });
+  if (!report) {
+    throw new HttpError(404, 'REPORT_NOT_READY', 'Report not found or not generated yet');
+  }
+  if (report.participantProfileId !== participantProfileId) {
+    throw new HttpError(403, 'FORBIDDEN', 'Report does not belong to the caller');
+  }
+  return report;
+}
+
+async function getReport(req, res, next) {
+  try {
+    const profile = await profileService.getProfile(req.user.id);
+    const report = await findOwnedReport(req.params.reportId, profile.id);
+
+    const sections = await prisma.reportSection.findMany({
+      where: { reportId: report.id, isReleasedToParticipant: true },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    res.json({
+      reportId: report.id,
+      releasedSections: sections.map((s) => ({
+        sectionType: s.sectionType,
+        domainCode: s.domainCode,
+        content: s.contentSnapshot,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function retryReport(req, res, next) {
+  try {
+    const profile = await profileService.getProfile(req.user.id);
+    const report = await findOwnedReport(req.params.reportId, profile.id);
+    const updated = await retryReportGeneration(report, req.user.id, req.body?.reason);
+    res.json({ report: { id: updated.id, generationStatus: updated.generationStatus, retryCount: updated.retryCount } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getReport, retryReport };
