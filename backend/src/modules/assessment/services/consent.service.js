@@ -1,4 +1,5 @@
-const prisma = require('../../../shared/prisma');
+const { randomUUID } = require('crypto');
+const db = require('../../../shared/db');
 const { HttpError } = require('../../../shared/errors');
 
 async function recordConsent(participantProfileId, input) {
@@ -15,9 +16,13 @@ async function recordConsent(participantProfileId, input) {
     }
   }
 
-  return prisma.consent.create({
-    data: { participantProfileId, consentType, protocolVersion, verificationMethod, verifiedAt, status },
-  });
+  const { rows } = await db.query(
+    `INSERT INTO consents (id, participant_profile_id, consent_type, protocol_version, verification_method, verified_at, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [randomUUID(), participantProfileId, consentType, protocolVersion, verificationMethod || null, verifiedAt, status]
+  );
+  return rows[0];
 }
 
 /**
@@ -26,7 +31,7 @@ async function recordConsent(participantProfileId, input) {
  * needs a GRANTED (or VERIFIED) ADULT_SELF_CONSENT.
  */
 async function assertConsentGate(participantProfile) {
-  const consents = await prisma.consent.findMany({ where: { participantProfileId: participantProfile.id } });
+  const { rows: consents } = await db.query('SELECT * FROM consents WHERE participant_profile_id = $1', [participantProfile.id]);
   const latestByType = {};
   for (const consent of consents) {
     const existing = latestByType[consent.consentType];

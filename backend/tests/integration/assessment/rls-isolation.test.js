@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../../src/app');
-const prisma = require('../../../src/shared/prisma');
+const db = require('../../../src/shared/db');
 const { createUserWithToken } = require('../../helpers/testUser');
 const { setParticipantScope } = require('../../../src/shared/utils/rls');
 
@@ -15,7 +15,7 @@ async function makeConsentCompleteMinor(age = 16) {
 
 describe('T053: responses row-level security actually isolates participants at the DB layer', () => {
   afterAll(async () => {
-    await prisma.$disconnect();
+    await db.pool.end();
   });
 
   test('a connection scoped to participant A cannot read participant B\'s responses, even with a direct query', async () => {
@@ -37,15 +37,19 @@ describe('T053: responses row-level security actually isolates participants at t
       .send({ itemId: itemB.id, value: 5, idempotencyKey: `iso-b-${startedB.body.attempt.id}` });
 
     // Scope the connection to A and try to read ALL responses directly - B's row must not appear.
-    const visibleToA = await prisma.$transaction(async (tx) => {
+    const visibleToA = await db.withTransaction(async (tx) => {
       await setParticipantScope(tx, a.profile.id);
-      return tx.response.findMany({});
+      const { rows } = await tx.query('SELECT * FROM responses');
+      return rows;
     });
     expect(visibleToA.length).toBeGreaterThan(0);
     expect(visibleToA.every((r) => r.participantProfileId === a.profile.id)).toBe(true);
 
     // No scope at all (GUC unset) - fails closed to zero rows, not "everything".
-    const visibleToNoOne = await prisma.$transaction(async (tx) => tx.response.findMany({}));
+    const visibleToNoOne = await db.withTransaction(async (tx) => {
+      const { rows } = await tx.query('SELECT * FROM responses');
+      return rows;
+    });
     expect(visibleToNoOne).toHaveLength(0);
   });
 });

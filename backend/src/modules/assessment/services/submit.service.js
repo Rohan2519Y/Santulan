@@ -1,4 +1,5 @@
-const prisma = require('../../../shared/prisma');
+const { randomUUID } = require('crypto');
+const db = require('../../../shared/db');
 const { HttpError } = require('../../../shared/errors');
 const { scoreAttempt } = require('./scoring.service');
 const { detectQualityFlags, recordQualityFlags } = require('./quality.service');
@@ -20,71 +21,62 @@ async function submitAttempt(attempt, participantProfile) {
     throw new HttpError(422, 'INVALID_STATE', 'Attempt is not in a submittable state');
   }
 
-  return prisma.$transaction(async (tx) => {
+  return db.withTransaction(async (tx) => {
     await setParticipantScope(tx, participantProfile.id);
 
-    await tx.assessmentAttempt.update({
-      where: { id: attempt.id },
-      data: { status: 'SUBMITTED', submittedAt: new Date() },
-    });
+    await tx.query(`UPDATE assessment_attempts SET status = 'SUBMITTED', submitted_at = $1 WHERE id = $2`, [new Date(), attempt.id]);
     await recordEvent(tx, { attemptId: attempt.id, eventType: 'SUBMIT', sessionNumber: attempt.sessionCount });
 
-    const preexistingQ09 = await tx.qualityFlag.findFirst({ where: { attemptId: attempt.id, flagCode: 'Q09' } });
+    const { rows: q09Rows } = await tx.query("SELECT * FROM quality_flags WHERE attempt_id = $1 AND flag_code = 'Q09'", [attempt.id]);
+    const preexistingQ09 = q09Rows[0];
     if (preexistingQ09) {
-      const held = await tx.assessmentAttempt.update({
-        where: { id: attempt.id },
-        data: { status: 'QUALITY_HOLD' },
-      });
-      const holdReport = await tx.report.create({
-        data: {
-          attemptId: attempt.id,
-          participantProfileId: participantProfile.id,
-          reportVersion: attempt.scoringVersion,
-          generationStatus: 'REPORT_READY',
-          generatedAt: new Date(),
-        },
-      });
+      const { rows: heldRows } = await tx.query(
+        `UPDATE assessment_attempts SET status = 'QUALITY_HOLD' WHERE id = $1 RETURNING *`,
+        [attempt.id]
+      );
+      const held = heldRows[0];
+      const { rows: reportRows } = await tx.query(
+        `INSERT INTO reports (id, attempt_id, participant_profile_id, report_version, generation_status, generated_at)
+         VALUES ($1, $2, $3, $4, 'REPORT_READY', $5)
+         RETURNING *`,
+        [randomUUID(), attempt.id, participantProfile.id, attempt.scoringVersion, new Date()]
+      );
+      const holdReport = reportRows[0];
       await assembleNeutralHoldSection(tx, holdReport);
       return { attempt: held, report: holdReport, scores: [], qualityFlags: [preexistingQ09] };
     }
 
-    await tx.assessmentAttempt.update({ where: { id: attempt.id }, data: { status: 'SCORING' } });
+    await tx.query(`UPDATE assessment_attempts SET status = 'SCORING' WHERE id = $1`, [attempt.id]);
 
     const scoreResults = await scoreAttempt(tx, attempt, participantProfile);
 
-    const responses = await tx.response.findMany({ where: { attemptId: attempt.id, isCurrent: true } });
+    const { rows: responses } = await tx.query('SELECT * FROM responses WHERE attempt_id = $1 AND is_current = true', [attempt.id]);
     const detectedFlags = detectQualityFlags({ responses, scoreResults });
     const qualityFlags = await recordQualityFlags(tx, attempt.id, detectedFlags);
 
-    const scored = await tx.assessmentAttempt.update({
-      where: { id: attempt.id },
-      data: { status: 'SCORED', completedAt: new Date() },
-    });
+    await tx.query(`UPDATE assessment_attempts SET status = 'SCORED', completed_at = $1 WHERE id = $2`, [new Date(), attempt.id]);
 
-    const report = await tx.report.create({
-      data: {
-        attemptId: attempt.id,
-        participantProfileId: participantProfile.id,
-        reportVersion: attempt.scoringVersion,
-        generationStatus: 'REPORT_READY',
-        generatedAt: new Date(),
-      },
-    });
+    const { rows: reportRows } = await tx.query(
+      `INSERT INTO reports (id, attempt_id, participant_profile_id, report_version, generation_status, generated_at)
+       VALUES ($1, $2, $3, $4, 'REPORT_READY', $5)
+       RETURNING *`,
+      [randomUUID(), attempt.id, participantProfile.id, attempt.scoringVersion, new Date()]
+    );
+    const report = reportRows[0];
 
-    const items = await tx.item.findMany({
-      where: { assessmentVersionId: attempt.assessmentVersionId },
-      select: { domainCode: true, domainName: true },
-      distinct: ['domainCode'],
-    });
+    const { rows: items } = await tx.query(
+      'SELECT DISTINCT domain_code, domain_name FROM items WHERE assessment_version_id = $1',
+      [attempt.assessmentVersionId]
+    );
     const domainNamesByCode = Object.fromEntries(items.map((i) => [i.domainCode, i.domainName]));
     await assembleReportSections(tx, { report, attempt, participantProfile, scoreResults, domainNamesByCode });
 
-    const reportReady = await tx.assessmentAttempt.update({
-      where: { id: attempt.id },
-      data: { status: 'REPORT_READY' },
-    });
+    const { rows: reportReadyRows } = await tx.query(
+      `UPDATE assessment_attempts SET status = 'REPORT_READY' WHERE id = $1 RETURNING *`,
+      [attempt.id]
+    );
 
-    return { attempt: reportReady, report, scores: scoreResults, qualityFlags, _scoredSnapshot: scored };
+    return { attempt: reportReadyRows[0], report, scores: scoreResults, qualityFlags };
   });
 }
 

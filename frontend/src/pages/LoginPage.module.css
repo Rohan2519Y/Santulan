@@ -1,0 +1,30 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-6);
+  padding: var(--sp-5);
+  background: linear-gradient(180deg, var(--c-brand-soft) 0%, var(--c-bg) 55%);
+}
+
+.hero {
+  text-align: center;
+}
+
+.title {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  color: var(--c-brand-strong);
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.submit {
+  width: 100%;
+  margin-top: var(--sp-3);
+}

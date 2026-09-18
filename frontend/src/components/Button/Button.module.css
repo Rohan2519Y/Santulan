@@ -1,0 +1,106 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 48px;
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  border: 2px solid transparent;
+  transition: background-color var(--motion-fast) var(--ease), transform var(--motion-fast) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+}
+
+.button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* variant: primary - filled */
+.primary {
+  background: var(--c-brand);
+  color: var(--c-bg-white);
+}
+.primary:hover:not(:disabled) {
+  background: var(--c-brand-strong);
+}
+
+/* variant: secondary - ghost/outlined */
+.secondary {
+  background: transparent;
+  color: var(--c-brand-strong);
+  border-color: var(--c-brand);
+}
+.secondary:hover:not(:disabled) {
+  background: var(--c-brand-soft);
+}
+
+/* variant: quiet-link - text only, but still a comfortable tap target (FR-006) */
+.quiet-link {
+  background: transparent;
+  color: var(--c-brand-strong);
+  min-height: 44px;
+  padding: var(--sp-2);
+  text-decoration: underline;
+}
+.quiet-link:hover:not(:disabled) {
+  color: var(--c-brand);
+}
+
+/* status tones override the fill color for primary/secondary variants used inline with a StatusMessage action */
+.tone-error.primary {
+  background: var(--c-status-error);
+}
+.tone-warning.primary {
+  background: var(--c-status-warning);
+}
+.tone-success.primary {
+  background: var(--c-status-success);
+}
+.tone-info.primary {
+  background: var(--c-status-info);
+}
+.tone-neutral.primary {
+  background: var(--c-status-neutral);
+}
+
+/* status tones on the ghost/secondary variant - colored border+label, same shape as .secondary */
+.tone-error.secondary {
+  color: var(--c-status-error);
+  border-color: var(--c-status-error);
+}
+.tone-error.secondary:hover:not(:disabled) {
+  background: var(--c-status-soft-error);
+}
+.tone-warning.secondary {
+  color: var(--c-status-warning);
+  border-color: var(--c-status-warning);
+}
+.tone-warning.secondary:hover:not(:disabled) {
+  background: var(--c-status-soft-warning);
+}
+.tone-success.secondary {
+  color: var(--c-status-success);
+  border-color: var(--c-status-success);
+}
+.tone-success.secondary:hover:not(:disabled) {
+  background: var(--c-status-soft-success);
+}

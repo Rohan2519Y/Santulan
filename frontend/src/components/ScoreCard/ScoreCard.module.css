@@ -1,0 +1,29 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink);
+}
+
+.score {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  color: var(--c-brand-strong);
+  line-height: var(--lh-tight);
+}
+
+.scoreMax {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-regular);
+  color: var(--c-ink-muted);
+}
+
+.body {
+  color: var(--c-ink-muted);
+  font-size: var(--fs-sm);
+}

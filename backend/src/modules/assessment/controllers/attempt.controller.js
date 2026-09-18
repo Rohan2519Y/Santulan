@@ -1,4 +1,4 @@
-const prisma = require('../../../shared/prisma');
+const db = require('../../../shared/db');
 const profileService = require('../services/profile.service');
 const attemptService = require('../services/attempt.service');
 const submitService = require('../services/submit.service');
@@ -57,12 +57,10 @@ async function getScores(req, res, next) {
   try {
     const profile = await profileService.getProfile(req.user.id);
     const attempt = await attemptService.findOwnedAttempt(req.params.attemptId, profile.id);
-    const scores = await prisma.scoreResult.findMany({ where: { attemptId: attempt.id } });
-    const items = await prisma.item.findMany({
-      where: { assessmentVersionId: attempt.assessmentVersionId },
-      select: { domainCode: true, domainName: true },
-      distinct: ['domainCode'],
-    });
+    const { rows: scores } = await db.query('SELECT * FROM score_results WHERE attempt_id = $1', [attempt.id]);
+    const { rows: items } = await db.query('SELECT DISTINCT domain_code, domain_name FROM items WHERE assessment_version_id = $1', [
+      attempt.assessmentVersionId,
+    ]);
     const domainNames = Object.fromEntries(items.map((i) => [i.domainCode, i.domainName]));
 
     res.json({

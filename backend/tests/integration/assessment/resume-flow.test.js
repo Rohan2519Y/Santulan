@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../../src/app');
-const prisma = require('../../../src/shared/prisma');
+const db = require('../../../src/shared/db');
 const { createUserWithToken } = require('../../helpers/testUser');
 
 async function makeConsentCompleteMinor(age = 16) {
@@ -13,7 +13,7 @@ async function makeConsentCompleteMinor(age = 16) {
 
 describe('Integration: pause/resume preserves progress (US2)', () => {
   afterAll(async () => {
-    await prisma.$disconnect();
+    await db.pool.end();
   });
 
   test('answer some -> pause -> resume preserves saved answers, only unanswered remain', async () => {

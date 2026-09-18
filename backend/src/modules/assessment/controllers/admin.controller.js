@@ -1,4 +1,4 @@
-const prisma = require('../../../shared/prisma');
+const db = require('../../../shared/db');
 const { HttpError } = require('../../../shared/errors');
 const importService = require('../services/import.service');
 const participationService = require('../services/participation.service');
@@ -18,7 +18,8 @@ async function importItemPool(req, res, next) {
       throw new HttpError(415, 'INVALID_FILE_TYPE', 'File must be a .xlsx workbook');
     }
 
-    const scale = await prisma.responseScale.findFirst({ where: { status: 'FROZEN' } });
+    const { rows: scaleRows } = await db.query("SELECT * FROM response_scales WHERE status = 'FROZEN' LIMIT 1");
+    const scale = scaleRows[0];
     if (!scale) {
       throw new HttpError(409, 'ATTEMPT_UNAVAILABLE', 'No frozen response scale configured; seed the database first');
     }
@@ -50,28 +51,44 @@ async function control(req, res, next) {
 
 async function listSubmissions(req, res, next) {
   try {
-    const attempts = await prisma.assessmentAttempt.findMany({
-      include: {
-        participantProfile: { select: { santulanId: true } },
-        assessmentVersion: { select: { versionLabel: true } },
-        scoreResults: true,
-        qualityFlags: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
+    const { rows: attempts } = await db.query(
+      `SELECT aa.*, pp.santulan_id, av.version_label
+       FROM assessment_attempts aa
+       JOIN participant_profiles pp ON pp.id = aa.participant_profile_id
+       JOIN assessment_versions av ON av.id = aa.assessment_version_id
+       ORDER BY aa.created_at DESC
+       LIMIT 200`
+    );
+
+    const attemptIds = attempts.map((a) => a.id);
+    const { rows: allScores } = attemptIds.length
+      ? await db.query('SELECT * FROM score_results WHERE attempt_id = ANY($1)', [attemptIds])
+      : { rows: [] };
+    const { rows: allFlags } = attemptIds.length
+      ? await db.query('SELECT * FROM quality_flags WHERE attempt_id = ANY($1)', [attemptIds])
+      : { rows: [] };
+
+    const scoresByAttempt = new Map();
+    for (const s of allScores) {
+      if (!scoresByAttempt.has(s.attemptId)) scoresByAttempt.set(s.attemptId, []);
+      scoresByAttempt.get(s.attemptId).push(s);
+    }
+    const flagCountByAttempt = new Map();
+    for (const f of allFlags) {
+      flagCountByAttempt.set(f.attemptId, (flagCountByAttempt.get(f.attemptId) || 0) + 1);
+    }
 
     res.json({
       submissions: attempts.map((a) => ({
         attemptId: a.id,
-        santulanId: a.participantProfile.santulanId,
-        versionLabel: a.assessmentVersion.versionLabel,
+        santulanId: a.santulanId,
+        versionLabel: a.versionLabel,
         status: a.status,
         submittedAt: a.submittedAt,
         completedAt: a.completedAt,
         sessionCount: a.sessionCount,
-        scoreSummary: a.scoreResults.map((s) => ({ domainCode: s.domainCode, scoreStatus: s.scoreStatus })),
-        qualityFlagCount: a.qualityFlags.length,
+        scoreSummary: (scoresByAttempt.get(a.id) || []).map((s) => ({ domainCode: s.domainCode, scoreStatus: s.scoreStatus })),
+        qualityFlagCount: flagCountByAttempt.get(a.id) || 0,
       })),
     });
   } catch (err) {
@@ -81,36 +98,46 @@ async function listSubmissions(req, res, next) {
 
 async function getSubmissionDetail(req, res, next) {
   try {
-    const attempt = await prisma.assessmentAttempt.findUnique({
-      where: { id: req.params.attemptId },
-      include: {
-        participantProfile: { select: { santulanId: true } },
-        assessmentVersion: { select: { versionLabel: true } },
-      },
-    });
+    const { rows: attemptRows } = await db.query(
+      `SELECT aa.*, pp.santulan_id, av.version_label
+       FROM assessment_attempts aa
+       JOIN participant_profiles pp ON pp.id = aa.participant_profile_id
+       JOIN assessment_versions av ON av.id = aa.assessment_version_id
+       WHERE aa.id = $1`,
+      [req.params.attemptId]
+    );
+    const attempt = attemptRows[0];
     if (!attempt) throw new HttpError(404, 'NOT_FOUND', 'Attempt not found');
 
-    const [responses, scores, qualityFlags, report] = await Promise.all([
-      prisma.$transaction(async (tx) => {
+    const [responses, scores, qualityFlags, reportRows] = await Promise.all([
+      db.withTransaction(async (tx) => {
         await setAdminBypass(tx);
-        return tx.response.findMany({ where: { attemptId: attempt.id, isCurrent: true }, include: { item: true } });
+        const { rows } = await tx.query(
+          `SELECT r.*, i.item_code, i.domain_code
+           FROM responses r
+           JOIN items i ON i.id = r.item_id
+           WHERE r.attempt_id = $1 AND r.is_current = true`,
+          [attempt.id]
+        );
+        return rows;
       }),
-      prisma.scoreResult.findMany({ where: { attemptId: attempt.id } }),
-      prisma.qualityFlag.findMany({ where: { attemptId: attempt.id } }),
-      prisma.report.findUnique({ where: { attemptId: attempt.id } }),
+      db.query('SELECT * FROM score_results WHERE attempt_id = $1', [attempt.id]).then((r) => r.rows),
+      db.query('SELECT * FROM quality_flags WHERE attempt_id = $1', [attempt.id]).then((r) => r.rows),
+      db.query('SELECT * FROM reports WHERE attempt_id = $1', [attempt.id]).then((r) => r.rows),
     ]);
+    const report = reportRows[0] || null;
 
     res.json({
       attempt: {
         id: attempt.id,
-        santulanId: attempt.participantProfile.santulanId,
-        versionLabel: attempt.assessmentVersion.versionLabel,
+        santulanId: attempt.santulanId,
+        versionLabel: attempt.versionLabel,
         status: attempt.status,
         sessionCount: attempt.sessionCount,
       },
       responses: responses.map((r) => ({
-        itemCode: r.item.itemCode,
-        domainCode: r.item.domainCode,
+        itemCode: r.itemCode,
+        domainCode: r.domainCode,
         value: r.responseValue,
         responseVersion: r.responseVersion,
         answeredAt: r.answeredAt,
@@ -138,13 +165,15 @@ async function getSubmissionDetail(req, res, next) {
 
 async function reviewQualityFlag(req, res, next) {
   try {
-    const flag = await prisma.qualityFlag.findUnique({ where: { id: req.params.flagId } });
+    const { rows: flagRows } = await db.query('SELECT * FROM quality_flags WHERE id = $1', [req.params.flagId]);
+    const flag = flagRows[0];
     if (!flag) throw new HttpError(404, 'NOT_FOUND', 'Quality flag not found');
 
-    const updated = await prisma.qualityFlag.update({
-      where: { id: flag.id },
-      data: { disposition: req.body.disposition, reviewedById: req.user.id, reviewedAt: new Date() },
-    });
+    const { rows: updatedRows } = await db.query(
+      `UPDATE quality_flags SET disposition = $1, reviewed_by = $2, reviewed_at = $3 WHERE id = $4 RETURNING *`,
+      [req.body.disposition, req.user.id, new Date(), flag.id]
+    );
+    const updated = updatedRows[0];
 
     res.json({
       qualityFlag: { id: updated.id, flagCode: updated.flagCode, disposition: updated.disposition, reviewedAt: updated.reviewedAt },

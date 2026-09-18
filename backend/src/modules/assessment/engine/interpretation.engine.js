@@ -12,17 +12,12 @@ async function resolveInterpretation(tx, { assessmentVersionId, domainCode, deve
     return { isOperational: false, rule: null };
   }
 
-  const rule = await tx.interpretationRule.findUnique({
-    where: {
-      assessmentVersionId_domainCode_developmentalBand_evidenceState_locale: {
-        assessmentVersionId,
-        domainCode,
-        developmentalBand,
-        evidenceState,
-        locale,
-      },
-    },
-  });
+  const { rows } = await tx.query(
+    `SELECT * FROM interpretation_rules
+     WHERE assessment_version_id = $1 AND domain_code = $2 AND developmental_band = $3 AND evidence_state = $4 AND locale = $5`,
+    [assessmentVersionId, domainCode, developmentalBand, evidenceState, locale]
+  );
+  const rule = rows[0] || null;
 
   return { isOperational: !!rule, rule };
 }

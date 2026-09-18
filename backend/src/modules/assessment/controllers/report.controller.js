@@ -1,10 +1,11 @@
-const prisma = require('../../../shared/prisma');
+const db = require('../../../shared/db');
 const { HttpError } = require('../../../shared/errors');
 const profileService = require('../services/profile.service');
 const { retryReportGeneration } = require('../services/report.service');
 
 async function findOwnedReport(reportId, participantProfileId) {
-  const report = await prisma.report.findUnique({ where: { id: reportId } });
+  const { rows } = await db.query('SELECT * FROM reports WHERE id = $1', [reportId]);
+  const report = rows[0];
   if (!report) {
     throw new HttpError(404, 'REPORT_NOT_READY', 'Report not found or not generated yet');
   }
@@ -19,10 +20,10 @@ async function getReport(req, res, next) {
     const profile = await profileService.getProfile(req.user.id);
     const report = await findOwnedReport(req.params.reportId, profile.id);
 
-    const sections = await prisma.reportSection.findMany({
-      where: { reportId: report.id, isReleasedToParticipant: true },
-      orderBy: { displayOrder: 'asc' },
-    });
+    const { rows: sections } = await db.query(
+      'SELECT * FROM report_sections WHERE report_id = $1 AND is_released_to_participant = true ORDER BY display_order ASC',
+      [report.id]
+    );
 
     res.json({
       reportId: report.id,

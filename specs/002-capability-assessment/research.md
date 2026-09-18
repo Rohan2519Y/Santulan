@@ -4,18 +4,17 @@
 
 Research that resolves the technical unknowns in the [Implementation Plan](plan.md). Source of truth for business rules is the `docs/` folder (README of each sheet is quoted where relevant); this file records engineering decisions only.
 
-## 1. ORM + partial unique index (BF-01 current-response contract)
+## 1. Partial unique index (BF-01 current-response contract)
 
-- **Decision**: Prisma ORM (≥ 7.4.0) with the `partialIndexes` preview feature. The response model declares the "one current response per attempt/item" rule natively:
+- **Decision**: Hand-written SQL migration (`backend/migrations/001_init_capability_assessment.sql`, applied by `backend/scripts/migrate.js` — see research §9) declares the "one current response per attempt/item" rule directly as Postgres DDL:
 
-  ```prisma
-  generator client { previewFeatures = ["partialIndexes"] }
-  @@unique([attemptId, itemId], where: raw("is_current = true"), map: "responses_one_current_per_attempt_item")
+  ```sql
+  CREATE UNIQUE INDEX "responses_one_current_per_attempt_item"
+    ON "responses"("attempt_id", "item_id") WHERE (is_current = true);
   ```
 
-  `prisma migrate` emits `CREATE UNIQUE INDEX ... WHERE (is_current = true)`.
-- **Rationale**: BF-01 (from `07_Assessment_Response` / `03_Non_Negotiable_Rules`) requires exactly one CURRENT version per item per attempt while historical versions remain. Prisma < 7.4 ignores `where` on unique declarations (issue #6974) and since 7.4 auto-drops undeclared partial indexes as drift (#29220). Declaring it in schema keeps schema/migration/drift aligned.
-- **Alternatives considered**: hand-written migration SQL (brittle across `migrate dev` drift in 7.4+); plain `@@unique([attemptId, itemId])` (wrong — forbids multiple historical versions).
+- **Rationale**: BF-01 (from `07_Assessment_Response` / `03_Non_Negotiable_Rules`) requires exactly one CURRENT version per item per attempt while historical versions remain. Writing the DDL directly removes any dependency on an ORM's partial-index support (see §9) and is the single source of truth — no schema/migration drift is possible since there is no separate schema file to fall out of sync with the migration.
+- **Alternatives considered**: an ORM-declared partial index (rejected with the ORM itself, §9); a plain unique constraint on `(attempt_id, item_id)` (wrong — forbids multiple historical versions per BF-01 versioning).
 
 ## 2. Tenant isolation (institution boundary)
 
@@ -67,3 +66,16 @@ Research that resolves the technical unknowns in the [Implementation Plan](plan.
 - **Decision**: Reuse the existing platform auth module and users module: JWT Bearer with role claims (`participant`, `admin`). The OTP managed-auth flows, consents and age-declaration endpoints in the ERD are represented in this feature as the participant profile + consent records the assessment module references; full managed-auth OTP is treated as an existing-capability dependency (documented in plan Assumptions).
 - **Rationale**: Spec Assumptions ("existing platform's auth/users modules provide participant and admin identities"); the scaffold already centralizes `src/shared` middleware.
 - **Alternatives considered**: building OTP/auth inside this feature (out of scope; duplicate).
+
+## 8. Cross-origin access for the browser frontend (CORS)
+
+- **Decision**: `cors` npm middleware mounted first in `backend/src/app.js`, restricted to an allow-list read from `CORS_ORIGINS` (comma-separated, default `http://localhost:3000` for the CRA dev server), permitting `GET/POST/PATCH/DELETE/OPTIONS` and the `Content-Type`/`Authorization` headers (the only two the frontend ever sends - `assessmentApi.js` never uses cookies, so no `credentials: true`/`Access-Control-Allow-Credentials` is needed).
+- **Rationale**: The `003-frontend-visual-design` browser walkthrough surfaced `No 'Access-Control-Allow-Origin' header is present` on every `fetch()` from `http://localhost:3000` to `http://localhost:8000` - a gap from the original 002 implementation, which was validated only via Supertest (same-process, no browser preflight, so the missing header was invisible to the test suite). An explicit origin allow-list (not a wildcard) keeps the JWT-bearing API from being callable by an arbitrary third-party origin.
+- **Alternatives considered**: `origin: '*'` (works for GET but blocks the `Authorization` header on real browsers' preflight in most configurations, and is unnecessarily permissive for an authenticated API); a dev-only proxy (`"proxy"` in `frontend/package.json`) instead of CORS (works only for `npm start`, not a served production build, so it doesn't fix the underlying gap).
+
+## 9. Data access layer: raw `pg` over an ORM
+
+- **Decision**: Replaced Prisma ORM entirely with the `pg` (node-postgres) driver, used directly. `backend/src/shared/db.js` wraps a `pg.Pool` with `query(text, params)` (auto-camelCases result rows) and `withTransaction(fn)` (BEGIN/COMMIT/ROLLBACK over a dedicated client, exposing `tx.query`/`tx.raw`); every service/controller issues hand-written parameterized SQL through this instead of a generated client. Schema management moved from `prisma migrate` to plain numbered SQL files under `backend/migrations/` (the exact DDL Prisma had generated, carried over unchanged, including both partial unique indexes and the `responses` RLS policy) applied by a ~50-line runner (`backend/scripts/migrate.js`) that tracks applied files in a `_migrations` table. `backend/seeders/assessment.seeder.js` and `backend/scripts/grant-runtime-role.js` connect with a plain `pg.Client` the same way.
+- **Rationale**: Prisma 7's driver-adapter/config split (datasource `url` moved out of `schema.prisma` into `prisma.config.ts`, `@prisma/adapter-pg` required for the runtime client, package `exports` subpaths like `react-router/dom`-style resolution issues surfacing elsewhere in this stack) added real friction and moving parts for a single-service pilot backend that only ever talks to one Postgres database. `pg` is a single, stable, minimal dependency; the RLS/partial-index/JSON-column behavior this feature depends on (research §1, §2) is expressed as plain SQL either way, so an ORM was translating SQL the codebase already had to reason about directly. Removing Prisma dropped 132 transitive packages and reduced `npm audit` findings from 5 to 1.
+- **Alternatives considered**: staying on Prisma with the driver-adapter workaround already in place (kept working, but the dependency churn was the reason for this change); Knex.js or Drizzle ORM as a lighter middle ground (both considered; raw `pg` was chosen for zero abstraction over the SQL this project already hand-tunes for RLS/partial indexes, at the cost of more boilerplate per query).
+- **Compatibility note**: every table/column name, constraint, and the `responses` RLS policy are byte-for-byte the same DDL Prisma emitted — this was a data-access-layer swap only; no data model, endpoint, or behavior changed (FR-009-style regression guarantee, verified by the full existing contract/integration suite passing unchanged against the new layer).

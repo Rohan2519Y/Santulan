@@ -11,6 +11,7 @@
   - Error: `{ "error": { "code": "...", "message": "...", "details": {...} } }`
 - Auth failures: `401` (missing/invalid token), `403` (wrong role or foreign participant data — FR-016).
 - Idempotency: mutating endpoints accept an optional `Idempotency-Key` header; responses keyed on it are deduplicated (FR-004/FR-007, research §4).
+- CORS: browser callers must originate from an address listed in `CORS_ORIGINS` (default `http://localhost:3000`, the CRA frontend dev server); `Authorization` and `Content-Type` are the only allowed request headers (research §8). Non-browser callers (Supertest, curl, server-to-server) are unaffected - CORS is enforced by the browser, not the server, for same-origin/non-preflighted requests.
 
 ## Endpoints
 

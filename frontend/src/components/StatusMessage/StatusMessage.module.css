@@ -1,0 +1,43 @@
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.text {
+  flex: 1 1 auto;
+}
+
+.neutral {
+  background: var(--c-status-soft-neutral);
+  color: var(--c-status-neutral);
+}
+
+.success {
+  background: var(--c-status-soft-success);
+  color: var(--c-status-success);
+}
+
+.warning {
+  background: var(--c-status-soft-warning);
+  color: var(--c-status-warning);
+}
+
+.error {
+  background: var(--c-status-soft-error);
+  color: var(--c-status-error);
+}
+
+.info {
+  background: var(--c-status-soft-info);
+  color: var(--c-status-info);
+}

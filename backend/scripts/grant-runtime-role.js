@@ -1,5 +1,5 @@
 /*
- * Runs after `prisma migrate deploy`: grants the non-superuser app_runtime
+ * Runs after `scripts/migrate.js`: grants the non-superuser app_runtime
  * role (docker/init-app-role.sql, T053) privileges on whatever tables/sequences
  * exist right now. ALTER DEFAULT PRIVILEGES in the init script only covers
  * objects created AFTER it ran within the same session grant map; re-granting

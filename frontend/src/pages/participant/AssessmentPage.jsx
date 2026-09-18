@@ -10,8 +10,14 @@ import {
   resumeAttempt,
   submitAttempt,
 } from '../../services/assessmentApi';
-
-const ANCHOR_ORDER = [1, 2, 3, 4, 5];
+import Card from '../../components/Card/Card';
+import Field from '../../components/Field/Field';
+import Button from '../../components/Button/Button';
+import StatusMessage from '../../components/StatusMessage/StatusMessage';
+import ProgressSummary from '../../components/ProgressSummary/ProgressSummary';
+import ResponseScale from '../../components/ResponseScale/ResponseScale';
+import Skeleton from '../../components/Skeleton/Skeleton';
+import styles from './AssessmentPage.module.css';
 
 function ProfileForm({ onDone }) {
   const [age, setAge] = useState(15);
@@ -30,22 +36,18 @@ function ProfileForm({ onDone }) {
   };
 
   return (
-    <form onSubmit={submit} className="profile-form">
-      <h2>Before you begin</h2>
-      <label>
-        Age
-        <input type="number" min="13" max="25" value={age} onChange={(e) => setAge(e.target.value)} required />
-      </label>
-      <label>
-        Participation
-        <select value={participationRoute} onChange={(e) => setParticipationRoute(e.target.value)}>
-          <option value="OPEN">Open (individual)</option>
-          <option value="INSTITUTIONAL">Institutional (school/college)</option>
-        </select>
-      </label>
-      {error && <p className="error-text">{error}</p>}
-      <button type="submit">Continue</button>
-    </form>
+    <Card as="form" onSubmit={submit} className={styles.stepCard}>
+      <h2 className={styles.stepTitle}>Before you begin</h2>
+      <Field label="Age" name="age" type="number" min="13" max="25" value={age} onChange={(e) => setAge(e.target.value)} required />
+      <Field label="Participation" name="participationRoute" as="select" value={participationRoute} onChange={(e) => setParticipationRoute(e.target.value)}>
+        <option value="OPEN">Open (individual)</option>
+        <option value="INSTITUTIONAL">Institutional (school/college)</option>
+      </Field>
+      {error && <StatusMessage type="error" message={error} />}
+      <Button type="submit" variant="primary" className={styles.stepAction}>
+        Continue
+      </Button>
+    </Card>
   );
 }
 
@@ -77,28 +79,35 @@ function ConsentForm({ profile, onDone }) {
   };
 
   return (
-    <div className="consent-form">
-      <h2>Consent</h2>
+    <Card className={styles.stepCard}>
+      <h2 className={styles.stepTitle}>Consent</h2>
       {profile.isMinor ? (
         <>
-          <p>As a minor participant, we need verified parent/guardian consent and your assent.</p>
-          <button type="button" disabled={granted.PARENT_GUARDIAN_CONSENT} onClick={() => grant('PARENT_GUARDIAN_CONSENT', { verificationMethod: 'otp-to-parent-contact' })}>
-            {granted.PARENT_GUARDIAN_CONSENT ? 'Parent/guardian consent recorded ✓' : 'Record parent/guardian consent'}
-          </button>
-          <button type="button" disabled={granted.STUDENT_ASSENT} onClick={() => grant('STUDENT_ASSENT')}>
-            {granted.STUDENT_ASSENT ? 'Your assent recorded ✓' : 'Record your assent'}
-          </button>
+          <p className={styles.stepCopy}>As a minor participant, we need verified parent/guardian consent and your assent.</p>
+          <div className={styles.consentActions}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={granted.PARENT_GUARDIAN_CONSENT}
+              onClick={() => grant('PARENT_GUARDIAN_CONSENT', { verificationMethod: 'otp-to-parent-contact' })}
+            >
+              {granted.PARENT_GUARDIAN_CONSENT ? 'Parent/guardian consent recorded ✓' : 'Record parent/guardian consent'}
+            </Button>
+            <Button type="button" variant="secondary" disabled={granted.STUDENT_ASSENT} onClick={() => grant('STUDENT_ASSENT')}>
+              {granted.STUDENT_ASSENT ? 'Your assent recorded ✓' : 'Record your assent'}
+            </Button>
+          </div>
         </>
       ) : (
-        <button type="button" disabled={granted.ADULT_SELF_CONSENT} onClick={() => grant('ADULT_SELF_CONSENT')}>
+        <Button type="button" variant="secondary" disabled={granted.ADULT_SELF_CONSENT} onClick={() => grant('ADULT_SELF_CONSENT')}>
           {granted.ADULT_SELF_CONSENT ? 'Consent recorded ✓' : 'Give consent'}
-        </button>
+        </Button>
       )}
-      {error && <p className="error-text">{error}</p>}
-      <button type="button" onClick={tryProceed}>
+      {error && <StatusMessage type="warning" message={error} />}
+      <Button type="button" variant="primary" onClick={tryProceed} className={styles.stepAction}>
         Continue
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 }
 
@@ -155,59 +164,71 @@ function AttemptView({ attempt, onSubmitted }) {
 
   const totalItems = current.sections.reduce((sum, s) => sum + s.items.length, 0);
   const answeredCount = Object.keys(answers).length;
+  const currentDomain = current.sections.find((s) => s.items.some((i) => answers[i.id] == null)) || current.sections[current.sections.length - 1];
 
   if (current.status === 'PAUSED') {
     return (
-      <div className="attempt-paused">
-        <p>
-          Progress saved: {answeredCount} of {totalItems} answered. Session {current.sessionCount} of 4.
-        </p>
-        {error && <p className="error-text">{error}</p>}
-        <button type="button" onClick={handleResume}>
+      <Card className={styles.pausedCard}>
+        <StatusMessage
+          type="info"
+          message={`Paused – resume when you're ready. ${answeredCount} of ${totalItems} answered, session ${current.sessionCount} of 4.`}
+        />
+        {error && <StatusMessage type="warning" message={error} />}
+        <Button type="button" variant="primary" onClick={handleResume} className={styles.stepAction}>
           Continue Assessment
-        </button>
-      </div>
+        </Button>
+      </Card>
     );
   }
 
   return (
-    <div className="attempt-view">
-      <p className="progress-line">
-        {answeredCount} of {totalItems} answered · Session {current.sessionCount} of 4
-      </p>
+    <div className={styles.attempt}>
+      <ProgressSummary
+        answered={answeredCount}
+        total={totalItems}
+        domainName={currentDomain?.domainName}
+        sessionCount={current.sessionCount}
+      />
       {current.sections.map((section) => (
-        <section key={section.domainCode} className="domain-section">
-          <h3>{section.domainName}</h3>
+        <Card key={section.domainCode} className={styles.domainSection}>
+          <h3 className={styles.domainTitle}>{section.domainName}</h3>
           {section.items.map((item) => (
-            <fieldset key={item.id} className="item-row">
-              <legend>{item.text}</legend>
-              <div className="scale-row">
-                {ANCHOR_ORDER.map((value) => (
-                  <label key={value}>
-                    <input
-                      type="radio"
-                      name={item.id}
-                      checked={answers[item.id] === value}
-                      onChange={() => answer(item.id, value)}
-                    />
-                    {current.scale.anchors[String(value)]}
-                  </label>
-                ))}
-              </div>
+            <fieldset key={item.id} className={styles.itemRow}>
+              <legend className={styles.itemText}>{item.text}</legend>
+              <ResponseScale
+                anchors={current.scale.anchors}
+                value={answers[item.id] ?? null}
+                onChange={(value) => answer(item.id, value)}
+                name={item.id}
+                label={item.text}
+              />
             </fieldset>
           ))}
-        </section>
+        </Card>
       ))}
-      {error && <p className="error-text">{error}</p>}
-      <div className="attempt-actions">
-        <button type="button" onClick={handlePause}>
+      {error && <StatusMessage type="error" message={error} />}
+      <div className={styles.attemptActions}>
+        <Button type="button" variant="secondary" onClick={handlePause}>
           Pause
-        </button>
-        <button type="button" onClick={handleSubmit} disabled={submitting || answeredCount < totalItems}>
+        </Button>
+        <Button type="button" variant="primary" onClick={handleSubmit} disabled={submitting || answeredCount < totalItems}>
           {submitting ? 'Submitting…' : 'Submit'}
-        </button>
+        </Button>
       </div>
     </div>
+  );
+}
+
+function LoadingCard() {
+  return (
+    <Card aria-busy="true">
+      <span className="sr-only" role="status">
+        Loading…
+      </span>
+      <Skeleton height={24} width="60%" className={styles.skeletonGap} />
+      <Skeleton height={48} className={styles.skeletonGap} />
+      <Skeleton height={48} width="40%" />
+    </Card>
   );
 }
 
@@ -241,8 +262,8 @@ export default function AssessmentPage({ onSubmitted }) {
     setStage('attempt');
   };
 
-  if (stage === 'loading') return <p>Loading…</p>;
-  if (error) return <p className="error-text">{error}</p>;
+  if (stage === 'loading') return <LoadingCard />;
+  if (error) return <StatusMessage type="error" message={error} />;
   if (stage === 'profile') {
     return (
       <ProfileForm

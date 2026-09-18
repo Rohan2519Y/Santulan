@@ -2,7 +2,7 @@ const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { z } = require('zod');
-const prisma = require('../../shared/prisma');
+const db = require('../../shared/db');
 const config = require('../../config');
 const { validate } = require('../../shared/utils/validate');
 const { HttpError } = require('../../shared/errors');
@@ -20,7 +20,8 @@ const loginSchema = z.object({
 router.post('/login', validate(loginSchema), async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = rows[0];
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid email or password');
     }

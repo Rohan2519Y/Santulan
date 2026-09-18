@@ -1,0 +1,23 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.code {
+  font-weight: var(--fw-bold);
+}
+
+.needsReview {
+  background: var(--c-status-soft-warning);
+  color: var(--c-status-warning);
+}
+
+.reviewed {
+  background: var(--c-status-soft-success);
+  color: var(--c-status-success);
+}

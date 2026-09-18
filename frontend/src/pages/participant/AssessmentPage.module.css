@@ -1,0 +1,76 @@
+.stepCard {
+  max-width: 520px;
+  margin: var(--sp-6) auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.stepTitle {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink);
+}
+
+.stepCopy {
+  color: var(--c-ink-muted);
+}
+
+.stepAction {
+  margin-top: var(--sp-2);
+}
+
+.consentActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.pausedCard {
+  max-width: 520px;
+  margin: var(--sp-6) auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.attempt {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: var(--sp-5) 0;
+}
+
+.domainSection {
+  margin-bottom: var(--sp-5);
+}
+
+.domainTitle {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  margin-bottom: var(--sp-4);
+  color: var(--c-brand-strong);
+}
+
+.itemRow {
+  border: none;
+  margin: 0 0 var(--sp-5) 0;
+  padding: 0;
+}
+
+.itemText {
+  padding: 0;
+  font-size: var(--fs-base);
+  line-height: var(--lh-relaxed);
+  margin-bottom: var(--sp-3);
+  overflow-wrap: anywhere;
+}
+
+.attemptActions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+.skeletonGap {
+  margin-bottom: var(--sp-3);
+}

@@ -1,0 +1,34 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: var(--sp-5) 0;
+}
+
+.title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  color: var(--c-ink);
+  margin-bottom: var(--sp-5);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--sp-4);
+}
+
+.neutralCard {
+  max-width: 520px;
+  margin: var(--sp-6) auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.neutralBody {
+  color: var(--c-ink-muted);
+}
+
+.skeletonGap {
+  margin-bottom: var(--sp-3);
+}

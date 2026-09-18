@@ -14,13 +14,13 @@ Deliver the capability assessment as a new `assessment` module in the existing N
 
 **Language/Version**: Node.js 20 LTS (JavaScript). Backend scaffold (`backend/src/modules/*`, `src/routes/v1`, `src/shared` middleware, `src/events`, `src/jobs`) already targets a Node/JS modular monolith; frontend is React 19 (Create React App scaffold in `frontend/`).
 
-**Primary Dependencies**: Express 4 (HTTP), Prisma ORM ≥ 7.4.0 with `partialIndexes` preview (response-current partial unique index + migrations), multer + SheetJS `xlsx` v0.20.3 from the SheetJS CDN (item-pool import), `csv`/JSON parsing not required client-side. Resolved in [research.md](research.md).
+**Primary Dependencies**: Express 4 (HTTP), `pg` (node-postgres) as the sole data-access layer — no ORM (research §9; replaces the earlier Prisma decision), multer + SheetJS `xlsx` v0.20.3 from the SheetJS CDN (item-pool import), `cors` (browser origin allow-list for the frontend dev server, research §8), `csv`/JSON parsing not required client-side. Resolved in [research.md](research.md).
 
-**Storage**: PostgreSQL 16 — `responses`/`score_results`/`reports` immutable and versioned; `backend/migrations/` + `backend/seeders/` exist in the scaffold and are reused.
+**Storage**: PostgreSQL — `responses`/`score_results`/`reports` immutable and versioned; hand-written SQL migrations under `backend/migrations/` applied by `backend/scripts/migrate.js` (research §9), plus `backend/seeders/`. Local dev connects to a plain local PostgreSQL install (no container required — `docker-compose.yml` remains available as an alternative).
 
-**Testing**: Backend — Jest + Supertest (unit + integration + contract). Frontend — jest via `react-scripts test`. Validation tests named after the ERD `13_Validation_Tests_Master` (SIE VT01–VT10) where applicable.
+**Testing**: Backend — Jest + Supertest (unit + integration + contract), run directly against a local Postgres database. Frontend — jest via `react-scripts test`. Validation tests named after the ERD `13_Validation_Tests_Master` (SIE VT01–VT10) where applicable.
 
-**Target Platform**: Linux container (Docker) + PostgreSQL; local dev via `docker-compose`.
+**Target Platform**: PostgreSQL reachable from the Node process — a local PostgreSQL install for day-to-day dev (current default), or Docker via `docker-compose` where preferred/available.
 
 **Project Type**: Web service (modular monolith — assessment capability as one module) + React frontend screens for participant and admin.
 
@@ -58,10 +58,11 @@ specs/002-capability-assessment/
 
 ```text
 backend/
-├── package.json                 # Bump to add Express, Prisma, multer, xlsx deps + scripts
-├── prisma/
-│   ├── schema.prisma            # Data model from data-model.md (partialIndexes preview)
-│   └── migrations/              # Existing migrations dir (reused)
+├── package.json                 # Express, pg, multer, xlsx deps + scripts (no ORM - research §9)
+├── migrations/                  # Numbered plain-SQL migration files (data model from data-model.md)
+├── scripts/
+│   ├── migrate.js               # Applies migrations/*.sql, tracked in a `_migrations` table
+│   └── grant-runtime-role.js    # Grants the non-superuser app_runtime role (T053) on current tables
 ├── seeders/
 │   ├── assessment.seeder.js     # Seed response scale, admin + participant, interpretation rules
 │   └── seeds/item-pool-adolescent/  # Converted TECH_READY pool → JSON fixture (or import via admin)

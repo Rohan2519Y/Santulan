@@ -4,13 +4,14 @@
 
 ## Setup
 
-Everything runs from the existing `backend/` scaffold (Express app, Docker, Prisma, Jest+Supertest tests) and `frontend/` React scaffold.
+Everything runs from the existing `backend/` scaffold (Express app, `pg` data access - no ORM, research §9 - Jest+Supertest tests) and `frontend/` React scaffold. PostgreSQL can be a local install (current default - see `backend/.env`) or the provided `docker-compose.yml`.
 
 ```powershell
 # backend (from repo root)
-npm install                    # adds express, prisma, @prisma/client, multer, xlsx
-npm run docker:up              # PostgreSQL 16 via docker-compose
-npm run db:migrate             # prisma migrate deploy --schema prisma/schema.prisma
+npm install                    # adds express, pg, multer, xlsx
+# PostgreSQL reachable at backend/.env's DATABASE_URL - either a local install
+# (create the database once, e.g. `createdb santulandb`) or `npm run docker:up`
+npm run db:migrate             # applies backend/migrations/*.sql (scripts/migrate.js) + grants the app_runtime role
 npm run db:seed                # seed ResponseScale, admin + participant users, InterpretationRule base rules
 ```
 

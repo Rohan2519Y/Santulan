@@ -1,6 +1,7 @@
+const { randomUUID } = require('crypto');
 const request = require('supertest');
 const app = require('../../../src/app');
-const prisma = require('../../../src/shared/prisma');
+const db = require('../../../src/shared/db');
 const { createUserWithToken, getAdminToken } = require('../../helpers/testUser');
 
 async function makeConsentCompleteMinor(age = 16) {
@@ -29,7 +30,7 @@ async function completeAttempt(token) {
 
 describe('Contract: report + admin-results endpoints', () => {
   afterAll(async () => {
-    await prisma.$disconnect();
+    await db.pool.end();
   });
 
   test('GET report: 404 before ready, 200 with released sections only after submit', async () => {
@@ -84,7 +85,11 @@ describe('Contract: report + admin-results endpoints', () => {
   test('admin: quality-flag disposition review', async () => {
     const token = await makeConsentCompleteMinor(16);
     const { attemptId } = await completeAttempt(token);
-    const flag = await prisma.qualityFlag.create({ data: { attemptId, flagCode: 'Q01', severity: 'review' } });
+    const { rows: flagRows } = await db.query(
+      'INSERT INTO quality_flags (id, attempt_id, flag_code, severity) VALUES ($1, $2, $3, $4) RETURNING *',
+      [randomUUID(), attemptId, 'Q01', 'review']
+    );
+    const flag = flagRows[0];
     const { token: adminToken } = await getAdminToken();
 
     const patched = await request(app)

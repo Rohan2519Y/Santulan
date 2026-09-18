@@ -1,5 +1,5 @@
 const { randomUUID } = require('crypto');
-const prisma = require('../../../shared/prisma');
+const db = require('../../../shared/db');
 const { HttpError } = require('../../../shared/errors');
 const { assertConsentGate } = require('./consent.service');
 const { getEligibleItemsGroupedByDomain } = require('./eligibility.service');
@@ -9,17 +9,21 @@ const { setParticipantScope } = require('../../../shared/utils/rls');
 const { SCORING_VERSION, MAX_SESSIONS, RESPONSE_SCALE, ACTIVE_ATTEMPT_STATUSES } = require('../constants');
 
 async function getActiveAssessmentVersion() {
-  const version = await prisma.assessmentVersion.findFirst({ where: { isActive: true } });
-  if (!version) {
+  const { rows } = await db.query('SELECT * FROM assessment_versions WHERE is_active = true LIMIT 1');
+  if (!rows[0]) {
     throw new HttpError(409, 'ATTEMPT_UNAVAILABLE', 'No active frozen assessment version');
   }
-  return version;
+  return rows[0];
 }
 
 async function findActiveAttempt(participantProfileId, assessmentVersionId) {
-  return prisma.assessmentAttempt.findFirst({
-    where: { participantProfileId, assessmentVersionId, status: { in: ACTIVE_ATTEMPT_STATUSES } },
-  });
+  const { rows } = await db.query(
+    `SELECT * FROM assessment_attempts
+     WHERE participant_profile_id = $1 AND assessment_version_id = $2 AND status = ANY($3::"AttemptStatus"[])
+     LIMIT 1`,
+    [participantProfileId, assessmentVersionId, ACTIVE_ATTEMPT_STATUSES]
+  );
+  return rows[0] || null;
 }
 
 /**
@@ -41,18 +45,15 @@ async function createOrResumeAttempt(participantProfile) {
   await assertParticipationOpen();
   await assertConsentGate(participantProfile);
 
-  return prisma.$transaction(async (tx) => {
-    const attempt = await tx.assessmentAttempt.create({
-      data: {
-        participantProfileId: participantProfile.id,
-        assessmentVersionId: version.id,
-        scoringVersion: SCORING_VERSION,
-        status: 'IN_PROGRESS',
-        sessionCount: 1,
-        startedAt: new Date(),
-        idempotencyKey: randomUUID(),
-      },
-    });
+  return db.withTransaction(async (tx) => {
+    const { rows } = await tx.query(
+      `INSERT INTO assessment_attempts
+         (id, participant_profile_id, assessment_version_id, scoring_version, status, session_count, started_at, idempotency_key)
+       VALUES ($1, $2, $3, $4, 'IN_PROGRESS', 1, $5, $6)
+       RETURNING *`,
+      [randomUUID(), participantProfile.id, version.id, SCORING_VERSION, new Date(), randomUUID()]
+    );
+    const attempt = rows[0];
     await recordEvent(tx, { attemptId: attempt.id, eventType: 'SESSION_START', sessionNumber: 1 });
     return attempt;
   });
@@ -62,10 +63,10 @@ async function pauseAttempt(attempt) {
   if (!['IN_PROGRESS'].includes(attempt.status)) {
     throw new HttpError(422, 'INVALID_STATE', 'Attempt is not in an active session');
   }
-  return prisma.$transaction(async (tx) => {
-    const updated = await tx.assessmentAttempt.update({ where: { id: attempt.id }, data: { status: 'PAUSED' } });
+  return db.withTransaction(async (tx) => {
+    const { rows } = await tx.query(`UPDATE assessment_attempts SET status = 'PAUSED' WHERE id = $1 RETURNING *`, [attempt.id]);
     await recordEvent(tx, { attemptId: attempt.id, eventType: 'PAUSE', sessionNumber: attempt.sessionCount });
-    return updated;
+    return rows[0];
   });
 }
 
@@ -80,19 +81,20 @@ async function resumeAttempt(attempt) {
   if (attempt.sessionCount >= MAX_SESSIONS) {
     throw new HttpError(409, 'SESSION_LIMIT', 'Maximum of 4 sessions reached for this attempt');
   }
-  return prisma.$transaction(async (tx) => {
+  return db.withTransaction(async (tx) => {
     const nextSession = attempt.sessionCount + 1;
-    const updated = await tx.assessmentAttempt.update({
-      where: { id: attempt.id },
-      data: { status: 'IN_PROGRESS', sessionCount: nextSession },
-    });
+    const { rows } = await tx.query(
+      `UPDATE assessment_attempts SET status = 'IN_PROGRESS', session_count = $1 WHERE id = $2 RETURNING *`,
+      [nextSession, attempt.id]
+    );
     await recordEvent(tx, { attemptId: attempt.id, eventType: 'RESUME', sessionNumber: nextSession });
-    return updated;
+    return rows[0];
   });
 }
 
 async function findOwnedAttempt(attemptId, participantProfileId) {
-  const attempt = await prisma.assessmentAttempt.findUnique({ where: { id: attemptId } });
+  const { rows } = await db.query('SELECT * FROM assessment_attempts WHERE id = $1', [attemptId]);
+  const attempt = rows[0];
   if (!attempt || attempt.participantProfileId !== participantProfileId) {
     throw new HttpError(403, 'FORBIDDEN', 'Attempt does not belong to the caller');
   }
@@ -105,11 +107,13 @@ async function findOwnedAttempt(attemptId, participantProfileId) {
  * (US2 acceptance scenario 1 - resume restores state 1:1).
  */
 async function buildAttemptView(attempt, participantProfile) {
-  const version = await prisma.assessmentVersion.findUnique({ where: { id: attempt.assessmentVersionId } });
+  const { rows: versionRows } = await db.query('SELECT * FROM assessment_versions WHERE id = $1', [attempt.assessmentVersionId]);
+  const version = versionRows[0];
   const sections = await getEligibleItemsGroupedByDomain(attempt.assessmentVersionId, participantProfile);
-  const currentResponses = await prisma.$transaction(async (tx) => {
+  const currentResponses = await db.withTransaction(async (tx) => {
     await setParticipantScope(tx, participantProfile.id);
-    return tx.response.findMany({ where: { attemptId: attempt.id, isCurrent: true } });
+    const { rows } = await tx.query('SELECT * FROM responses WHERE attempt_id = $1 AND is_current = true', [attempt.id]);
+    return rows;
   });
 
   const totalItems = sections.reduce((sum, s) => sum + s.items.length, 0);

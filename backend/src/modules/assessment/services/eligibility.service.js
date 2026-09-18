@@ -1,8 +1,8 @@
-const prisma = require('../../../shared/prisma');
+const db = require('../../../shared/db');
 const { toolBandFromAgeBand, ITEM_CONTEXT_TO_PARTICIPANT_CONTEXT, DOMAIN_CODES } = require('../constants');
 
 function isItemEligible(item, participantProfile) {
-  if (item.assessmentVersion.toolBand !== toolBandFromAgeBand(participantProfile.ageBand)) return false;
+  if (item.toolBand !== toolBandFromAgeBand(participantProfile.ageBand)) return false;
   if (item.context === 'General') return true;
   return ITEM_CONTEXT_TO_PARTICIPANT_CONTEXT[item.context] === participantProfile.context;
 }
@@ -13,11 +13,14 @@ function isItemEligible(item, participantProfile) {
  * the version's provided display_order.
  */
 async function getEligibleItems(assessmentVersionId, participantProfile) {
-  const items = await prisma.item.findMany({
-    where: { assessmentVersionId, status: 'ACTIVE' },
-    include: { assessmentVersion: true },
-    orderBy: { displayOrder: 'asc' },
-  });
+  const { rows: items } = await db.query(
+    `SELECT i.*, av.tool_band
+     FROM items i
+     JOIN assessment_versions av ON av.id = i.assessment_version_id
+     WHERE i.assessment_version_id = $1 AND i.status = 'ACTIVE'
+     ORDER BY i.display_order ASC`,
+    [assessmentVersionId]
+  );
 
   return items.filter((item) => isItemEligible(item, participantProfile));
 }

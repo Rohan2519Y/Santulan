@@ -1,5 +1,5 @@
 const { randomUUID } = require('crypto');
-const prisma = require('../../../shared/prisma');
+const db = require('../../../shared/db');
 const { HttpError } = require('../../../shared/errors');
 const { deriveAgeBand, deriveIsMinor, deriveToolBand } = require('../constants');
 
@@ -8,8 +8,13 @@ function deriveContext(participationRoute, toolBand) {
   return toolBand === 'ADOLESCENT' ? 'SCHOOL' : 'COLLEGE_WORK';
 }
 
+async function findProfileByUserId(userId) {
+  const { rows } = await db.query('SELECT * FROM participant_profiles WHERE user_id = $1', [userId]);
+  return rows[0] || null;
+}
+
 async function getProfile(userId) {
-  const profile = await prisma.participantProfile.findUnique({ where: { userId } });
+  const profile = await findProfileByUserId(userId);
   if (!profile) {
     throw new HttpError(404, 'PROFILE_NOT_DECLARED', 'Participant profile not yet declared');
   }
@@ -28,18 +33,26 @@ async function declareProfile(userId, input) {
   const isMinor = deriveIsMinor(age);
   const context = deriveContext(participationRoute, toolBand);
 
-  const existing = await prisma.participantProfile.findUnique({ where: { userId } });
+  const existing = await findProfileByUserId(userId);
   if (existing) {
-    return prisma.participantProfile.update({
-      where: { userId },
-      data: { ageBand, isMinor, context, participationRoute },
-    });
+    const { rows } = await db.query(
+      `UPDATE participant_profiles
+       SET age_band = $1, is_minor = $2, context = $3, participation_route = $4
+       WHERE user_id = $5
+       RETURNING *`,
+      [ageBand, isMinor, context, participationRoute, userId]
+    );
+    return rows[0];
   }
 
   const santulanId = `STLN-${randomUUID().slice(0, 8).toUpperCase()}`;
-  return prisma.participantProfile.create({
-    data: { userId, santulanId, ageBand, isMinor, context, participationRoute },
-  });
+  const { rows } = await db.query(
+    `INSERT INTO participant_profiles (id, user_id, santulan_id, age_band, is_minor, context, participation_route)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [randomUUID(), userId, santulanId, ageBand, isMinor, context, participationRoute]
+  );
+  return rows[0];
 }
 
 module.exports = { getProfile, declareProfile };

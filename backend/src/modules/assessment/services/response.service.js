@@ -1,4 +1,5 @@
-const prisma = require('../../../shared/prisma');
+const { randomUUID } = require('crypto');
+const db = require('../../../shared/db');
 const { HttpError } = require('../../../shared/errors');
 const { recordEvent } = require('./event.service');
 const { setParticipantScope } = require('../../../shared/utils/rls');
@@ -16,47 +17,53 @@ async function saveResponse(attempt, participantProfileId, input) {
     throw new HttpError(422, 'INVALID_STATE', 'Attempt is not in an answerable state');
   }
 
-  const item = await prisma.item.findUnique({ where: { id: input.itemId } });
+  const { rows: itemRows } = await db.query('SELECT * FROM items WHERE id = $1', [input.itemId]);
+  const item = itemRows[0];
   if (!item || item.assessmentVersionId !== attempt.assessmentVersionId) {
     throw new HttpError(422, 'ITEM_NOT_ELIGIBLE', "Item does not belong to the attempt's version");
   }
 
-  return prisma.$transaction(async (tx) => {
+  return db.withTransaction(async (tx) => {
     await setParticipantScope(tx, participantProfileId);
 
-    const existingByKey = await tx.response.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
-    if (existingByKey) return existingByKey;
+    const { rows: existingByKeyRows } = await tx.query('SELECT * FROM responses WHERE idempotency_key = $1', [input.idempotencyKey]);
+    if (existingByKeyRows[0]) return existingByKeyRows[0];
 
-    const previousCurrent = await tx.response.findFirst({
-      where: { attemptId: attempt.id, itemId: item.id, isCurrent: true },
-    });
+    const { rows: previousRows } = await tx.query(
+      'SELECT * FROM responses WHERE attempt_id = $1 AND item_id = $2 AND is_current = true',
+      [attempt.id, item.id]
+    );
+    const previousCurrent = previousRows[0] || null;
 
     if (previousCurrent) {
-      await tx.response.update({ where: { id: previousCurrent.id }, data: { isCurrent: false } });
+      await tx.query('UPDATE responses SET is_current = false WHERE id = $1', [previousCurrent.id]);
     }
 
-    let created;
-    try {
-      created = await tx.response.create({
-        data: {
-          attemptId: attempt.id,
-          itemId: item.id,
-          participantProfileId,
-          responseValue: input.value,
-          responseVersion: previousCurrent ? previousCurrent.responseVersion + 1 : 1,
-          isCurrent: true,
-          supersedesResponseId: previousCurrent ? previousCurrent.id : null,
-          answeredAt: new Date(),
-          idempotencyKey: input.idempotencyKey,
-        },
-      });
-    } catch (err) {
-      if (err.code === 'P2002') {
-        // Concurrent retry raced us on idempotency_key; the other write won.
-        const raced = await tx.response.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
-        if (raced) return raced;
-      }
-      throw err;
+    // ON CONFLICT (idempotency_key) DO NOTHING makes a concurrent retry safe
+    // (research §4): if another request won the race, no row comes back here.
+    const { rows: insertedRows } = await tx.query(
+      `INSERT INTO responses
+         (id, attempt_id, item_id, participant_profile_id, response_value, response_version, is_current, supersedes_response_id, answered_at, idempotency_key)
+       VALUES ($1, $2, $3, $4, $5, $6, true, $7, $8, $9)
+       ON CONFLICT (idempotency_key) DO NOTHING
+       RETURNING *`,
+      [
+        randomUUID(),
+        attempt.id,
+        item.id,
+        participantProfileId,
+        input.value,
+        previousCurrent ? previousCurrent.responseVersion + 1 : 1,
+        previousCurrent ? previousCurrent.id : null,
+        new Date(),
+        input.idempotencyKey,
+      ]
+    );
+
+    let created = insertedRows[0];
+    if (!created) {
+      const { rows: raced } = await tx.query('SELECT * FROM responses WHERE idempotency_key = $1', [input.idempotencyKey]);
+      created = raced[0];
     }
 
     await recordEvent(tx, {

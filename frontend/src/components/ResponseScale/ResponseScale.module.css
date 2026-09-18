@@ -1,0 +1,62 @@
+.scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 64px;
+  min-height: 48px;
+  flex: 1 1 96px;
+  padding: var(--sp-2) var(--sp-2);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--c-surface-strong);
+  background: var(--c-bg-white);
+  color: var(--c-ink);
+  text-align: center;
+  transition: background-color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    transition: none;
+  }
+}
+
+.chip:hover {
+  border-color: var(--c-brand);
+}
+
+.chip:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Selected uses the neutral brand tint - never a success/error color (FR-005) -
+   plus a bolder border and bold label weight, so selection reads from shape
+   and weight too, not color alone (color-blind audit, US3). */
+.selected {
+  background: var(--c-brand-soft);
+  border-color: var(--c-brand);
+  border-width: 3px;
+}
+
+.selected .label {
+  color: var(--c-brand-strong);
+  font-weight: var(--fw-semibold);
+}
+
+.value {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-md);
+}
+
+.label {
+  font-size: var(--fs-xs);
+  color: var(--c-ink-muted);
+}

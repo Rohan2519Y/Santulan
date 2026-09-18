@@ -1,11 +1,11 @@
 const request = require('supertest');
 const app = require('../../../src/app');
-const prisma = require('../../../src/shared/prisma');
+const db = require('../../../src/shared/db');
 const { createUserWithToken } = require('../../helpers/testUser');
 
 describe('Contract: participant assessment endpoints', () => {
   afterAll(async () => {
-    await prisma.$disconnect();
+    await db.pool.end();
   });
 
   test('profile: 404 before declaration, then declare + fetch', async () => {

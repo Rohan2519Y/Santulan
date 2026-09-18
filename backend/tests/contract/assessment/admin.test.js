@@ -1,14 +1,14 @@
 const path = require('path');
 const request = require('supertest');
 const app = require('../../../src/app');
-const prisma = require('../../../src/shared/prisma');
+const db = require('../../../src/shared/db');
 const { createUserWithToken, getAdminToken } = require('../../helpers/testUser');
 
 const ADOLESCENT_XLSX = path.join(__dirname, '..', '..', '..', '..', 'docs', 'Santulan_Adolescent_Items_TECH_READY.xlsx');
 
 describe('Contract: admin endpoints', () => {
   afterAll(async () => {
-    await prisma.$disconnect();
+    await db.pool.end();
   });
 
   test('participant token is forbidden from admin routes', async () => {

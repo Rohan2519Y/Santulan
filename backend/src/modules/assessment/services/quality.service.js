@@ -1,3 +1,4 @@
+const { randomUUID } = require('crypto');
 const { HELD_DOMAINS } = require('../constants');
 
 const SPEEDING_MS_THRESHOLD = 1000;
@@ -53,11 +54,16 @@ function detectQualityFlags({ responses, scoreResults }) {
 }
 
 async function recordQualityFlags(tx, attemptId, flags) {
-  if (flags.length === 0) return [];
-  await tx.qualityFlag.createMany({
-    data: flags.map((f) => ({ attemptId, domainCode: f.domainCode, flagCode: f.flagCode, severity: f.severity })),
-  });
-  return tx.qualityFlag.findMany({ where: { attemptId } });
+  for (const f of flags) {
+    // eslint-disable-next-line no-await-in-loop
+    await tx.query(
+      `INSERT INTO quality_flags (id, attempt_id, domain_code, flag_code, severity)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [randomUUID(), attemptId, f.domainCode, f.flagCode, f.severity]
+    );
+  }
+  const { rows } = await tx.query('SELECT * FROM quality_flags WHERE attempt_id = $1', [attemptId]);
+  return rows;
 }
 
 module.exports = { detectQualityFlags, recordQualityFlags };

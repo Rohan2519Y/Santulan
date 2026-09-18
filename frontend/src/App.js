@@ -1,23 +1,27 @@
 import { useState } from 'react';
-import './App.css';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import styles from './App.module.css';
 import LoginPage from './pages/LoginPage';
 import AssessmentPage from './pages/participant/AssessmentPage';
 import ResultsPage from './pages/participant/ResultsPage';
 import ImportPage from './pages/admin/ImportPage';
 import ResultsAdminPage from './pages/admin/ResultsAdminPage';
+import Button from './components/Button/Button';
 import { getRole, logout } from './services/assessmentApi';
+
+const HOME_ROUTE_BY_ROLE = { admin: '/admin', participant: '/student' };
 
 function AdminLanding() {
   const [tab, setTab] = useState('import');
   return (
     <div>
-      <div className="attempt-actions">
-        <button type="button" onClick={() => setTab('import')} disabled={tab === 'import'}>
+      <div className={styles.adminTabs}>
+        <Button type="button" variant={tab === 'import' ? 'primary' : 'secondary'} onClick={() => setTab('import')} disabled={tab === 'import'}>
           Import &amp; control
-        </button>
-        <button type="button" onClick={() => setTab('results')} disabled={tab === 'results'}>
+        </Button>
+        <Button type="button" variant={tab === 'results' ? 'primary' : 'secondary'} onClick={() => setTab('results')} disabled={tab === 'results'}>
           Submissions
-        </button>
+        </Button>
       </div>
       {tab === 'import' ? <ImportPage /> : <ResultsAdminPage />}
     </div>
@@ -33,27 +37,75 @@ function ParticipantLanding() {
   return <AssessmentPage onSubmitted={setSubmittedResult} />;
 }
 
-export default function App() {
-  const [role, setRole] = useState(getRole());
+/** Requires the caller to be logged in as `role`; otherwise redirects to login or to their own home route. */
+function RequireRole({ role, children }) {
+  const currentRole = getRole();
+  if (!currentRole) return <Navigate to="/login" replace />;
+  if (currentRole !== role) return <Navigate to={HOME_ROUTE_BY_ROLE[currentRole]} replace />;
+  return children;
+}
 
-  const handleLogout = () => {
-    logout();
-    setRole(null);
-  };
-
-  if (!role) {
-    return <LoginPage onLoggedIn={setRole} />;
-  }
+function LoginRoute() {
+  const navigate = useNavigate();
+  const currentRole = getRole();
+  if (currentRole) return <Navigate to={HOME_ROUTE_BY_ROLE[currentRole]} replace />;
 
   return (
-    <div className="App">
-      <header className="app-header">
-        <span>Santulan</span>
-        <button type="button" onClick={handleLogout}>
+    <LoginPage
+      onLoggedIn={(role) => {
+        navigate(HOME_ROUTE_BY_ROLE[role] || '/login', { replace: true });
+      }}
+    />
+  );
+}
+
+function Shell({ children }) {
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  return (
+    <div className={styles.app}>
+      <header className={styles.header}>
+        <span className={styles.brand}>Santulan</span>
+        <Button type="button" variant="quiet-link" onClick={handleLogout}>
           Sign out
-        </button>
+        </Button>
       </header>
-      <main>{role === 'admin' ? <AdminLanding /> : <ParticipantLanding />}</main>
+      <main className={styles.main}>{children}</main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginRoute />} />
+        <Route
+          path="/student"
+          element={
+            <RequireRole role="participant">
+              <Shell>
+                <ParticipantLanding />
+              </Shell>
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <RequireRole role="admin">
+              <Shell>
+                <AdminLanding />
+              </Shell>
+            </RequireRole>
+          }
+        />
+        <Route path="*" element={<Navigate to={HOME_ROUTE_BY_ROLE[getRole()] || '/login'} replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

@@ -5,18 +5,17 @@
  * Run via `npm run db:seed`.
  */
 const path = require('path');
+const { randomUUID } = require('crypto');
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
+const { Client } = require('pg');
 require('dotenv').config();
 
 const { computeContentHash, DOMAINS } = require('../src/modules/assessment/utils/itemPoolParser');
 const { EVIDENCE_STATES, DEVELOPMENTAL_BANDS, buildStemTemplate } = require('../src/modules/assessment/engine/interpretationStems');
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
+const client = new Client({ connectionString: process.env.DATABASE_URL });
 
-const SCORING_VERSION = 'scoring-v1.0';
+const SCORING_VERSION = 'scoring-v1.0'; // eslint-disable-line no-unused-vars
 const RESPONSE_SCALE_VERSION = 'santulan-scale-v1.0';
 const INTERPRETATION_RULE_VERSION = 'v1.0';
 
@@ -34,26 +33,35 @@ const POOLS = [
 ];
 
 async function seedResponseScale() {
-  return prisma.responseScale.upsert({
-    where: { version: RESPONSE_SCALE_VERSION },
-    update: {},
-    create: {
-      version: RESPONSE_SCALE_VERSION,
-      scalePoints: 5,
-      anchorLabels: { 1: 'Almost never', 2: 'Rarely', 3: 'Sometimes', 4: 'Often', 5: 'Almost always' },
-      keyingDefinition: { positive: 'higher is higher', reverse: 'higher raw value is lower construct standing' },
-      frozenAt: new Date(),
-      status: 'FROZEN',
-    },
-  });
+  const { rows: existingRows } = await client.query('SELECT * FROM response_scales WHERE version = $1', [RESPONSE_SCALE_VERSION]);
+  if (existingRows[0]) return existingRows[0];
+
+  const { rows } = await client.query(
+    `INSERT INTO response_scales (id, version, scale_points, anchor_labels, keying_definition, frozen_at, status)
+     VALUES ($1, $2, 5, $3, $4, $5, 'FROZEN')
+     RETURNING *`,
+    [
+      randomUUID(),
+      RESPONSE_SCALE_VERSION,
+      JSON.stringify({ 1: 'Almost never', 2: 'Rarely', 3: 'Sometimes', 4: 'Often', 5: 'Almost always' }),
+      JSON.stringify({ positive: 'higher is higher', reverse: 'higher raw value is lower construct standing' }),
+      new Date(),
+    ]
+  );
+  return rows[0];
 }
 
 async function seedAdminUser() {
   const email = 'admin@santulan.local';
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return existing;
+  const { rows: existingRows } = await client.query('SELECT * FROM users WHERE email = $1', [email]);
+  if (existingRows[0]) return existingRows[0];
+
   const passwordHash = await bcrypt.hash('ChangeMe123!', 10);
-  return prisma.user.create({ data: { email, passwordHash, role: 'admin' } });
+  const { rows } = await client.query(
+    `INSERT INTO users (id, email, password_hash, role) VALUES ($1, $2, $3, 'admin') RETURNING *`,
+    [randomUUID(), email, passwordHash]
+  );
+  return rows[0];
 }
 
 async function seedVersion(responseScaleId, pool) {
@@ -61,86 +69,77 @@ async function seedVersion(responseScaleId, pool) {
   const fixture = require(path.join(__dirname, pool.fixture.replace('../seeders/', '')));
   const contentHash = computeContentHash(fixture.items);
 
-  const existing = await prisma.assessmentVersion.findUnique({ where: { versionLabel: fixture.versionLabel } });
-  if (existing) {
-    return { version: existing, items: await prisma.item.findMany({ where: { assessmentVersionId: existing.id } }) };
+  const { rows: existingRows } = await client.query('SELECT * FROM assessment_versions WHERE version_label = $1', [fixture.versionLabel]);
+  if (existingRows[0]) {
+    const version = existingRows[0];
+    const { rows: items } = await client.query('SELECT * FROM items WHERE assessment_version_id = $1', [version.id]);
+    return { version, items };
   }
 
-  const version = await prisma.assessmentVersion.create({
-    data: {
-      versionLabel: fixture.versionLabel,
-      responseScaleId,
-      toolBand: pool.toolBand,
-      sourceFile: fixture.sourceFile,
-      contentHash,
-      frozenAt: new Date(),
-      status: 'FROZEN',
-      isActive: false, // flipped after all versions exist, to respect the one-active partial index
-    },
-  });
+  const { rows: versionRows } = await client.query(
+    `INSERT INTO assessment_versions (id, version_label, response_scale_id, tool_band, source_file, content_hash, frozen_at, status, is_active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'FROZEN', false)
+     RETURNING *`,
+    [randomUUID(), fixture.versionLabel, responseScaleId, pool.toolBand, fixture.sourceFile, contentHash, new Date()]
+  );
+  const version = versionRows[0];
 
-  await prisma.item.createMany({
-    data: fixture.items.map((item) => ({
-      assessmentVersionId: version.id,
-      itemCode: item.itemCode,
-      domainCode: item.domainCode,
-      subdomainCode: item.subdomainCode,
-      domainName: item.domainName,
-      subdomainName: item.subdomainName,
-      itemText: item.itemText,
-      keying: item.keying,
-      ageBand: item.ageBand,
-      context: item.context,
-      layer: item.layer,
-      status: item.status,
-      displayOrder: item.displayOrder,
-    })),
-  });
+  for (const item of fixture.items) {
+    // eslint-disable-next-line no-await-in-loop
+    await client.query(
+      `INSERT INTO items
+         (id, assessment_version_id, item_code, domain_code, subdomain_code, domain_name, subdomain_name, item_text, keying, age_band, context, layer, status, display_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      [
+        randomUUID(),
+        version.id,
+        item.itemCode,
+        item.domainCode,
+        item.subdomainCode,
+        item.domainName,
+        item.subdomainName,
+        item.itemText,
+        item.keying,
+        item.ageBand,
+        item.context,
+        item.layer,
+        item.status,
+        item.displayOrder,
+      ]
+    );
+  }
 
-  const items = await prisma.item.findMany({ where: { assessmentVersionId: version.id } });
+  const { rows: items } = await client.query('SELECT * FROM items WHERE assessment_version_id = $1', [version.id]);
   return { version, items };
 }
 
 async function seedInterpretationRules(version) {
   const domainCodes = Object.keys(DOMAINS);
-  const rows = [];
+  let count = 0;
+
   for (const domainCode of domainCodes) {
     for (const developmentalBand of DEVELOPMENTAL_BANDS) {
       for (const evidenceState of EVIDENCE_STATES) {
-        rows.push({
-          assessmentVersionId: version.id,
-          domainCode,
-          developmentalBand,
-          evidenceState,
-          locale: 'en',
-          ruleCode: `${domainCode}-${developmentalBand}-${evidenceState}-en`,
-          approvedTextTemplate: buildStemTemplate(domainCode, DOMAINS[domainCode], evidenceState),
-          version: INTERPRETATION_RULE_VERSION,
-          status: 'FROZEN',
-        });
+        const ruleCode = `${domainCode}-${developmentalBand}-${evidenceState}-en`;
+        const approvedTextTemplate = buildStemTemplate(domainCode, DOMAINS[domainCode], evidenceState);
+        // eslint-disable-next-line no-await-in-loop
+        await client.query(
+          `INSERT INTO interpretation_rules
+             (id, assessment_version_id, domain_code, developmental_band, evidence_state, locale, rule_code, approved_text_template, version, status)
+           VALUES ($1, $2, $3, $4, $5, 'en', $6, $7, $8, 'FROZEN')
+           ON CONFLICT (assessment_version_id, domain_code, developmental_band, evidence_state, locale) DO NOTHING`,
+          [randomUUID(), version.id, domainCode, developmentalBand, evidenceState, ruleCode, approvedTextTemplate, INTERPRETATION_RULE_VERSION]
+        );
+        count += 1;
       }
     }
   }
-
-  for (const row of rows) {
-    await prisma.interpretationRule.upsert({
-      where: {
-        assessmentVersionId_domainCode_developmentalBand_evidenceState_locale: {
-          assessmentVersionId: row.assessmentVersionId,
-          domainCode: row.domainCode,
-          developmentalBand: row.developmentalBand,
-          evidenceState: row.evidenceState,
-          locale: row.locale,
-        },
-      },
-      update: {},
-      create: row,
-    });
-  }
-  return rows.length;
+  return count;
 }
 
 async function main() {
+  await client.connect();
+
   const scale = await seedResponseScale();
   const admin = await seedAdminUser();
 
@@ -154,15 +153,15 @@ async function main() {
   }
 
   // Flip exactly one active version (adolescent), honoring the partial unique index.
-  await prisma.assessmentVersion.updateMany({ data: { isActive: false }, where: {} });
+  await client.query('UPDATE assessment_versions SET is_active = false');
   const activePool = results.find((r) => r.pool.isActive);
-  await prisma.assessmentVersion.update({ where: { id: activePool.version.id }, data: { isActive: true } });
+  await client.query('UPDATE assessment_versions SET is_active = true WHERE id = $1', [activePool.version.id]);
 
   console.log('Seed complete:'); // eslint-disable-line no-console
   console.log('  Admin user:', admin.email, '(password: ChangeMe123!)'); // eslint-disable-line no-console
-  console.log('  Response scale:', scale.version, 'scale_points =', scale.scalePoints); // eslint-disable-line no-console
+  console.log('  Response scale:', scale.version, 'scale_points =', scale.scale_points); // eslint-disable-line no-console
   for (const r of results) {
-    console.log(`  ${r.version.versionLabel}: ${r.itemCount} items, ${r.ruleCount} interpretation rules, active=${r.pool.isActive}`); // eslint-disable-line no-console
+    console.log(`  ${r.version.version_label}: ${r.itemCount} items, ${r.ruleCount} interpretation rules, active=${r.pool.isActive}`); // eslint-disable-line no-console
   }
 }
 
@@ -172,5 +171,5 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await client.end();
   });

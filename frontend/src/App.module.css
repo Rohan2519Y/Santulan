@@ -1,0 +1,31 @@
+.app {
+  min-height: 100vh;
+  background: var(--c-bg);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-surface-strong);
+}
+
+.brand {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--c-brand-strong);
+}
+
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--sp-5);
+}
+
+.adminTabs {
+  display: flex;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}

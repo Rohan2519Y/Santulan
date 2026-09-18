@@ -1,3 +1,4 @@
+const { randomUUID } = require('crypto');
 const { getEligibleItemsGroupedByDomain } = require('./eligibility.service');
 const { HELD_DOMAINS } = require('../constants');
 
@@ -23,7 +24,7 @@ function deriveScoreStatus(domainCode, completenessRate) {
  */
 async function scoreAttempt(tx, attempt, participantProfile) {
   const sections = await getEligibleItemsGroupedByDomain(attempt.assessmentVersionId, participantProfile);
-  const currentResponses = await tx.response.findMany({ where: { attemptId: attempt.id, isCurrent: true } });
+  const { rows: currentResponses } = await tx.query('SELECT * FROM responses WHERE attempt_id = $1 AND is_current = true', [attempt.id]);
   const responseByItemId = new Map(currentResponses.map((r) => [r.itemId, r]));
 
   const results = [];
@@ -38,23 +39,28 @@ async function scoreAttempt(tx, attempt, participantProfile) {
 
     // FR-015: write-once - scoreAttempt only ever runs inside the one-time
     // submit transaction (re-submitting an already-scored attempt is rejected
-    // by submit.service's state check), so a plain `create` is correct; no
+    // by submit.service's state check), so a plain INSERT is correct; no
     // update path exists for a ScoreResult once written.
     // eslint-disable-next-line no-await-in-loop
-    const scoreResult = await tx.scoreResult.create({
-      data: {
-        attemptId: attempt.id,
-        participantProfileId: participantProfile.id,
-        domainCode: section.domainCode,
-        rawScore: rawScore.toFixed(2),
-        validResponseCount: validCount,
-        eligibleItemCount: eligibleCount,
-        completenessRate: completenessRate.toFixed(3),
+    const { rows } = await tx.query(
+      `INSERT INTO score_results
+         (id, attempt_id, participant_profile_id, domain_code, raw_score, valid_response_count, eligible_item_count, completeness_rate, score_status, scoring_version)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
+      [
+        randomUUID(),
+        attempt.id,
+        participantProfile.id,
+        section.domainCode,
+        rawScore.toFixed(2),
+        validCount,
+        eligibleCount,
+        completenessRate.toFixed(3),
         scoreStatus,
-        scoringVersion: attempt.scoringVersion,
-      },
-    });
-    results.push({ ...scoreResult, domainName: section.domainName });
+        attempt.scoringVersion,
+      ]
+    );
+    results.push({ ...rows[0], domainName: section.domainName });
   }
   return results;
 }
