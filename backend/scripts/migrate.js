@@ -1,5 +1,5 @@
 /*
- * Minimal raw-SQL migration runner (replaces `prisma migrate deploy`).
+ * Minimal raw-SQL migration runner (no ORM; replaces ORM-generated migrations).
  * Applies every *.sql file in backend/migrations/, in filename order, that
  * isn't already recorded in the `_migrations` tracking table. Each file runs
  * inside its own transaction; a failure rolls back that file only and stops

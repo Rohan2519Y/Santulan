@@ -1,0 +1,17 @@
+Baseline for feature 004 (recorded 2026-09-19, before any migration 003+ was applied)
+
+== T002 prerequisites ==
+DATABASE_URL connects; server_version_num = 180006 (>= 130000)                         OK
+Tables in public = 17 (16 assessment tables + _migrations)                             OK
+_migrations = 001_init_capability_assessment.sql, 002_responses_rls.sql                OK
+Role app_runtime: rolsuper=false, rolbypassrls=false                                   OK
+Role app_readonly: absent (created in T023)
+None of the 22 new tables / 7 new enum types exist                                     OK
+admin@santulan.local seeded in users                                                   OK
+
+== T001 regression baseline: npm test ==
+Test Suites: 9 passed, 9 total
+Tests:       23 passed, 23 total
+Failing before this feature: none
+Suites: report, report-flow, admin-import, participant-flow, participant, rls-isolation,
+        attempt-sessions, resume-flow, admin

@@ -21,14 +21,14 @@ Research that resolves the technical unknowns in the [Implementation Plan](plan.
 - **Decision**: Application-layer scoping as the primary control for pilot v1, plus PostgreSQL Row-Level Security as a defense-in-depth backstop. App runs as a non-owner role with `FORCE ROW LEVEL SECURITY`; policies read a per-transaction GUC. Pattern within an interactive transaction:
 
   ```ts
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.institution_id', ${institutionId}, true)`; // is_local = SET LOCAL
-    return tx.??? // scoped write
+  await db.withTransaction(async (tx) => {
+    await tx.query(`SELECT set_config('app.institution_id', $1, true)`, [institutionId]); // is_local = SET LOCAL
+    return tx.query(`/* scoped write */`);
   });
   ```
 
 - **Rationale**: `set_config(..., is_local := true)` is the first statement of an interactive transaction, so it is connection-scoped and auto-reset — safe under pooling, unlike session-level `SET` (issues #4303/#5128). Raw statements participate in the transaction. Missing GUC fails closed (`NULLIF(current_setting('app.institution_id', true), '')`).
-- **Alternatives considered**: blanket RLS transaction on every request (costs all traffic); `$extends` tenant injection only (~96% throughput but not DB-enforced). Pilot v1 uses the hybrid: app-layer filter everywhere + `FORCE` RLS on sensitive writes/reads.
+- **Alternatives considered**: blanket RLS transaction on every request (costs all traffic); client-side tenant injection in every query (~96% throughput but not DB-enforced). Pilot v1 uses the hybrid: app-layer filter everywhere + `FORCE` RLS on sensitive writes/reads.
 
 ## 3. Admin item-pool import (TECH_READY xlsx)
 
@@ -45,7 +45,7 @@ Research that resolves the technical unknowns in the [Implementation Plan](plan.
 
 ## 4. Idempotent response writes (network retry safety)
 
-- **Decision**: `idempotency_key` (UUID, unique) on the response record, mirroring the ERD `responses.idempotency_key`. The save-response endpoint performs `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING` via raw query inside the attempt's transaction; on conflict it returns the existing response. A one-shot retry on Prisma `P2002` guards the concurrent-create race (issue #14868).
+- **Decision**: `idempotency_key` (UUID, unique) on the response record, mirroring the ERD `responses.idempotency_key`. The save-response endpoint performs `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING` via raw query inside the attempt's transaction; on conflict it returns the existing response. A one-shot retry on the Postgres duplicate-key error (`23505`) guards the concurrent-create race.
 - **Rationale**: BF-01 + `07_Assessment_Response` ("Idempotency keys prevent duplicate response writes on retry/reconnect"). DO NOTHING is atomic at the Postgres level.
 - **Alternatives considered**: separate idempotency lookup table (extra join); Redis lock (adds infrastructure).
 
@@ -75,7 +75,7 @@ Research that resolves the technical unknowns in the [Implementation Plan](plan.
 
 ## 9. Data access layer: raw `pg` over an ORM
 
-- **Decision**: Replaced Prisma ORM entirely with the `pg` (node-postgres) driver, used directly. `backend/src/shared/db.js` wraps a `pg.Pool` with `query(text, params)` (auto-camelCases result rows) and `withTransaction(fn)` (BEGIN/COMMIT/ROLLBACK over a dedicated client, exposing `tx.query`/`tx.raw`); every service/controller issues hand-written parameterized SQL through this instead of a generated client. Schema management moved from `prisma migrate` to plain numbered SQL files under `backend/migrations/` (the exact DDL Prisma had generated, carried over unchanged, including both partial unique indexes and the `responses` RLS policy) applied by a ~50-line runner (`backend/scripts/migrate.js`) that tracks applied files in a `_migrations` table. `backend/seeders/assessment.seeder.js` and `backend/scripts/grant-runtime-role.js` connect with a plain `pg.Client` the same way.
-- **Rationale**: Prisma 7's driver-adapter/config split (datasource `url` moved out of `schema.prisma` into `prisma.config.ts`, `@prisma/adapter-pg` required for the runtime client, package `exports` subpaths like `react-router/dom`-style resolution issues surfacing elsewhere in this stack) added real friction and moving parts for a single-service pilot backend that only ever talks to one Postgres database. `pg` is a single, stable, minimal dependency; the RLS/partial-index/JSON-column behavior this feature depends on (research §1, §2) is expressed as plain SQL either way, so an ORM was translating SQL the codebase already had to reason about directly. Removing Prisma dropped 132 transitive packages and reduced `npm audit` findings from 5 to 1.
-- **Alternatives considered**: staying on Prisma with the driver-adapter workaround already in place (kept working, but the dependency churn was the reason for this change); Knex.js or Drizzle ORM as a lighter middle ground (both considered; raw `pg` was chosen for zero abstraction over the SQL this project already hand-tunes for RLS/partial indexes, at the cost of more boilerplate per query).
-- **Compatibility note**: every table/column name, constraint, and the `responses` RLS policy are byte-for-byte the same DDL Prisma emitted — this was a data-access-layer swap only; no data model, endpoint, or behavior changed (FR-009-style regression guarantee, verified by the full existing contract/integration suite passing unchanged against the new layer).
+- **Decision**: The data-access layer is the raw `pg` (node-postgres) driver, used directly (this replaced an ORM planned earlier in the feature). `backend/src/shared/db.js` wraps a `pg.Pool` with `query(text, params)` (auto-camelCases result rows) and `withTransaction(fn)` (BEGIN/COMMIT/ROLLBACK over a dedicated client, exposing `tx.query`/`tx.raw`); every service/controller issues hand-written parameterized SQL through this instead of a generated client. Schema management is plain numbered SQL files under `backend/migrations/` (the exact generated DDL, carried over unchanged, including both partial unique indexes and the `responses` RLS policy) applied by a ~50-line runner (`backend/scripts/migrate.js`) that tracks applied files in a `_migrations` table. `backend/seeders/assessment.seeder.js` and `backend/scripts/grant-runtime-role.js` connect with a plain `pg.Client` the same way.
+- **Rationale**: The ORM's version-7 configuration split (datasource config moved out of the schema file into a separate config, a driver-adapter package required for the runtime client, package `exports` subpath resolution issues surfacing elsewhere in this stack) added real friction and moving parts for a single-service pilot backend that only ever talks to one Postgres database. `pg` is a single, stable, minimal dependency; the RLS/partial-index/JSON-column behavior this feature depends on (research §1, §2) is expressed as plain SQL either way, so an ORM was translating SQL the codebase already had to reason about directly. Dropping the ORM cut 132 transitive packages and reduced `npm audit` findings from 5 to 1.
+- **Alternatives considered**: staying on the ORM with the driver-adapter workaround already in place (kept working, but the dependency churn was the reason for this change); Knex.js or Drizzle ORM as a lighter middle ground (both considered; raw `pg` was chosen for zero abstraction over the SQL this project already hand-tunes for RLS/partial indexes, at the cost of more boilerplate per query).
+- **Compatibility note**: every table/column name, constraint, and the `responses` RLS policy are byte-for-byte the same DDL the original schema generation produced — this was a data-access-layer swap only; no data model, endpoint, or behavior changed (FR-009-style regression guarantee, verified by the full existing contract/integration suite passing unchanged against the new layer).

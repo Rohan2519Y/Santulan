@@ -4,11 +4,17 @@
 
 **Created**: 2026-09-17
 
-**Status**: Draft
+**Status**: Implemented (2026-09-19)
 
 **Input**: User description: "so read all the file and according to that make changes"
 
 **Source of truth**: The `docs/` folder was read in full — `Santulan_Pilot_1_2_MASTER_and_Final_ERD.xlsx`, `Santulan_Development_Reporting_MASTER_System_v1_1.xlsx`, `Santulan_Adolescent_Items_TECH_READY.xlsx`, `Santulan_EmergingAdult_Items_TECH_READY.xlsx`, the Adolescent and Emerging Adult OFFLINE booklets, and `MCQ_Template.csv`. This spec supersedes the earlier `001-assessment-service` spec (which assumed an MCQ quiz driven by `mcq_template.csv`). The documentation shows the assessment is a self-report developmental capability instrument, not an MCQ test.
+
+## Implementation status (2026-09-19)
+
+The full capability-assessment module is implemented and tested against the frozen document contract: both TECH_READY item pools (175 adolescent + 171 emerging-adult items) seeded as frozen assessment versions on the frozen 5-point response scale, consent-gated participant profile, resumable attempts (≤ 4 sessions), immutable versioned responses, server-side scoring with quality-flag routing (Q01–Q09), RLS-protected `responses`, versioned snapshot reports with the staged-release gate, and the admin import/control/results surfaces. One default-on active version is enforced by a partial unique index.
+
+**Demo sign-in (for exercising this feature)**: running `npm run db:seed` in `backend/` creates, idempotently, two accounts usable with the JWT login endpoint — an `admin` account (`admin@santulan.local`) and a `participant` account (`participant@santulan.local`), both with the development password `ChangeMe123!`. These are the identities the frontend uses to reach the participant and admin flows (see the 004-platform-sql-database feature for the unified `accounts` model and the platform demo student `student001`).
 
 ## Roles
 
@@ -149,7 +155,7 @@ After an attempt reaches the report-ready state, the participant can view their 
 
 - This feature replaces the earlier `001-assessment-service` MCQ model: the assessment is a self-report capability instrument (no correct answers), and `mcq_template.csv` is not the data source for v1 content; the instrument content is the frozen TECH_READY item pools.
 - The two scope carriers are imported as separate frozen assessment versions and stay separated (an item never belongs to both versions).
-- The existing platform's auth/users modules provide participant and admin identities; this feature adds participant/admin-facing assessment capabilities on top.
+- The existing platform's auth/users modules provide participant and admin identities; this feature adds participant/admin-facing assessment capabilities on top. For local testing the seeder creates one admin and one participant account (see "Implementation status"); both sign in through the rewritten account-based login (see 004-platform-sql-database, User Story 8).
 - Per MP17 staged rollout: descriptive report layers ship to all participants from launch; prescriptive layers (priorities, actions, growth plan, pathways) are built and stored but held behind the release flag, with P5 safeguarding exempt from the flag.
 - Deterministic rule-based scoring and interpretation only; no machine learning, percentiles, or normalized comparisons in v1.
 - Attempt, response, score, and report data are retained for the participant's record; withdrawal is handled by pseudonymisation of the participant–response linkage rather than deletion of immutable rows (exact mechanism remains protocol/legal-review dependent).

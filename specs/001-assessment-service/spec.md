@@ -1,10 +1,12 @@
 # Feature Specification: Assessment Service
 
+> **Status: Superseded.** This spec described an MCQ-quiz assessment driven by `mcq_template.csv`. The documentation review showed the real instrument is a self-report developmental capability assessment; see [002-capability-assessment](../002-capability-assessment/spec.md) ("Supersedes"). Its references to the data layer also predate the project's current approach (see 002 research §9). Kept for history only.
+
 **Feature Branch**: `001-assessment-service`
 
 **Created**: 2026-09-16
 
-**Status**: Draft
+**Status**: Superseded (kept as history — see the notice above)
 
 **Input**: User description: "I want to make the microservice for assessment and in the assessment read mcq_template.csv for the MCQ questions and one admin and one student"
 

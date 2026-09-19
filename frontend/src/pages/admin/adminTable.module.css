@@ -1,0 +1,102 @@
+/* Shared data-table styling for the admin dashboard. */
+.scroll {
+  overflow-x: auto; /* the table scrolls inside its panel, never the page */
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+}
+
+.table th,
+.table td {
+  padding: var(--sp-3) var(--sp-4);
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--c-line);
+  white-space: nowrap;
+}
+
+.table thead th {
+  background: var(--c-bg);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-ink-muted);
+  position: sticky;
+  top: 0;
+}
+
+.table tbody tr:hover {
+  background: var(--c-bg);
+}
+
+.table td.num,
+.table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-sm);
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0;
+  min-height: 32px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.sortButton:hover {
+  color: var(--c-ink);
+}
+.sortButton:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.flagChip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 24px;
+  justify-content: center;
+  padding: 2px var(--sp-2);
+  border-radius: 999px;
+  background: var(--c-status-soft-warning);
+  color: var(--c-status-warning);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xs);
+}
+.flagZero {
+  color: var(--c-ink-muted);
+}
+
+.rowAction {
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-brand-strong);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  border: 1px solid var(--c-line);
+}
+.rowAction:hover {
+  background: var(--c-brand-soft);
+  border-color: var(--c-brand);
+}
+.rowAction:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}

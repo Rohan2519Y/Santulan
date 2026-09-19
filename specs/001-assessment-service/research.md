@@ -38,9 +38,9 @@
 
 ## 5. Storage / Data Layer
 
-**Decision**: PostgreSQL 16 via Prisma ORM, migrations in the existing `backend/migrations/` flow.
+**Decision**: PostgreSQL 16 via the raw `pg` (node-postgres) driver; schema as plain numbered SQL files in the existing `backend/migrations/` flow, applied by `backend/scripts/migrate.js`.
 
-**Rationale**: The spec model (versioned templates, questions, options, submissions, responses, results, CSV import records) is relational with strong referential invariants (one active template, immutable submission snapshots, exactly one correct option). PostgreSQL enforces these natively (unique partial index for single active version; foreign keys preserving submission immutability — FR-008). Prisma gives typed models, schema-as-source-of-truth, and migrations that slot into the existing `migrations/` directory.
+**Rationale**: The spec model (versioned templates, questions, options, submissions, responses, results, CSV import records) is relational with strong referential invariants (one active template, immutable submission snapshots, exactly one correct option). PostgreSQL enforces these natively (unique partial index for single active version; foreign keys preserving submission immutability — FR-008). Writing the schema directly as SQL DDL makes it the single source of truth, and hand-written migrations slot into the existing `migrations/` directory with full control over the partial-index and foreign-key invariants.
 
 **Alternatives considered**: Sequelize (weak partial-index support), Knex (rawer, more glue), Mongo (document model but weak referential integrity for version snapshots), SQLite (inadequate for server concurrency).
 

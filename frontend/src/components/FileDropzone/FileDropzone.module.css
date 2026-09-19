@@ -1,0 +1,47 @@
+.zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-6) var(--sp-5);
+  border: 2px dashed var(--c-brand);
+  border-radius: var(--radius-lg);
+  background: var(--c-panel);
+  color: var(--c-brand-strong);
+  text-align: center;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zone {
+    transition: background-color var(--motion-fast) var(--ease);
+  }
+}
+
+.zone:hover,
+.dragging {
+  background: var(--c-brand-soft);
+}
+
+.zone:focus-within {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.inactive {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.title {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  font-size: var(--fs-sm);
+  color: var(--c-ink-muted);
+}

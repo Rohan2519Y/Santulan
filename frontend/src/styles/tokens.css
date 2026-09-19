@@ -31,6 +31,18 @@
   --c-status-soft-error: #f7e7e4;
   --c-status-soft-neutral: #eceeef;
 
+  /* Admin dashboard (spec 005): dark warm navigation + data-surface tokens */
+  --c-nav-bg: #2b2620;
+  --c-nav-bg-hover: #3a3229;
+  --c-nav-bg-active: #4a3b2d;
+  --c-nav-ink: #f6efe2;
+  --c-nav-ink-muted: #cdc2ae;
+  --c-nav-accent: #e6b98f;
+  --c-panel: #ffffff;
+  --c-line: #e7decc;
+  --c-track: #efe7d8;
+  --sidebar-w: 248px;
+
   /* Typography - system stack only, no font downloads (SC-006) */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --fs-xs: 12px;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { login } from '../services/assessmentApi';
+import { login, toAppRole } from '../services/assessmentApi';
 import Card from '../components/Card/Card';
 import Field from '../components/Field/Field';
 import Button from '../components/Button/Button';
@@ -7,7 +7,7 @@ import StatusMessage from '../components/StatusMessage/StatusMessage';
 import styles from './LoginPage.module.css';
 
 export default function LoginPage({ onLoggedIn }) {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -17,8 +17,10 @@ export default function LoginPage({ onLoggedIn }) {
     setError(null);
     setSubmitting(true);
     try {
-      const { user } = await login(email, password);
-      onLoggedIn(user.role);
+      const { user } = await login(identifier, password);
+      const appRole = toAppRole(user.role);
+      if (!appRole) throw new Error('This account type has no screen yet');
+      onLoggedIn(appRole);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -34,7 +36,15 @@ export default function LoginPage({ onLoggedIn }) {
       </div>
       <Card className={styles.card}>
         <form onSubmit={handleSubmit}>
-          <Field label="Email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Field
+            label="Email or student ID"
+            name="login"
+            type="text"
+            autoComplete="username"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            required
+          />
           <Field
             label="Password"
             name="password"

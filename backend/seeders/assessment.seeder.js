@@ -1,12 +1,11 @@
 /*
  * Seeds: ResponseScale (frozen 5-point Likert), both frozen AssessmentVersions
  * with their imported items (from the committed JSON fixtures under
- * seeders/seeds/), one admin User, and stem InterpretationRule rows.
- * Run via `npm run db:seed`.
+ * seeders/seeds/), and stem InterpretationRule rows.
+ * Run via `npm run db:seed`. (Logins are `accounts` - see seeders/platform.seeder.js.)
  */
 const path = require('path');
 const { randomUUID } = require('crypto');
-const bcrypt = require('bcryptjs');
 const { Client } = require('pg');
 require('dotenv').config();
 
@@ -51,18 +50,8 @@ async function seedResponseScale() {
   return rows[0];
 }
 
-async function seedAdminUser() {
-  const email = 'admin@santulan.local';
-  const { rows: existingRows } = await client.query('SELECT * FROM users WHERE email = $1', [email]);
-  if (existingRows[0]) return existingRows[0];
-
-  const passwordHash = await bcrypt.hash('ChangeMe123!', 10);
-  const { rows } = await client.query(
-    `INSERT INTO users (id, email, password_hash, role) VALUES ($1, $2, $3, 'admin') RETURNING *`,
-    [randomUUID(), email, passwordHash]
-  );
-  return rows[0];
-}
+// Admin and student logins are no longer seeded here: the old `users` table is gone and people
+// are `accounts` now - run `npm run db:seed:platform` for the demo admin and student.
 
 async function seedVersion(responseScaleId, pool) {
   // eslint-disable-next-line global-require, import/no-dynamic-require
@@ -141,7 +130,6 @@ async function main() {
   await client.connect();
 
   const scale = await seedResponseScale();
-  const admin = await seedAdminUser();
 
   const results = [];
   for (const pool of POOLS) {
@@ -158,7 +146,6 @@ async function main() {
   await client.query('UPDATE assessment_versions SET is_active = true WHERE id = $1', [activePool.version.id]);
 
   console.log('Seed complete:'); // eslint-disable-line no-console
-  console.log('  Admin user:', admin.email, '(password: ChangeMe123!)'); // eslint-disable-line no-console
   console.log('  Response scale:', scale.version, 'scale_points =', scale.scale_points); // eslint-disable-line no-console
   for (const r of results) {
     console.log(`  ${r.version.version_label}: ${r.itemCount} items, ${r.ruleCount} interpretation rules, active=${r.pool.isActive}`); // eslint-disable-line no-console

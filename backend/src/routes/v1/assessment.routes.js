@@ -21,11 +21,11 @@ const router = Router();
 
 router.use(authenticate);
 
-// Participant (role: participant), mounted under /assessments so requireRole
+// Student (account role: student), mounted under /assessments so requireRole
 // only ever runs for participant-shaped paths (a shared prefix with admin.use
 // would otherwise short-circuit BEFORE Express tries the admin router).
 const participant = Router();
-participant.use(requireRole('participant'));
+participant.use(requireRole('student'));
 
 participant.get('/profile', profileController.getProfile);
 participant.post('/profile', validate(declareProfileSchema), profileController.declareProfile);
@@ -43,9 +43,9 @@ participant.post('/reports/:reportId/retry', reportController.retryReport);
 
 router.use('/assessments', participant);
 
-// Admin (role: admin), mounted under /admin/assessments.
+// Admin (account role: superuser), mounted under /admin/assessments.
 const admin = Router();
-admin.use(requireRole('admin'));
+admin.use(requireRole('superuser'));
 
 admin.post('/import', upload.single('file'), adminController.importItemPool);
 admin.post('/control', validate(controlSchema), adminController.control);

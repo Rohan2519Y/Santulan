@@ -1,0 +1,63 @@
+.tile {
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--sp-4) var(--sp-5);
+  min-width: 0;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink-muted);
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--c-brand-soft);
+  color: var(--c-brand-strong);
+}
+
+.value {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  color: var(--c-ink);
+}
+
+.hint {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--c-ink-muted);
+}
+
+.success .iconWrap {
+  background: var(--c-status-soft-success);
+  color: var(--c-status-success);
+}
+.info .iconWrap {
+  background: var(--c-status-soft-info);
+  color: var(--c-status-info);
+}
+.warning .iconWrap {
+  background: var(--c-status-soft-warning);
+  color: var(--c-status-warning);
+}
+.error .iconWrap {
+  background: var(--c-status-soft-error);
+  color: var(--c-status-error);
+}

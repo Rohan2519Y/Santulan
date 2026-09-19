@@ -14,7 +14,7 @@ Deliver the assessment capability as a new module in the existing backend modula
 
 **Language/Version**: Node.js 20 LTS (JavaScript). Backend scaffold (`package.json`, `.gitignore` with `node_modules/`, `src/modules/*`, `src/routes/v1/*`, `migrations/`, `seeders/`) already points to a Node/JS setup. Frontend is React 19 (Create React App).
 
-**Primary Dependencies**: Express 4 for HTTP, multer for CSV upload, `csv-parse` for RFC-4180 parsing, Prisma ORM for the data layer. Resolved in [research.md](research.md).
+**Primary Dependencies**: Express 4 for HTTP, multer for CSV upload, `csv-parse` for RFC-4180 parsing, `pg` (node-postgres) for the data layer. Resolved in [research.md](research.md).
 
 **Storage**: PostgreSQL 16 — relational model with versioned templates, submissions, results; `migrations/` + `seeders/` folders already exist in the backend scaffold.
 
@@ -65,9 +65,9 @@ backend/
 │   │   └── assessment.routes.js    # Route mounting under /api/v1/assessments
 │   ├── shared/                     # Existing shared auth guards, error helpers (reused)
 │   └── app.js                      # Wire module routes + middleware (currently empty skeleton)
-├── prisma/
-│   ├── schema.prisma               # Data model from data-model.md
-│   └── migrations/                 # Existing migrations dir (reused)
+├── migrations/
+│   ├── 001_init_assessment_service.sql  # Data model from data-model.md
+│   └── ...                         # Existing migrations dir (reused)
 ├── seeders/
 │   └── assessment.seeder.js        # Seed default admin + initial CSV-based question set
 └── tests/

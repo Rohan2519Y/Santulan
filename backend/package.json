@@ -8,8 +8,10 @@
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "test": "jest --runInBand",
+    "test:db": "jest --runInBand tests/database",
     "db:migrate": "node scripts/migrate.js && node scripts/grant-runtime-role.js",
     "db:seed": "node seeders/assessment.seeder.js",
+    "db:seed:platform": "node seeders/platform.seeder.js",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },

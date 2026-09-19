@@ -4,29 +4,11 @@ import styles from './App.module.css';
 import LoginPage from './pages/LoginPage';
 import AssessmentPage from './pages/participant/AssessmentPage';
 import ResultsPage from './pages/participant/ResultsPage';
-import ImportPage from './pages/admin/ImportPage';
-import ResultsAdminPage from './pages/admin/ResultsAdminPage';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import Button from './components/Button/Button';
 import { getRole, logout } from './services/assessmentApi';
 
 const HOME_ROUTE_BY_ROLE = { admin: '/admin', participant: '/student' };
-
-function AdminLanding() {
-  const [tab, setTab] = useState('import');
-  return (
-    <div>
-      <div className={styles.adminTabs}>
-        <Button type="button" variant={tab === 'import' ? 'primary' : 'secondary'} onClick={() => setTab('import')} disabled={tab === 'import'}>
-          Import &amp; control
-        </Button>
-        <Button type="button" variant={tab === 'results' ? 'primary' : 'secondary'} onClick={() => setTab('results')} disabled={tab === 'results'}>
-          Submissions
-        </Button>
-      </div>
-      {tab === 'import' ? <ImportPage /> : <ResultsAdminPage />}
-    </div>
-  );
-}
 
 function ParticipantLanding() {
   const [submittedResult, setSubmittedResult] = useState(null);
@@ -95,12 +77,10 @@ export default function App() {
           }
         />
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
             <RequireRole role="admin">
-              <Shell>
-                <AdminLanding />
-              </Shell>
+              <AdminDashboard />
             </RequireRole>
           }
         />

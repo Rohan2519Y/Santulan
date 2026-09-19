@@ -1,0 +1,123 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  background: rgba(43, 38, 32, 0.55);
+}
+
+.overlaySide {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  background: var(--c-panel);
+  color: var(--c-ink);
+  box-shadow: var(--shadow-2);
+  max-height: 100%;
+  outline: none;
+}
+
+.center {
+  width: min(520px, 100%);
+  border-radius: var(--radius-lg);
+}
+
+.side {
+  width: min(680px, 100%);
+  height: 100%;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .side {
+    animation: slide-in var(--motion-base) var(--ease);
+  }
+  .center {
+    animation: pop-in var(--motion-base) var(--ease);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .side {
+    border-radius: 0;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--c-line);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px -12px -8px 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-ink-muted);
+}
+.close:hover {
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+.close:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.description {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-5) 0;
+  font-size: var(--fs-sm);
+  color: var(--c-ink-muted);
+}
+
+.body {
+  padding: var(--sp-4) var(--sp-5);
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--c-line);
+}

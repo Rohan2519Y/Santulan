@@ -24,26 +24,60 @@ async function request(path, options = {}) {
   return body;
 }
 
-export async function login(email, password) {
+/**
+ * The backend authenticates platform accounts (docs/SQL-Database-Schema.md) and returns the real
+ * account role. The screens are named for the assessment roles, so map the two roles that have a
+ * landing screen: superuser -> admin, student -> participant. Any other role has no screen yet.
+ */
+const APP_ROLE_BY_ACCOUNT_ROLE = { superuser: 'admin', student: 'participant' };
+export const toAppRole = (accountRole) => APP_ROLE_BY_ACCOUNT_ROLE[accountRole] || null;
+
+/** `identifier` is an email (contains "@") or a school-issued student login ID. */
+export async function login(identifier, password) {
+  const credentials = identifier.includes('@') ? { email: identifier.trim() } : { loginId: identifier.trim() };
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ ...credentials, password }),
   });
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error?.message || 'Login failed');
   localStorage.setItem('santulan_token', body.token);
   localStorage.setItem('santulan_role', body.user.role);
+  localStorage.setItem('santulan_user', JSON.stringify({ name: body.user.name, email: body.user.email, role: body.user.role }));
   return body;
 }
 
 export function logout() {
   localStorage.removeItem('santulan_token');
   localStorage.removeItem('santulan_role');
+  localStorage.removeItem('santulan_user');
+  localStorage.removeItem('santulan_last_control');
+}
+
+/** Who is signed in (name/email for the dashboard header); null if unknown. */
+export function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem('santulan_user'));
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * The API has no "current participation state" read, so the dashboard remembers the last
+ * control action recorded from this browser (shown as such, never as the live state).
+ */
+export function getLastControl() {
+  try {
+    return JSON.parse(localStorage.getItem('santulan_last_control'));
+  } catch (err) {
+    return null;
+  }
 }
 
 export function getRole() {
-  return localStorage.getItem('santulan_role');
+  return toAppRole(localStorage.getItem('santulan_role'));
 }
 
 export const getProfile = () => request('/assessments/profile');
@@ -76,7 +110,11 @@ export const importItemPool = async (file) => {
   }
   return body;
 };
-export const controlParticipation = (data) => request('/admin/assessments/control', { method: 'POST', body: JSON.stringify(data) });
+export const controlParticipation = async (data) => {
+  const body = await request('/admin/assessments/control', { method: 'POST', body: JSON.stringify(data) });
+  localStorage.setItem('santulan_last_control', JSON.stringify({ action: body.control.action, reason: body.control.reason, at: body.control.createdAt }));
+  return body;
+};
 export const getSubmissions = () => request('/admin/assessments/submissions');
 export const getSubmissionDetail = (attemptId) => request(`/admin/assessments/submissions/${attemptId}`);
 export const reviewQualityFlag = (flagId, disposition) =>

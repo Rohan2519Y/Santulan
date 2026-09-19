@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-18
 
-**Status**: Draft
+**Status**: Draft — adopted (requirements agreed; plan, research, contracts, and tasks are generated; implementation pending)
 
 **Input**: User description: "i want to add the good visuals for the frontend"
 
@@ -103,3 +103,4 @@ Whether a person is on the login screen, deep in the assessment, viewing results
 - The application continues to be a responsive web app (not native mobile); "mobile support" here means a responsive layout in a mobile browser, not a native app.
 - No new UI framework/component library adoption decisions are made in this spec (technology choice for implementing the visuals is a planning-phase concern, not a scoping concern here).
 - Illustration/iconography, if used, will be simple and generic (not photographic, not requiring bespoke commissioned art), consistent with a lightweight pilot-stage product.
+- The restyled screens are exercised against the seeded demo identities (`admin@santulan.local` and `participant@santulan.local`, password `ChangeMe123!`, see 002-capability-assessment "Implementation status"); this feature adds no login/sign-up surfaces.

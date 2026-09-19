@@ -1,0 +1,140 @@
+.chart {
+  position: relative;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--sp-2);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 32px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-brand-strong);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.toggle:hover {
+  background: var(--c-brand-soft);
+}
+.toggle:focus-visible,
+.hitButton:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(96px, 150px) 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.label {
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+  min-width: 0;
+}
+
+.plot {
+  position: relative;
+  min-width: 0;
+  /* the baseline every bar grows from: a hairline, solid, recessive */
+  border-left: 1px solid var(--c-line);
+}
+
+.hit {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 32px; /* hit target bigger than the 16px mark */
+  padding: 0;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: inherit;
+}
+
+.hitButton {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.hitButton:hover .bar,
+.hitButton:focus-visible .bar {
+  filter: brightness(1.12);
+}
+
+.bar {
+  display: block;
+  height: 16px;
+  min-width: 4px;
+  border-radius: 0 4px 4px 0;
+  flex: 0 0 auto;
+}
+
+.value {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink);
+}
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  transform: translateX(-4px);
+  z-index: 5;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--c-ink);
+  color: var(--c-bg-white);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  box-shadow: var(--shadow-2);
+  pointer-events: none;
+}
+.tipValue {
+  font-size: var(--fs-sm);
+}
+.tipLabel {
+  opacity: 0.9;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.table th,
+.table td {
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  border-bottom: 1px solid var(--c-line);
+  color: var(--c-ink);
+}
+.table thead th {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-ink-muted);
+}
+.table tbody th {
+  font-weight: var(--fw-regular);
+}
+.table td {
+  font-variant-numeric: tabular-nums;
+}

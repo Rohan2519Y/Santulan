@@ -8,7 +8,7 @@ This guide proves the feature works end-to-end against the [API contract](contra
 
 - Node.js 20, PostgreSQL 16, Docker (for `docker-compose` DB)
 - Backend dependencies installed: `npm install` in `backend/`
-- Database migrated & seeded: `npx prisma migrate dev && npm run seed`
+- Database migrated & seeded: `npm run db:migrate && npm run seed`
 - Seed creates: one admin user, one student user, and the initial active template from a fixture `mcq_template.csv`
 
 ## 1. Boot the stack

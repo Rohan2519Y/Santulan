@@ -14,7 +14,7 @@ Deliver the capability assessment as a new `assessment` module in the existing N
 
 **Language/Version**: Node.js 20 LTS (JavaScript). Backend scaffold (`backend/src/modules/*`, `src/routes/v1`, `src/shared` middleware, `src/events`, `src/jobs`) already targets a Node/JS modular monolith; frontend is React 19 (Create React App scaffold in `frontend/`).
 
-**Primary Dependencies**: Express 4 (HTTP), `pg` (node-postgres) as the sole data-access layer — no ORM (research §9; replaces the earlier Prisma decision), multer + SheetJS `xlsx` v0.20.3 from the SheetJS CDN (item-pool import), `cors` (browser origin allow-list for the frontend dev server, research §8), `csv`/JSON parsing not required client-side. Resolved in [research.md](research.md).
+**Primary Dependencies**: Express 4 (HTTP), `pg` (node-postgres) as the sole data-access layer — no ORM (research §9; the original plan's ORM decision was replaced), multer + SheetJS `xlsx` v0.20.3 from the SheetJS CDN (item-pool import), `cors` (browser origin allow-list for the frontend dev server, research §8), `csv`/JSON parsing not required client-side. Resolved in [research.md](research.md).
 
 **Storage**: PostgreSQL — `responses`/`score_results`/`reports` immutable and versioned; hand-written SQL migrations under `backend/migrations/` applied by `backend/scripts/migrate.js` (research §9), plus `backend/seeders/`. Local dev connects to a plain local PostgreSQL install (no container required — `docker-compose.yml` remains available as an alternative).
 
