@@ -4,9 +4,25 @@
 
 **Created**: 2026-09-18
 
-**Status**: Draft — adopted (requirements agreed; plan, research, contracts, and tasks are generated; implementation pending)
+**Status**: Draft — **revised 2026-09-19** against the Santulan 2.0 UI reference screens (requirements and contracts updated; `plan.md`, `research.md`, `data-model.md`, `quickstart.md` and `tasks.md` predate the revision and must be regenerated)
 
-**Input**: User description: "i want to add the good visuals for the frontend"
+**Input**: User description: "i want to add the good visuals for the frontend". *Revision (2026-09-19)*: "read the specs and update it according to docs/santulan … there is the frontend design also … only edit or make the specs."
+
+## Scope revision (2026-09-19)
+
+The original spec restyled the existing 002 screens with a "calm and warm" cream/terracotta palette and no new screens. The product owner has since supplied **25 reference screens** in `docs/Santulan 2.0/UI screen Samples/` (`screen 01.png`, `02.png`–`22.png`, `24.png`–`26.png`; there is no `23`) plus the SanTulan 2.0 build contracts (see [005-v3-1-canonical-alignment](../005-v3-1-canonical-alignment/spec.md)). Those screens define a different visual identity and add participant-facing surfaces the original spec ruled out. Anything not listed below is unchanged.
+
+| Original | Now |
+|----------|-----|
+| FR-001 palette "calm and warm" (cream `#FAF6EE`, terracotta `#8C5A3C`) | **Santulan navy design language** measured from the samples: near-white page, navy call-to-action `#034281`, green route accent `#145852`, pale tinted cards (blue / green / pink / lavender / warm cream), serif display headings, handwritten accent taglines, lotus brand mark. Tokens in [contracts/design-system.md](contracts/design-system.md) |
+| FR-009 / Assumption 1 "no new screens, no functional change" | Still true for the existing login, assessment, results and admin screens. **New screens are now in scope** (public site, route choice, 5-step OPEN registration, institutional sign-in, participant dashboard, assessment hub/complete/generating states, profile & privacy). Their behaviour comes from spec 005, not from this spec |
+| Assumption "no brand assets exist" | Brand assets exist in the samples (lotus logo, wordmark "SANTULAN — UNDERSTAND · GROW · THRIVE", handwritten taglines). Production files still need to be supplied/approved |
+| Assumption "illustration generic, not photographic" | The samples use photography and illustrations; production imagery must be licensed/approved and lazy-loaded so the assessment screen's first render is unaffected (SC-006 stands) |
+| "System font stack only — no font downloads" (design-system §1) | The samples use a serif display face, a sans body face and a handwritten script. Self-hosted subset fonts are allowed **within a load-time budget**, with system fallbacks (spec 005 D-07) |
+| Student and admin dashboards were not specified | Both are specified in [contracts/dashboards.md](contracts/dashboards.md) (student: from screen 10; admin: from BUILD 08 and the existing pages — no sample screen exists) |
+| Screen inventory of 6 existing screens | [contracts/screen-inventory.md](contracts/screen-inventory.md) now maps all 25 samples plus the screens that have **no** sample (item player, resume, report/radar, T11/T12, growth plan, admin) |
+
+**Where a sample conflicts with a canonical contract, the contract wins** and the screen is reconciled in the inventory (e.g. date-of-birth entry → integer age; semantic-looking Santulan ID → opaque ID; name/photo profile → canonical profile only; four-section "Initial Assessment" questionnaire → layout reference only; prescriptive "Next Steps" → hidden while the release flag is off).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -59,6 +75,40 @@ Whether a person is on the login screen, deep in the assessment, viewing results
 
 ---
 
+### User Story 4 - A visitor finds Santulan, chooses a route and registers (Priority: P1) — new (2026-09-19)
+
+A visitor lands on the public site (home, about), chooses **Register as an Individual** (OPEN route) or **Join Through Your Institution**, and completes a five-step registration — email or mobile, 6-digit code, age, consent, and a success screen showing their Santulan ID — or signs in to the institutional login with a Santulan ID and (temporary) password. Each step uses the split layout from the samples: an inspirational left panel (heading, three reassurance points, handwritten tagline over a photograph) and a floating white card with a step indicator, primary navy button, secondary outlined button, and a privacy/security note.
+
+**Why this priority**: It is the first thing every participant sees and the only place the design must carry consent, age and privacy messaging for minors correctly.
+
+**Independent Test**: Walk screens `screen 01`–`09` on a phone and a desktop; each renders in the Santulan design system, the step indicator matches the step, and the behaviour rules of spec 005 US2/US3/US4/US10 hold (integer age, derived consent, no eligibility claim, opaque ID).
+
+**Acceptance Scenarios**:
+
+1. **Given** a visitor on the route-choice screen, **When** it renders, **Then** the two route cards (green OPEN, blue INSTITUTION) each show an icon, eyebrow label, title, description, three ticked points and a primary button, and a help strip below offers guidance and support.
+2. **Given** a participant in the OPEN wizard, **When** they move between steps, **Then** the indicator shows "Step n of 5", completed steps show a tick, Back is available from step 2, and errors (invalid email, wrong code, ineligible age) appear as calm, labelled status messages.
+3. **Given** the verification step, **When** the code is shown, **Then** six separate digit boxes, a resend countdown and the 10-minute expiry note are visible and operable by keyboard and screen reader.
+4. **Given** the success step, **When** the Santulan ID appears, **Then** it has a Copy action, the screen states what happens next, and for a minor it states that consent is still awaiting verification.
+5. **Given** the institutional sign-in, **When** it renders, **Then** it offers Santulan ID + password, "Forgot your password?", "Login with Temporary Password", a "First time here?" note and a link back to individual registration.
+
+---
+
+### User Story 5 - A signed-in participant uses a consistent app shell (Priority: P2) — new (2026-09-19)
+
+After sign-in the participant sees a left-sidebar shell (Home, My Profile, Assessment, plus Resources/Wellbeing/Support/Settings only where spec 005 allows them), a top bar with the logo and user menu, breadcrumbs, a right rail of guidance cards (why this matters / your information is safe / need help) and the shared footer. The dashboard, assessment status, generating-report, report/terminal states, profile settings and privacy pages all use it.
+
+**Independent Test**: Sign in as a participant at each lifecycle state (consent pending, ready, in progress, submitted, generating, REPORT_READY, QUALITY_HOLD, INVALID) and confirm the dashboard, timeline and CTA reflect the real state.
+
+**Acceptance Scenarios**:
+
+1. **Given** a participant with a closed consent gate, **When** the dashboard renders, **Then** the assessment CTA is disabled and explains what is missing, without alarming language.
+2. **Given** an attempt in progress, **When** they open Assessment, **Then** they see progress, "session n of 4", last-saved time and one **Continue Assessment** action.
+3. **Given** a submitted attempt, **When** the report is generating, **Then** the four-stage indicator mirrors the real pipeline state; a QUALITY_HOLD shows the neutral T11 message; a FAILED_RETRYABLE report shows a calm "still preparing" message.
+4. **Given** the profile pages, **When** they render, **Then** only canonical participant data is shown, and Privacy & Data lists each consent record with a **Withdraw** action.
+5. **Given** any page, **When** navigation would lead to content that does not exist (Resources, Wellbeing, mentor), **Then** the item is not shown.
+
+---
+
 ### Edge Cases
 
 - What happens on a very small screen (e.g., older/budget phone, ~320px wide) where item text is long? Layout must still avoid horizontal scroll or clipped/overlapping text.
@@ -71,7 +121,7 @@ Whether a person is on the login screen, deep in the assessment, viewing results
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST present a single, consistent visual design (color palette, typography, spacing, and component styling) applied across every existing screen: login, participant profile/consent, the assessment question flow, pause/resume state, participant results, admin import/participation control, and admin submissions list/detail. The overall style direction is **calm and warm**: soft/muted colors, rounded shapes, and a supportive, reassuring tone consistent with a self-report wellbeing instrument for a 13-25 audience and with the existing "no right or wrong answers" requirement (FR-005) - not clinical/corporate, and not bright/gamified.
+- **FR-001**: The system MUST present a single, consistent visual design (color palette, typography, spacing, and component styling) applied across every screen — the existing login, participant assessment/results and admin screens **and** the new public, registration, dashboard and profile screens. The style direction is the **Santulan design language** in `docs/Santulan 2.0/UI screen Samples/`: bright, airy and reassuring — near-white surfaces, navy primary actions, soft pastel tinted cards, generous rounding, serif headings, a warm handwritten accent used only decoratively, and the lotus brand mark. It MUST NOT read as clinical/corporate or as bright/gamified, and it MUST keep the existing "no right or wrong answers" requirement (FR-005). *(Revised 2026-09-19; supersedes the earlier "calm and warm" cream/terracotta direction.)*
 - **FR-002**: The system MUST visually communicate assessment progress to a participant (questions answered vs. total, and current domain/session) through graphical indicators, not text counts alone.
 - **FR-003**: The system MUST style all interactive elements (buttons, inputs, links, the 1-5 response scale) with clear, consistent default, hover/focus, active, and disabled visual states, and MUST NOT rely on unstyled native browser form controls or alerts.
 - **FR-004**: The system MUST visually distinguish different message/status types (a normal result, a neutral held/under-review message, a validation error, a session-limit notice, an import success, an import failure) from one another using a consistent, limited set of status treatments (e.g., consistent color+icon pairing per status type), and MUST NOT convey any status by color alone.
@@ -79,7 +129,16 @@ Whether a person is on the login screen, deep in the assessment, viewing results
 - **FR-006**: The system MUST remain fully usable and legible at common mobile widths (down to 320px) as well as tablet and desktop widths, without horizontal scrolling or clipped content.
 - **FR-007**: The system MUST show a distinct visual loading state for every screen that fetches data before that data is available, and a distinct visual empty state for every list that can legitimately be empty.
 - **FR-008**: All text/background color combinations used MUST meet WCAG 2.1 AA contrast guidelines.
-- **FR-009**: The visual design MUST be applied without changing any existing functional behavior, validation rules, or data shown (this is a presentation-layer change on top of the existing 002-capability-assessment functionality).
+- **FR-009**: The visual design applied to the **existing** screens MUST NOT change functional behavior, validation rules or data shown (presentation-layer only, on top of 002). New screens introduced by the 2026-09-19 revision (FR-010–FR-018) take their behaviour from spec 005.
+- **FR-010**: The system MUST provide the public site shell: header (logo, Home / About / For Institutions / Support, language selector, primary button that reads *Get Started* when signed out, *Register* on registration screens and *My Account* when signed in) and footer (wordmark, Privacy | Terms | Safeguarding | Contact, social links, copyright). Only pages that exist may be linked; the language selector lists only available locales (`en` at launch).
+- **FR-011**: The system MUST provide the split registration layout — full-height photographic panel with heading, three reassurance points and a handwritten tagline on the left, a floating white card on the right with a back link, a five-dot step indicator ("Step n of 5", completed = tick), a heading, one primary and one optional secondary button, an "OR" divider and a privacy/security note — reused for the OPEN steps (create account, verify code, age, consent, success) and the institutional sign-in.
+- **FR-012**: The system MUST provide the signed-in shell: left sidebar with icon + label items and a highlighted active item, top bar (logo, notification affordance only when notifications exist, user menu), breadcrumb, page title with a one-line description, content, and a right rail of up to three guidance cards (info-blue, safe-green, help-lavender). Below 1024 px the sidebar collapses to a menu and the rail moves below the content.
+- **FR-013**: The system MUST provide the interaction patterns seen in the samples as reusable components: selectable cards (radio-style, with tint on selection), checkbox chips with icons, dropdown, textarea with character counter, toggle, tabs, six-box code entry with resend countdown, copyable ID field, circular/linear progress, stage stepper, article/resource card, and info/safe/help note cards.
+- **FR-014**: The system MUST NOT convey required state (selected, completed, current, disabled, error) by colour alone; every one of those states pairs colour with a tick, icon, label or shape change.
+- **FR-015**: Handwritten/script text MUST be decorative only: it is `aria-hidden` or duplicated in accessible text, never carries required information, and is hidden below 640 px where it would overlap content.
+- **FR-016**: Photographs and illustrations MUST be lazy-loaded (except the above-the-fold hero on public pages), sized to reserve space, provided with meaningful `alt` text (decorative images empty `alt`), and MUST NOT appear on the assessment item screen.
+- **FR-017**: Every progress, stage or percentage display MUST reflect real system state (attempt progress, pipeline stage); simulated timers or invented percentages are prohibited.
+- **FR-018**: Copy on public and participant screens MUST NOT claim validation, clinical or diagnostic use, and MUST NOT show subdomain scores, Low/Average/High bands, percentiles or improvement claims; sample strings in the reference screens are placeholders pending content-owner approval.
 
 ### Key Entities
 
@@ -95,12 +154,15 @@ Whether a person is on the login screen, deep in the assessment, viewing results
 - **SC-004**: In an informal read-through by someone unfamiliar with the build, all screens are judged to belong to "the same app" (consistent palette/type/components) with no screen flagged as visually inconsistent.
 - **SC-005**: Participants can identify their progress (answered/total, current section) and their result status (normal vs. held/neutral) correctly from the visual treatment alone, without reading detailed text, in a walkthrough with a handful of test users.
 - **SC-006**: Adding the visual design does not increase the assessment question screen's initial load time by more than a fraction of a second on a throttled mobile connection.
+- **SC-007** *(added 2026-09-19)*: Every one of the 25 reference screens has a rendering (or a documented reason it is not built — gated, reference-only or deferred) in [contracts/screen-inventory.md](contracts/screen-inventory.md), and a side-by-side review at phone, tablet and desktop widths finds no unapproved palette, typography or layout deviation.
+- **SC-008** *(added 2026-09-19)*: A scan of all screens finds 0 uses of a date-of-birth field, a participant name/photo profile, a semantic Santulan ID format, a simulated progress value, or a prohibited claim.
 
 ## Assumptions
 
-- This feature restyles the existing frontend built in `002-capability-assessment` (login, participant assessment/results, admin import/results) and does not add new screens, pages, or functionality.
-- No existing brand assets (logo, official color palette, typography) exist yet for Santulan beyond what is already in the current placeholder UI; this feature is free to establish them, subject to the direction confirmed with the user.
-- The application continues to be a responsive web app (not native mobile); "mobile support" here means a responsive layout in a mobile browser, not a native app.
-- No new UI framework/component library adoption decisions are made in this spec (technology choice for implementing the visuals is a planning-phase concern, not a scoping concern here).
-- Illustration/iconography, if used, will be simple and generic (not photographic, not requiring bespoke commissioned art), consistent with a lightweight pilot-stage product.
-- The restyled screens are exercised against the seeded demo identities (`admin@santulan.local` and `participant@santulan.local`, password `ChangeMe123!`, see 002-capability-assessment "Implementation status"); this feature adds no login/sign-up surfaces.
+- The original restyle applies to the frontend built in `002-capability-assessment` (login, participant assessment/results, admin import/results). The 2026-09-19 revision additionally covers the new public, registration, dashboard and profile screens whose behaviour is defined in [spec 005](../005-v3-1-canonical-alignment/spec.md).
+- Brand assets (logo files, final fonts, photography, illustrations, handwritten accent) exist only as rendered samples; production files must be supplied and approved. Where an asset is unavailable the layout uses a neutral placeholder rather than an invented asset.
+- The application remains a responsive web app (React SPA) — "mobile support" means a responsive layout in a mobile browser, not a native app.
+- No UI framework or component-library adoption is decided here (a planning concern). The palette and spacing are candidate values **measured from the sample images**; the `check:contrast` script remains the authority and any failing pair is adjusted, never the AA target.
+- No reference screens exist for: the assessment item player and resume view, consent/assent copy, the report and radar, T11/T12, the growth plan, and every admin surface (console, import, credential export, control plane, exports). They reuse the same tokens and components and need an approved design record before being called conformant.
+- Sample content that has no canonical data source (interests, goals, support needs, resources, mentor, preferences beyond language/theme, per-purpose data toggles, notifications, profile photo) is a visual reference only and is not built (spec 005 US10).
+- The restyled screens are exercised against the seeded demo identities (`admin@santulan.local` and `participant@santulan.local`, password `ChangeMe123!`, see 002 "Implementation status") until the canonical identity binding of spec 005 replaces them.

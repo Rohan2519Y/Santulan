@@ -16,6 +16,22 @@ The full capability-assessment module is implemented and tested against the froz
 
 **Demo sign-in (for exercising this feature)**: running `npm run db:seed` in `backend/` creates, idempotently, two accounts usable with the JWT login endpoint — an `admin` account (`admin@santulan.local`) and a `participant` account (`participant@santulan.local`), both with the development password `ChangeMe123!`. These are the identities the frontend uses to reach the participant and admin flows (see the 004-platform-sql-database feature for the unified `accounts` model and the platform demo student `student001`).
 
+## Superseded in part by 005 (2026-09-19)
+
+The SanTulan 2.0 build contracts (`docs/Santulan 2.0/`, see [005-v3-1-canonical-alignment](../005-v3-1-canonical-alignment/spec.md)) changed several facts this spec states. Where they conflict, **005 governs**; everything else here still describes the delivered module.
+
+| This spec says | 005 / v3.1 contract says |
+|----------------|--------------------------|
+| Version labels `santulan-adolescent-pilot-v1.0`, `santulan-emergingadult-pilot-v1.0` | `santulan-adolescent-pilot-v3.1` (175 items, 13–17) and `santulan-emergingadult-pilot-v3.1` (171 items, 18–25), both `DRAFT`/`CLOSED` until separately frozen and opened |
+| Source files: root `docs/*_TECH_READY.xlsx` and `*_OFFLINE.docx` (age 13–18) | Those are v1.x and superseded. Age routing is 13–17 / 18–25, **age 18 → Emerging Adult only**; C4 uses C4.1–C4.5 and C5 uses C5.1–C5.7 |
+| FR-001 "current active frozen version"; import makes a version active | Attempt creation needs consent gate + version `FROZEN` + `participation_state = OPEN` + control plane open. The catalog is seeded and **reconciled**, not re-imported; new content is a new version under change control |
+| FR-002 context eligibility "General always, variant by context" | Eligibility is inside the attempt's own version: Adolescent 13–17/13–25 × School/General/Digital; Emerging Adult 18–25/13–25 × College/Work/General/Digital |
+| FR-006 one active attempt "for an assessment version" | One nonterminal attempt **per participant** (partial unique index) |
+| Role "Admin" | Only an ACTIVE `SUPER_ADMIN` in the pilot; INSTITUTION_ADMIN / RESEARCH_OPERATOR are inactive |
+| FR-009/010 score statuses | Default evidence state is **S1** (research only); S1 rows are not participant-readable until governance authorises S2 |
+| FR-019 offline booklet transcription | Not addressed by BUILD 00–09. The booklets on disk state age 13–18 and must be re-issued for 13–17 / 18–25 before use; treat FR-019 as an open decision, not a v3.1 requirement |
+| Demo accounts `admin@santulan.local` / `participant@santulan.local` | Remain for development until identity binds through `participants.auth_provider` (005 D-06) |
+
 ## Roles
 
 | Role          | Capabilities                                                                                                                           |

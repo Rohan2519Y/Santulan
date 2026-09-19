@@ -34,3 +34,8 @@
 - Validation performed on 2026-09-18 against `specs/003-frontend-visual-design/spec.md`.
 - One clarification was needed (visual style/tone direction) and was resolved with the user before this checklist was marked complete: **calm and warm**.
 - This feature is a presentation-layer restyle of the existing `002-capability-assessment` frontend; no new screens, data, or backend behavior are introduced (see Assumptions and FR-009).
+
+## Revision 2026-09-19
+
+- Spec revised against `docs/Santulan 2.0/UI screen Samples/` (25 screens): new palette, new public/registration/dashboard/profile screens (User Stories 4–5, FR-010–FR-018, SC-007–SC-008), scope-revision table, assumptions updated.
+- Re-validated: no `[NEEDS CLARIFICATION]` markers; open items are recorded as decisions D-01…D-07 in spec 005. `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `tasks.md` are stale until regenerated.

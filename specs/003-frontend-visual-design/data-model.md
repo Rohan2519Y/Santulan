@@ -1,5 +1,7 @@
 # Data Model: Frontend Visual Design (003)
 
+> **Revision notice (2026-09-19)** — This file was generated before the Santulan 2.0 UI revision of [spec.md](spec.md). It still describes the earlier *calm & warm* cream/terracotta restyle of six existing screens and a system-font-only approach. The current requirements are the revised [spec.md](spec.md), [contracts/design-system.md](contracts/design-system.md) and [contracts/screen-inventory.md](contracts/screen-inventory.md) (25 reference screens, new public/registration/dashboard/profile screens, font budget instead of system-fonts-only). Regenerate this file with `/speckit-plan` / `/speckit-tasks` before implementing; until then treat conflicting details here as superseded.
+
 **Branch**: `003-frontend-visual-design` | **Date**: 2026-09-18 | **Plan**: [plan.md](plan.md)
 
 ## No Data Model Changes
