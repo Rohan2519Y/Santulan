@@ -7,7 +7,7 @@ A run-and-verify guide. Commands marked **(planned)** are created by this featur
 ## Prerequisites
 
 - Node.js and npm; PostgreSQL 15+ (local 18.6 or the `postgres:16` container from `backend/docker-compose.yml`); `psql`/`pg_dump`/`pg_restore` on PATH for the restore drill.
-- `backend/.env` from `.env.example` (`DATABASE_URL` owner, `RUNTIME_DATABASE_URL` = `app_runtime`, `PLATFORM_DATABASE_URL` legacy only). Roles come from `docker/init-app-role.sql` (extended with `santulan_worker`).
+- `backend/.env` from `.env.example` (`DATABASE_URL` owner, `RUNTIME_DATABASE_URL` = `app_runtime`). Roles come from `docker/init-app-role.sql` (extended with `santulan_worker`).
 - **Use a scratch database for the checks below** (e.g. `santulan_qual`), never the shared dev database, and never real participant data.
 
 ## 1. Schema and fail-closed seeds (US1, SC-001)
@@ -23,8 +23,8 @@ Expected: 28 base tables in `santulan`; both assessment versions `DRAFT`/`CLOSED
 ## 2. Catalog verify and reconcile (US1, SC-002)
 
 ```bash
-npm run catalog:verify        # (planned) offline: counts, coverage, legality, v3_0 cross-check
-npm run catalog:reconcile     # (planned) default mode; writes catalog_receipt_*.json
+npm run catalog:verify        # offline: counts, coverage, legality, v3_0 cross-check
+npm run catalog:reconcile     # default mode (read-only comparison + one audit event); writes catalog_receipt_*.json
 npm run catalog:reconcile     # second run → 0 inserts, 0 updates
 ```
 
@@ -76,8 +76,10 @@ Expected: ≥ 3 `ITEM_RESPONSES_nn` sheets, none above 1,048,576 rows including 
 ## 9. Sign-in and roster (US4)
 
 ```bash
-npm run db:seed:platform      # demo accounts (dev only)
-npm run test:santulan -- integration/roster
+# synthetic dev identities (D-17: dev credential store outside the 28 tables; refuses production)
+npm run db:seed:dev            # SUPER_ADMIN + one OPEN participant per track; prints logins/passwords once (--reset re-issues)
+npm run test:santulan -- contract/auth
+npm run test:santulan -- integration/roster   # roster import (T068/T069) is still to be built
 ```
 
 Validate the sample roster `docs/Creative Minds Global School- required Students Info_014006.xlsx` against a test institution/cohort: expect the two age-12 rows reported as errors **before** commit and the three age-18 rows counted as EMERGING_ADULT; commit a corrected copy; first login with the temporary password forces a new password; a second temporary credential invalidates the first.

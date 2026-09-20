@@ -1,8 +1,8 @@
 <!--
 SYNC IMPACT REPORT (temporary review scratch — remove before commit)
-Version change: 1.0.1 → 2.0.0  [MAJOR: a Principle IX requirement was removed — CAPTCHA is out of scope
-  at the requester's direction; per-IP/device throttling requirement kept]
-  (1.0.0 initial ratification 2026-09-19; 1.0.1 deferred the CAPTCHA build; 2.0.0 removes it.)
+Version change: 2.0.0 → 2.0.1  [PATCH: clarification — the old platform schema no longer exists]
+  (1.0.0 initial ratification 2026-09-19; 1.0.1 deferred the CAPTCHA build; 2.0.0 removed it; 2.0.1 updates the
+  workflow note about the removed feature-004 schema.)
 Modified principles (2.0.0): IX Security by Construction — CAPTCHA requirement removed;
   X Audit Mode — security suite count now excludes SEC-15 (not applicable).
 Principles introduced in 1.0.0: I Source of Truth & Change Control · II One Engine, Two Configurations ·
@@ -223,8 +223,9 @@ Rationale: BUILD 00 §14 makes evidence, hashes and change records the unit of p
   scoring logic and MUST render the server-selected configuration and frozen scale metadata.
 - User-facing surfaces conform to the approved design system and pass WCAG 2.1 AA; copy is scanned
   for prohibited claims before release (Gate G9).
-- Feature 004's school platform schema (`docs/SQL-Database-Schema.md`) is governed by its own spec
-  and is not part of the canonical schema; it MUST NOT be reshaped to satisfy canonical rules.
+- The former feature-004 school platform schema (`docs/SQL-Database-Schema.md`) and the feature-002 assessment
+  tables were removed from the local database on 2026-09-20 at the requester's direction; `santulan` is the only
+  schema. No BYPASSRLS role exists, and none may be introduced for canonical data.
 
 ## Governance
 
@@ -244,4 +245,4 @@ conflict, the constitution prevails until amended.
 - **Guidance**: runtime development guidance lives in the feature specs and the BUILD documents;
   the Spec Kit templates read this file at execution time.
 
-**Version**: 2.0.0 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-19
+**Version**: 2.0.1 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-20

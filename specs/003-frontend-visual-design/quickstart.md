@@ -68,3 +68,25 @@ Run the backend first if you want live data; screens also render loading/empty s
 Run Scenarios 1–7 with a person unfamiliar with the build; record:
 - Any screen judged visually inconsistent with the rest → fail SC-004.
 - Any participant who misidentifies progress or result status from visuals alone → fail SC-005.
+
+## Per-screen review status (2026-09-20, feature 005 T135)
+
+Legend: **built** = a real page exists and is covered by tests; **reference** = the sample is a design reference only, deliberately not built; **deferred** = not built (no canonical source, or gated). Screens 03 and 10 were compared visually against their PNGs and adjusted; the others were built from the written inventory and have **not** been compared visually.
+
+| Sample | Screen | Status | Where / notes |
+|--------|--------|--------|---------------|
+| 01-03 | Home, About, Get started | built | `pages/public/PublicPages.jsx`. Screen 03 compared: centred title, two route cards with tick lists and full-width route buttons, help strip, header with Home / About / Support / Sign in. **Gaps**: no lotus logo or wordmark artwork, no decorative lotus/script art, no "For Institutions" nav item (no such page; D-02), footer shows only existing pages |
+| 04-08 | Registration steps 1-5 | built | `pages/register/RegisterPage.jsx` (age in years, no date of birth, D-01) |
+| 09 | Sign in | built | `pages/LoginPage.jsx` (temporary-password flow) |
+| 10 | Student dashboard | built | `pages/participant/DashboardPage.jsx`. Compared: journey band with the action on the right, two-column progress / note-and-help area. **Gaps**: no hero photograph, no dates in the timeline (no source), no user name or bell (D-03, D-05); Resources / Wellbeing / Connect tiles and the sidebar entries for them are deferred (D-05) |
+| 11-15 | Profile, interests, four-section questionnaire | reference | replaced by the seven-domain player; registration owns the rest |
+| 16-17 | Assessment complete, generating | built | `AfterSubmitPages.jsx` |
+| 18 | Recommended resources and next steps | deferred | gated and unsourced (BUILD 07) |
+| 19 | Thank you | built (reduced) | `ThanksPage` (Your report, Support, Dashboard; no Take Action / Explore Resources) |
+| 20 | Profile | built | `AccountPages.jsx` (Santulan ID, route, age range, language only) |
+| 21 | Interests and goals | deferred | no canonical entity |
+| 22 | Preferences | built (reduced) | `PreferencesPage`: Language (English only), Theme (light / dark, device only), Reduce motion |
+| 24 | Privacy and consent | built | `AccountPages.jsx` (Withdraw and Give my consent) |
+| 25 | Resources | deferred | no content source |
+| results | Report | partly built | radar from released domain scores; report layers wait for the report backend (US7) |
+

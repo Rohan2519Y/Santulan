@@ -16,6 +16,8 @@ The full capability-assessment module is implemented and tested against the froz
 
 **Demo sign-in (for exercising this feature)**: running `npm run db:seed` in `backend/` creates, idempotently, two accounts usable with the JWT login endpoint — an `admin` account (`admin@santulan.local`) and a `participant` account (`participant@santulan.local`), both with the development password `ChangeMe123!`. These are the identities the frontend uses to reach the participant and admin flows (see the 004-platform-sql-database feature for the unified `accounts` model and the platform demo student `student001`).
 
+> **2026-09-20**: the feature-002 assessment tables were removed from the local database along with the rest of the old schema; the module below no longer has a database. It is replaced by the canonical module of feature 005.
+
 ## Superseded in part by 005 (2026-09-19)
 
 The SanTulan 2.0 build contracts (`docs/Santulan 2.0/`, see [005-v3-1-canonical-alignment](../005-v3-1-canonical-alignment/spec.md)) changed several facts this spec states. Where they conflict, **005 governs**; everything else here still describes the delivered module.

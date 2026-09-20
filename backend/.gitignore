@@ -46,3 +46,6 @@ tmp/
 temp/
 # Local database backups (contain data)
 backups/
+
+# Catalog reconcile receipts (release evidence, not source)
+catalog_receipt_*.json

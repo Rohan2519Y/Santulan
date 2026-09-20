@@ -4,3 +4,10 @@
   box-shadow: var(--shadow-2);
   padding: var(--sp-5);
 }
+
+.tone-blue { background: var(--c-tint-blue); }
+.tone-green { background: var(--c-tint-green); }
+.tone-sky { background: var(--c-tint-sky); }
+.tone-cream { background: var(--c-tint-cream); }
+.tone-lavender { background: var(--c-tint-lavender); }
+.tone-pink { background: var(--c-tint-pink); }

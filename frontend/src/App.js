@@ -1,91 +1,57 @@
-import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import styles from './App.module.css';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { SessionProvider, useSession } from './services/SessionContext';
+import { ParticipantShell } from './components/layouts';
+import { HomePage, AboutPage, GetStartedPage, SupportPage } from './pages/public/PublicPages';
+import RegisterPage from './pages/register/RegisterPage';
 import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/participant/DashboardPage';
 import AssessmentPage from './pages/participant/AssessmentPage';
+import { AssessmentCompletePage, GeneratingReportPage } from './pages/participant/AfterSubmitPages';
 import ResultsPage from './pages/participant/ResultsPage';
+import { ProfilePage, PreferencesPage, ThanksPage, PrivacyPage, ParticipantSupport } from './pages/participant/AccountPages';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import Button from './components/Button/Button';
-import { getRole, logout } from './services/assessmentApi';
 
-const HOME_ROUTE_BY_ROLE = { admin: '/admin', participant: '/student' };
+const HOME_BY_ROLE = { participant: '/student', admin: '/admin' };
 
-function ParticipantLanding() {
-  const [submittedResult, setSubmittedResult] = useState(null);
-
-  if (submittedResult) {
-    return <ResultsPage attemptId={submittedResult.attempt.id} reportId={submittedResult.report?.id} />;
-  }
-  return <AssessmentPage onSubmitted={setSubmittedResult} />;
-}
-
-/** Requires the caller to be logged in as `role`; otherwise redirects to login or to their own home route. */
+/** Requires a session of `role` (claims participantId / adminUserId); otherwise sends the visitor to sign in or to their own home. */
 function RequireRole({ role, children }) {
-  const currentRole = getRole();
-  if (!currentRole) return <Navigate to="/login" replace />;
-  if (currentRole !== role) return <Navigate to={HOME_ROUTE_BY_ROLE[currentRole]} replace />;
+  const { session } = useSession();
+  if (!session) return <Navigate to="/login" replace />;
+  if (session.role !== role) return <Navigate to={HOME_BY_ROLE[session.role] || '/login'} replace />;
   return children;
 }
 
-function LoginRoute() {
-  const navigate = useNavigate();
-  const currentRole = getRole();
-  if (currentRole) return <Navigate to={HOME_ROUTE_BY_ROLE[currentRole]} replace />;
-
-  return (
-    <LoginPage
-      onLoggedIn={(role) => {
-        navigate(HOME_ROUTE_BY_ROLE[role] || '/login', { replace: true });
-      }}
-    />
-  );
-}
-
-function Shell({ children }) {
-  const navigate = useNavigate();
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
-
-  return (
-    <div className={styles.app}>
-      <header className={styles.header}>
-        <span className={styles.brand}>Santulan</span>
-        <Button type="button" variant="quiet-link" onClick={handleLogout}>
-          Sign out
-        </Button>
-      </header>
-      <main className={styles.main}>{children}</main>
-    </div>
-  );
+function ParticipantLayout() {
+  return <ParticipantShell><Outlet /></ParticipantShell>;
 }
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginRoute />} />
-        <Route
-          path="/student"
-          element={
-            <RequireRole role="participant">
-              <Shell>
-                <ParticipantLanding />
-              </Shell>
-            </RequireRole>
-          }
-        />
-        <Route
-          path="/admin/*"
-          element={
-            <RequireRole role="admin">
-              <AdminDashboard />
-            </RequireRole>
-          }
-        />
-        <Route path="*" element={<Navigate to={HOME_ROUTE_BY_ROLE[getRole()] || '/login'} replace />} />
-      </Routes>
-    </BrowserRouter>
+    <SessionProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/get-started" element={<GetStartedPage />} />
+          <Route path="/support" element={<SupportPage />} />
+          <Route path="/register/*" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/student" element={<RequireRole role="participant"><ParticipantLayout /></RequireRole>}>
+            <Route index element={<DashboardPage />} />
+            <Route path="assessment" element={<AssessmentPage />} />
+            <Route path="complete" element={<AssessmentCompletePage />} />
+            <Route path="generating" element={<GeneratingReportPage />} />
+            <Route path="results" element={<ResultsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="profile/preferences" element={<PreferencesPage />} />
+            <Route path="thanks" element={<ThanksPage />} />
+            <Route path="privacy" element={<PrivacyPage />} />
+            <Route path="support" element={<ParticipantSupport />} />
+          </Route>
+          <Route path="/admin/*" element={<RequireRole role="admin"><AdminDashboard /></RequireRole>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </SessionProvider>
   );
 }

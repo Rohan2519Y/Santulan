@@ -199,13 +199,6 @@ QUALITY_HOLD attempt ─▶ UNDER_REVIEW (T11)      INVALID attempt ─▶ NOT_E
 | Idempotency / control-plane state | rows in `audit_logs` (R-04, R-18) | — |
 | Export storage | `EXPORT_DIR` / object-storage adapter | local protected dir (dev) |
 
-## 9. Legacy → canonical relationship
+## 9. Legacy schema — removed (2026-09-20)
 
-| Legacy (feature 002/004) | Canonical | Handling |
-|--------------------------|-----------|----------|
-| `accounts` (student / superuser) | `participants` / `admin_users` | bridged by `auth_provider` + subject (R-07); no data copied |
-| `participant_profiles` | `participants` | not migrated; new registrations only |
-| `assessment_versions` (`is_active`, v1.0) | `santulan.assessment_versions` | separate; v1.0 versions remain read-only |
-| `assessment_attempts`, `responses`, `response_events`, `quality_flags`, `score_results`, `reports`, `report_sections` (public schema) | same-named `santulan.*` | separate stores; legacy frozen after cutover, never dropped without a request |
-| `content_import_records`, participation-control tables | catalog reconcile receipts, `audit_logs` control rows | replaced by R-18 and the reconcile receipt |
-| Feature-004 tables (`schools`, `scp_*`, …) | — | untouched |
+The feature-004 platform tables (`schools`, `accounts`, `*_profiles`, `scp_*`, …), the feature-002 assessment tables (`participant_profiles`, `assessment_attempts`, `responses`, …), their enum types and functions, and the legacy `BYPASSRLS` role `app_platform` were dropped from the local `santulandb`; migrations `001`–`007` were deleted. Nothing is migrated: the canonical schema starts empty apart from its fail-closed seeds. A backup dump exists at `backend/backups/santulandb-before-schema-removal-2026-09-20.dump` (git-ignored). Consequences: no `accounts` table (see spec decision D-17), and the legacy backend code that queried these tables is dead until replaced.

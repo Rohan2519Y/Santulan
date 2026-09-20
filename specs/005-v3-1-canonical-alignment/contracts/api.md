@@ -27,6 +27,7 @@ Semantics come from BUILD 00 §11 and the BUILD 03–08 API tables; URI naming m
 | `CATALOG_DRIFT` | 503 | expected assessment version missing or range mismatch (fail closed) |
 | `PROTOCOL_UNAPPROVED` | 422 | consent protocol version not approved |
 | `CONSENT_TRANSITION_INVALID` | 409 | illegal consent state change |
+| `CONSENT_DUPLICATE` | 409 | a non-withdrawn consent already exists for the participant / type / protocol |
 | `CONSENT_GATE_CLOSED` | 403 | required VERIFIED records missing (names the missing types, not identity) |
 | `ASSESSMENT_NOT_OPEN` | 409 | version `DRAFT`/not `FROZEN`, `participation_state` ≠ `OPEN`, or control plane paused/stopped |
 | `SESSION_LIMIT` | 409 | fifth session (controlled, non-diagnostic body) |
@@ -52,7 +53,7 @@ Semantics come from BUILD 00 §11 and the BUILD 03–08 API tables; URI naming m
 | `POST /registrations/open` | public / worker | Create OPEN participant | `Idempotency-Key`; body: `age`, `language`, optional auth pair; **no** institution/cohort/`santulan_id`; returns `{santulanId, track, isMinor, requiredConsents}` (201 new / 200 replay) |
 | `POST /registrations/institutional` | admin (roster path) | Create INSTITUTIONAL participant | `Idempotency-Key`; institution + cohort required and ACTIVE/matching; optional `externalStudentId` |
 | `POST /participants/age-declaration` | participant | Capture integer age before consent | same routing function; rejects 12/26 |
-| `GET /registration/state` | participant | Minimal routing + consent-requirement state | never returns auth subject or external ID |
+| `GET /registration/state` | participant | Minimal routing + consent-requirement state, plus `attempt: { attemptId, status }` or `null` (the latest attempt) so the dashboard can resume | never returns auth subject or external ID |
 
 Registration never creates an attempt and never states or implies consent/eligibility.
 
@@ -77,6 +78,7 @@ Registration never creates an attempt and never states or implies consent/eligib
 | `POST /attempts/{id}/pause` | Pause/logout/timeout | `PAUSE` + `SESSION_END` |
 | `POST /attempts/{id}/submit` | Atomic idempotent submit | body `{submissionKey}`; ends session, locks writes; replay-safe |
 | `GET /attempts/{id}` | Resume model | `{status, progress:{completed,total,percent}, session:{n,of:4}, lastSavedAt, canContinue}` — **no scores** |
+| `GET /attempts/{id}/items` | Player content: `{ scale: { points, anchors }, items: [{ itemId, order, domainCode, text }] }` for the attempt's own version | added for the frontend (the spec had no way to read item text); no keying, subdomain, hash or pilot status; participant token, own attempt only |
 | `GET /attempts/{id}/responses` | Current answers only | never historical versions |
 | `GET /attempts/{id}/scores` | Permitted scores | only rows RLS allows (S1/S0/SH hidden from participants) |
 

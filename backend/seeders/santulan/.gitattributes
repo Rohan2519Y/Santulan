@@ -1,0 +1,3 @@
+# Byte-exact catalog files: never convert line endings (hashes in MANIFEST.json depend on them)
+*.csv -text
+*.json -text

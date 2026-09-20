@@ -21,7 +21,9 @@ What the migrations must produce and how the application talks to them. Column-l
 | `018_santulan_seed_reference_content.sql` | scale, 2 versions, 346 items, 216 actions, 72 prompts, fail-closed | 011 | counts + states |
 | `019_santulan_build03_controls.sql` | `participant_open_scope_ck`, `uq_participant_institution_external_id` (auth-pair unique index only if not identical to `uq_participants_auth_subject`), `build03_resolve_registration`, `build03_assert_catalog_route` | BUILD 03 030 | 28 tables |
 | `020_santulan_build04_controls.sql` | `consent_verified_method_ck`, `consent_protocol_nonblank_ck`, `uq_consent_active_type_protocol`, `build04_consent_gate`, strengthened `validate_consent_row()` | BUILD 04 040 | 28 tables |
-| `021_santulan_build05_controls.sql` | `response_idempotency_nonblank_ck`, `uq_submit_idempotency`, event-session trigger, payload-bound `save_response`, `submit_attempt(uuid,text)`, **drop** legacy `submit_attempt(uuid)`, `participation_control_state()` (R-18) | BUILD 05 050/051 | 28 tables |
+| `021_santulan_build05_controls.sql` | `response_idempotency_nonblank_ck`, `uq_submit_idempotency`, event-session trigger, payload-bound `save_response`, `submit_attempt(uuid,text)`, **drop** legacy `submit_attempt(uuid)`, `participation_control_state()`, fail-closed `assert_attempt_actor` (R-18) | BUILD 05 050/051 | 28 tables |
+| `022_santulan_build05_submit_timestamp.sql` | `submit_attempt(uuid,text)` stamps `submitted_at` with `clock_timestamp()` under the attempt lock, so every accepted answer has `answered_at <= submitted_at` | BUILD 05 §8 refinement | 28 tables |
+| `023_santulan_build06_controls.sql` | `uq_quality_flag_logical` (a BUILD 06 addition), quality-fact immutability, Q09 routing, immutable `score_results`, quality-outcome validation, deterministic Q06 (`build06_detect_q06` / `build06_apply_q06`), `score_attempt(uuid,text,jsonb)`, research-only `v_candidate_subdomain_scores` (`security_invoker`, not granted to `app_runtime`) | BUILD 06 §13 | 28 tables |
 | `022_santulan_build06_controls.sql` | quality uniqueness/immutability, score immutability, quality-before-scoring, Q06 detector, `score_attempt`, research-only subdomain view | BUILD 06 060 | 28 tables |
 | `023_santulan_build07_controls.sql` | report immutability + begin/complete/fail/retry functions, participant release view, priority/pathway guards, `build07_fire_p5` | BUILD 07 070 | 28 tables |
 | `024_santulan_build08_controls.sql` | pilot admin-role trigger, response/audit mutation triggers, research-safe views, export lifecycle + download-audit functions, admin audit helper | BUILD 08 080 | 28 tables |
@@ -37,7 +39,7 @@ What the migrations must produce and how the application talks to them. Column-l
 | owner (`postgres` in dev) | yes | table owner | runs migrations only |
 | `app_runtime` | yes | `NOSUPERUSER NOBYPASSRLS`, not owner | web API connection; member of `santulan_worker` |
 | `santulan_worker` | no | `NOBYPASSRLS` | controlled write paths via `SET LOCAL ROLE`; `EXECUTE` on the four delivery procedures and the privileged functions |
-| `app_platform` (legacy) | yes | `BYPASSRLS` | **must never** be granted any privilege on `santulan.*` |
+| `app_platform` (legacy) | — | **dropped 2026-09-20** | no role bypasses RLS; nothing may ever be granted on `santulan.*` to a BYPASSRLS role |
 
 - `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA santulan FROM PUBLIC`; explicit `GRANT EXECUTE` per function to `santulan_worker` (and to `app_runtime` only for read-only helpers).
 - `app_runtime` gets `SELECT` on content tables and on RLS-scoped tables; **no** direct `INSERT/UPDATE/DELETE` on `consents`, `participants`, `score_results`, `report_sections`, `audit_logs`, `responses` (writes go through the functions).

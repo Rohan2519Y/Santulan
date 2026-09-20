@@ -1,284 +1,179 @@
-import { useEffect, useState, useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import {
-  getProfile,
-  declareProfile,
-  recordConsent,
-  startOrResumeAttempt,
-  saveResponse,
-  pauseAttempt,
-  resumeAttempt,
-  submitAttempt,
-} from '../../services/assessmentApi';
-import Card from '../../components/Card/Card';
-import Field from '../../components/Field/Field';
+/*
+ * The assessment player (screens 11-15 are REFERENCE only; the sample's four-section questionnaire and profile/consent steps
+ * are NOT built - registration owns those). A hub of seven domain blocks, then one item at a time on the frozen 1-5 scale.
+ *  - Answers are saved through a buffered queue: every logical write keeps ITS OWN idempotency key and is retried with that
+ *    same key until the server acknowledges, so a lost reply never creates a second version.
+ *  - Pause, session n of 4, last saved and one Continue action come from the server's resume model. No scores anywhere.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import styles from '../../styles/ui.module.css';
 import Button from '../../components/Button/Button';
-import StatusMessage from '../../components/StatusMessage/StatusMessage';
 import ProgressSummary from '../../components/ProgressSummary/ProgressSummary';
 import ResponseScale from '../../components/ResponseScale/ResponseScale';
 import Skeleton from '../../components/Skeleton/Skeleton';
-import styles from './AssessmentPage.module.css';
+import StatusMessage from '../../components/StatusMessage/StatusMessage';
+import { api, newKey } from '../../services/santulanApi';
 
-function ProfileForm({ onDone }) {
-  const [age, setAge] = useState(15);
-  const [participationRoute, setParticipationRoute] = useState('OPEN');
-  const [error, setError] = useState(null);
+export const DOMAIN_NAMES = {
+  C1: 'Body & Self-Regulation', C2: 'Emotional Capability', C3: 'Relational & Social Capability', C4: 'Identity & Self-Concept',
+  C5: 'Values, Purpose & Future Agency', C6: 'Adaptability & Resilience', C7: 'Self-Directed Learning & Executive Capability',
+};
+const RETRY_MS = 5000;
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    try {
-      const { profile } = await declareProfile({ age: Number(age), participationRoute });
-      onDone(profile);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+export default function AssessmentPage() {
+  const navigate = useNavigate();
+  const [phase, setPhase] = useState('loading');            // loading | hub | item | error
+  const [error, setError] = useState('');
+  const [attemptId, setAttemptId] = useState(null);
+  const [model, setModel] = useState(null);
+  const [items, setItems] = useState([]);
+  const [anchors, setAnchors] = useState({});
+  const [answers, setAnswers] = useState({});               // itemId -> value
+  const [index, setIndex] = useState(0);
+  const [saveState, setSaveState] = useState('saved');      // saved | saving | retrying
+  const [limitMessage, setLimitMessage] = useState('');
+  const queue = useRef([]);
+  const inFlight = useRef(null);
+  const submitKey = useRef(null);
 
-  return (
-    <Card as="form" onSubmit={submit} className={styles.stepCard}>
-      <h2 className={styles.stepTitle}>Before you begin</h2>
-      <Field label="Age" name="age" type="number" min="13" max="25" value={age} onChange={(e) => setAge(e.target.value)} required />
-      <Field label="Participation" name="participationRoute" as="select" value={participationRoute} onChange={(e) => setParticipationRoute(e.target.value)}>
-        <option value="OPEN">Open (individual)</option>
-        <option value="INSTITUTIONAL">Institutional (school/college)</option>
-      </Field>
-      {error && <StatusMessage type="error" message={error} />}
-      <Button type="submit" variant="primary" className={styles.stepAction}>
-        Continue
-      </Button>
-    </Card>
-  );
-}
-
-function ConsentForm({ profile, onDone }) {
-  const [error, setError] = useState(null);
-  const [granted, setGranted] = useState({});
-
-  const grant = async (consentType, extra = {}) => {
-    setError(null);
-    try {
-      await recordConsent({ consentType, protocolVersion: 'v1', ...extra });
-      setGranted((g) => ({ ...g, [consentType]: true }));
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const tryProceed = async () => {
-    setError(null);
-    try {
-      await onDone();
-    } catch (err) {
-      if (err.code === 'CONSENT_INCOMPLETE') {
-        setError(`Still needed: ${err.details?.requiredConsents?.join(', ')}`);
-      } else {
-        setError(err.message);
+  const flush = useCallback(async (id) => {
+    while (inFlight.current) await inFlight.current;              // never return while another flush is still writing
+    if (!queue.current.length) return;
+    const run = (async () => {
+      while (queue.current.length) {
+        setSaveState('saving');
+        const next = queue.current[0];
+        try {
+          await api.saveResponse(id, next);
+          queue.current.shift();
+        } catch (err) {
+          if (err.code === 'NETWORK_ERROR' || err.status >= 500) { setSaveState('retrying'); return; }   // keep it, same key, retry later
+          queue.current.shift();
+          setError(err.message);
+        }
       }
-    }
-  };
-
-  return (
-    <Card className={styles.stepCard}>
-      <h2 className={styles.stepTitle}>Consent</h2>
-      {profile.isMinor ? (
-        <>
-          <p className={styles.stepCopy}>As a minor participant, we need verified parent/guardian consent and your assent.</p>
-          <div className={styles.consentActions}>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={granted.PARENT_GUARDIAN_CONSENT}
-              onClick={() => grant('PARENT_GUARDIAN_CONSENT', { verificationMethod: 'otp-to-parent-contact' })}
-            >
-              {granted.PARENT_GUARDIAN_CONSENT ? 'Parent/guardian consent recorded ✓' : 'Record parent/guardian consent'}
-            </Button>
-            <Button type="button" variant="secondary" disabled={granted.STUDENT_ASSENT} onClick={() => grant('STUDENT_ASSENT')}>
-              {granted.STUDENT_ASSENT ? 'Your assent recorded ✓' : 'Record your assent'}
-            </Button>
-          </div>
-        </>
-      ) : (
-        <Button type="button" variant="secondary" disabled={granted.ADULT_SELF_CONSENT} onClick={() => grant('ADULT_SELF_CONSENT')}>
-          {granted.ADULT_SELF_CONSENT ? 'Consent recorded ✓' : 'Give consent'}
-        </Button>
-      )}
-      {error && <StatusMessage type="warning" message={error} />}
-      <Button type="button" variant="primary" onClick={tryProceed} className={styles.stepAction}>
-        Continue
-      </Button>
-    </Card>
-  );
-}
-
-function AttemptView({ attempt, onSubmitted }) {
-  const [current, setCurrent] = useState(attempt);
-  const [answers, setAnswers] = useState(() => {
-    const map = {};
-    for (const a of attempt.savedAnswers || []) map[a.itemId] = a.value;
-    return map;
-  });
-  const [error, setError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const answer = async (itemId, value) => {
-    setAnswers((prev) => ({ ...prev, [itemId]: value }));
-    try {
-      await saveResponse(current.id, { itemId, value, idempotencyKey: uuidv4() });
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handlePause = async () => {
-    await pauseAttempt(current.id);
-    setCurrent((c) => ({ ...c, status: 'PAUSED' }));
-  };
-
-  const handleResume = async () => {
-    setError(null);
-    try {
-      const { attempt: resumed } = await resumeAttempt(current.id);
-      setCurrent(resumed);
-    } catch (err) {
-      if (err.code === 'SESSION_LIMIT') {
-        setError('You have used all 4 available sessions for this assessment. Please contact support to continue.');
-      } else {
-        setError(err.message);
-      }
-    }
-  };
-
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const result = await submitAttempt(current.id);
-      onSubmitted(result);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const totalItems = current.sections.reduce((sum, s) => sum + s.items.length, 0);
-  const answeredCount = Object.keys(answers).length;
-  const currentDomain = current.sections.find((s) => s.items.some((i) => answers[i.id] == null)) || current.sections[current.sections.length - 1];
-
-  if (current.status === 'PAUSED') {
-    return (
-      <Card className={styles.pausedCard}>
-        <StatusMessage
-          type="info"
-          message={`Paused – resume when you're ready. ${answeredCount} of ${totalItems} answered, session ${current.sessionCount} of 4.`}
-        />
-        {error && <StatusMessage type="warning" message={error} />}
-        <Button type="button" variant="primary" onClick={handleResume} className={styles.stepAction}>
-          Continue Assessment
-        </Button>
-      </Card>
-    );
-  }
-
-  return (
-    <div className={styles.attempt}>
-      <ProgressSummary
-        answered={answeredCount}
-        total={totalItems}
-        domainName={currentDomain?.domainName}
-        sessionCount={current.sessionCount}
-      />
-      {current.sections.map((section) => (
-        <Card key={section.domainCode} className={styles.domainSection}>
-          <h3 className={styles.domainTitle}>{section.domainName}</h3>
-          {section.items.map((item) => (
-            <fieldset key={item.id} className={styles.itemRow}>
-              <legend className={styles.itemText}>{item.text}</legend>
-              <ResponseScale
-                anchors={current.scale.anchors}
-                value={answers[item.id] ?? null}
-                onChange={(value) => answer(item.id, value)}
-                name={item.id}
-                label={item.text}
-              />
-            </fieldset>
-          ))}
-        </Card>
-      ))}
-      {error && <StatusMessage type="error" message={error} />}
-      <div className={styles.attemptActions}>
-        <Button type="button" variant="secondary" onClick={handlePause}>
-          Pause
-        </Button>
-        <Button type="button" variant="primary" onClick={handleSubmit} disabled={submitting || answeredCount < totalItems}>
-          {submitting ? 'Submitting…' : 'Submit'}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function LoadingCard() {
-  return (
-    <Card aria-busy="true">
-      <span className="sr-only" role="status">
-        Loading…
-      </span>
-      <Skeleton height={24} width="60%" className={styles.skeletonGap} />
-      <Skeleton height={48} className={styles.skeletonGap} />
-      <Skeleton height={48} width="40%" />
-    </Card>
-  );
-}
-
-export default function AssessmentPage({ onSubmitted }) {
-  const [stage, setStage] = useState('loading');
-  const [profile, setProfile] = useState(null);
-  const [attempt, setAttempt] = useState(null);
-  const [error, setError] = useState(null);
-
-  const loadProfile = useCallback(async () => {
-    try {
-      const { profile: p } = await getProfile();
-      setProfile(p);
-      setStage('consent');
-    } catch (err) {
-      if (err.code === 'PROFILE_NOT_DECLARED') {
-        setStage('profile');
-      } else {
-        setError(err.message);
-      }
-    }
+      setSaveState('saved');
+    })();
+    inFlight.current = run;
+    try { await run; } finally { inFlight.current = null; }
   }, []);
 
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const reg = await api.registrationState();
+        if (!reg.attempt) { navigate('/student', { replace: true }); return; }
+        const id = reg.attempt.attemptId;
+        const m = await api.attempt(id);
+        if (['SUBMITTED', 'SCORING', 'SCORED', 'REPORT_READY', 'QUALITY_HOLD', 'INVALID', 'EXPIRED'].includes(m.status)) { navigate('/student/generating', { replace: true }); return; }
+        const [list, given] = await Promise.all([api.items(id), api.responses(id)]);
+        if (cancelled) return;
+        setAttemptId(id); setModel(m); setItems(list.items); setAnchors(list.scale.anchors);
+        setAnswers(Object.fromEntries(given.responses.map((r) => [r.itemId, Number(r.value)])));
+        setPhase('hub');
+      } catch (err) { if (!cancelled) { setError(err.message); setPhase('error'); } }
+    })();
+    return () => { cancelled = true; };
+  }, [navigate]);
 
-  const startAttempt = async () => {
-    const { attempt: a } = await startOrResumeAttempt();
-    setAttempt(a);
-    setStage('attempt');
+  useEffect(() => {                                         // retry buffered writes: on a timer and when the browser is back online
+    if (!attemptId) return undefined;
+    const retry = () => flush(attemptId);
+    const t = setInterval(() => { if (queue.current.length) retry(); }, RETRY_MS);
+    window.addEventListener('online', retry);
+    return () => { clearInterval(t); window.removeEventListener('online', retry); };
+  }, [attemptId, flush]);
+
+  const begin = async (startAt) => {
+    setError(''); setLimitMessage('');
+    try {
+      setModel(await api.resume(attemptId));
+      setIndex(startAt); setPhase('item');
+    } catch (err) {
+      if (err.code === 'SESSION_LIMIT') setLimitMessage(err.message); else setError(err.message);
+    }
   };
 
-  if (stage === 'loading') return <LoadingCard />;
-  if (error) return <StatusMessage type="error" message={error} />;
-  if (stage === 'profile') {
+  const firstUnanswered = () => { const i = items.findIndex((it) => answers[it.itemId] == null); return i === -1 ? 0 : i; };
+
+  const choose = (item, value) => {
+    setAnswers((a) => ({ ...a, [item.itemId]: value }));
+    queue.current.push({ itemId: item.itemId, value, idempotencyKey: newKey('resp'), presentedOrder: item.order });
+    flush(attemptId);
+  };
+
+  const pause = async () => {
+    await flush(attemptId);
+    if (queue.current.length) { setError('Your latest answers have not been saved yet. Please check your connection and try again.'); return; }
+    try { await api.pause(attemptId, 'PARTICIPANT'); navigate('/student'); } catch (err) { setError(err.message); }
+  };
+
+  const submit = async () => {
+    await flush(attemptId);
+    if (queue.current.length) { setError('Your latest answers have not been saved yet. Please check your connection and try again.'); return; }
+    if (!submitKey.current) submitKey.current = newKey('submit');        // one key per submit intention, reused on retry
+    try { await api.submit(attemptId, submitKey.current); navigate('/student/complete'); } catch (err) { setError(err.message); }
+  };
+
+  if (phase === 'loading') return <div aria-busy="true" className={styles.stack}><Skeleton /><Skeleton /></div>;
+  if (phase === 'error') return <StatusMessage type="error" message={error} />;
+
+  const answered = Object.keys(answers).length;
+  const session = model ? Math.max(model.session.n, 1) : 1;
+
+  if (phase === 'hub') {
+    const blocks = Object.keys(DOMAIN_NAMES).map((code) => {
+      const inDomain = items.filter((i) => i.domainCode === code);
+      return { code, total: inDomain.length, done: inDomain.filter((i) => answers[i.itemId] != null).length };
+    });
     return (
-      <ProfileForm
-        onDone={(p) => {
-          setProfile(p);
-          setStage('consent');
-        }}
-      />
+      <div className={styles.stack}>
+        <h1 className={styles.h2}>Your assessment</h1>
+        <ProgressSummary answered={answered} total={items.length} domainName="All areas" sessionCount={session} />
+        {error && <StatusMessage type="error" message={error} />}
+        {limitMessage && <StatusMessage type="warning" message={limitMessage} />}
+        <div className={styles.blocks}>
+          {blocks.map((b) => (
+            <section key={b.code} className={`${styles.card} ${styles.toneBlue}`}>
+              <h2 className={styles.h3}>{b.code} · {DOMAIN_NAMES[b.code]}</h2>
+              <div className={styles.bar} role="progressbar" aria-label={`${DOMAIN_NAMES[b.code]} progress`} aria-valuemin={0} aria-valuemax={b.total} aria-valuenow={b.done}>
+                <div className={styles.barFill} style={{ width: `${b.total ? (b.done / b.total) * 100 : 0}%` }} />
+              </div>
+              <p className={styles.muted}>{b.done} of {b.total}</p>
+            </section>
+          ))}
+        </div>
+        <p className={styles.muted}>{model && model.lastSavedAt ? `Last saved ${new Date(model.lastSavedAt).toLocaleString()}` : 'Nothing saved yet'}</p>
+        <div className={styles.row}>
+          <Button onClick={() => begin(firstUnanswered())} disabled={Boolean(limitMessage)}>Continue Assessment</Button>
+          {answered === items.length && items.length > 0 && <Button variant="secondary" onClick={submit}>Submit my answers</Button>}
+          {limitMessage && <Button variant="secondary" onClick={submit}>Submit my answers</Button>}
+        </div>
+      </div>
     );
   }
-  if (stage === 'consent') {
-    return <ConsentForm profile={profile} onDone={startAttempt} />;
-  }
-  if (stage === 'attempt' && attempt) {
-    return <AttemptView attempt={attempt} onSubmitted={onSubmitted} />;
-  }
-  return null;
+
+  const item = items[index];
+  const domain = DOMAIN_NAMES[item.domainCode];
+  return (
+    <div className={`${styles.stack} ${styles.player}`}>
+      <ProgressSummary answered={answered} total={items.length} domainName={domain} sessionCount={session} />
+      {error && <StatusMessage type="error" message={error} />}
+      <p className={styles.muted}>Question {index + 1} of {items.length}</p>
+      <h1 className={styles.itemText}>{item.text}</h1>
+      <ResponseScale anchors={anchors} value={answers[item.itemId] ?? null} onChange={(v) => choose(item, v)} name={`item-${item.itemId}`} label="How often is this true for you?" />
+      <p className={styles.saveState} role="status">
+        {saveState === 'saved' ? 'All answers saved' : saveState === 'saving' ? 'Saving…' : 'Not saved yet - we will keep trying'}
+      </p>
+      <div className={styles.rowBetween}>
+        <Button variant="secondary" onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0}>Back</Button>
+        <Button variant="quiet-link" onClick={pause}>Pause</Button>
+        {index < items.length - 1
+          ? <Button onClick={() => setIndex((i) => i + 1)} disabled={answers[item.itemId] == null}>Next</Button>
+          : <Button onClick={submit} disabled={answered < items.length}>Submit my answers</Button>}
+      </div>
+    </div>
+  );
 }

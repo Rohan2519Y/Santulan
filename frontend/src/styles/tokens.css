@@ -1,61 +1,87 @@
 /*
- * Design tokens (contracts/design-system.md §1). Calm & warm palette.
- * frontend/scripts/check-contrast.js reads this file directly (the shipped
- * source, not a mirror) and asserts every pair in its manifest passes WCAG AA.
- * Any pair that fails must be fixed here - never by lowering the AA target.
+ * Design tokens (specs/003-frontend-visual-design/contracts/design-system.md §1): the measured Santulan palette.
+ * frontend/scripts/check-contrast.js reads this file directly (the shipped source, not a mirror) and asserts every pair in its
+ * manifest passes WCAG AA. Any pair that fails must be fixed here - never by lowering the AA target.
+ * Legacy token names (--c-surface, --c-panel, --c-nav-*, ...) are kept and re-pointed to the new palette so existing
+ * components and the admin pages keep working without behaviour change (FR-009).
  */
 :root {
-  /* Palette */
-  --c-bg: #faf6ee;
-  --c-surface: #f1eadb;
-  --c-surface-strong: #e7decc;
+  /* Palette (measured, design-system §1.1) */
+  --c-bg: #fafaf8;
   --c-bg-white: #ffffff;
+  --c-brand: #034281;
+  --c-brand-strong: #022f63;
+  --c-brand-alt: #0b4988;
+  --c-route-open: #145852;
+  --c-link: #0a3f99;
+  --c-ink-strong: #0a1a47;
+  --c-ink: #1f2a4a;
+  --c-ink-muted: #4b587a;
+  --c-ink-faint: #56638a;
 
-  --c-ink: #332f28;
-  --c-ink-muted: #5c574b;
-  --c-ink-faint: #7a7466;
+  --c-tint-blue: #eef4fb;
+  --c-tint-sky: #f0f7fe;
+  --c-tint-green: #f0f9f3;
+  --c-tint-mint: #f1f9f6;
+  --c-tint-pink: #fbf2f5;
+  --c-tint-lavender: #f4f3fe;
+  --c-tint-cream: #fdf8f0;
+  --c-selected: #e7f2fd;
+  --c-nav-active: #e1edf9;
+  --c-track: #d3e0f3;
+  --c-progress: #106bd7;
 
-  --c-brand: #8c5a3c;
-  --c-brand-strong: #6f4630;
-  --c-brand-soft: #efe1d2;
+  /* Legacy names, re-pointed */
+  --c-surface: var(--c-tint-blue);
+  --c-surface-strong: var(--c-nav-active);
+  --c-brand-soft: var(--c-selected);
+  --c-panel: #ffffff;
+  --c-line: #d3e0f3;
 
-  --c-status-info: #3b5b68;
-  --c-status-success: #3f6b4f;
-  --c-status-warning: #836629;
-  --c-status-error: #a3483a;
+  /* Status colours (design-system §1.2): foreground on the matching tint */
+  --c-status-info: #0a3f99;
+  --c-status-success: #0b7a5e;
+  --c-status-warning: #8a5a00;
+  --c-status-error: #b42318;
   --c-status-neutral: #61656b;
 
-  --c-status-soft-info: #e9eef0;
-  --c-status-soft-success: #e6efe9;
-  --c-status-soft-warning: #f5efe3;
-  --c-status-soft-error: #f7e7e4;
+  --c-status-soft-info: var(--c-tint-sky);
+  --c-status-soft-success: var(--c-tint-green);
+  --c-status-soft-warning: var(--c-tint-cream);
+  --c-status-soft-error: var(--c-tint-pink);
   --c-status-soft-neutral: #eceeef;
 
-  /* Admin dashboard (spec 005): dark warm navigation + data-surface tokens */
-  --c-nav-bg: #2b2620;
-  --c-nav-bg-hover: #3a3229;
-  --c-nav-bg-active: #4a3b2d;
-  --c-nav-ink: #f6efe2;
-  --c-nav-ink-muted: #cdc2ae;
-  --c-nav-accent: #e6b98f;
-  --c-panel: #ffffff;
-  --c-line: #e7decc;
-  --c-track: #efe7d8;
-  --sidebar-w: 248px;
+  /* Eyebrow colours (§1.4: the sampled teal fails AA, so the replacement is used) */
+  --c-eyebrow-open: #1f6f7a;
+  --c-eyebrow-institution: #1f65a6; /* measured #2875b9 is 4.38:1 on --c-tint-blue, so darkened to pass AA */
 
-  /* Typography - system stack only, no font downloads (SC-006) */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Admin dashboard (spec 005): navigation and data surfaces, now on the navy brand */
+  --c-nav-bg: #0a1a47;
+  --c-nav-bg-hover: #142a6b;
+  --c-nav-bg-active: #1b3577;
+  --c-nav-ink: #eef4fb;
+  --c-nav-ink-muted: #b9c6e4;
+  --c-nav-accent: #f1c46b;
+  --sidebar-w: 248px;
+  --sidebar-w-participant: 280px;
+
+  /* Typography (D-07: system fallbacks only until licensed, subset fonts are self-hosted) */
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-script: "Caveat", "Segoe Script", cursive;
   --fs-xs: 12px;
   --fs-sm: 14px;
   --fs-base: 16px;
   --fs-md: 18px;
   --fs-lg: 24px;
-  --fs-xl: 30px;
-  --fs-2xl: 40px;
+  --fs-xl: 32px;
+  --fs-2xl: clamp(32px, 4vw, 46px);
+  --fs-hero: clamp(36px, 5vw, 60px);
   --fw-regular: 400;
+  --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
-  --lh-tight: 1.25;
+  --lh-tight: 1.15;
   --lh-normal: 1.5;
   --lh-relaxed: 1.6;
 
@@ -67,13 +93,16 @@
   --sp-5: 24px;
   --sp-6: 32px;
   --sp-7: 48px;
+  --sp-8: 64px;
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
 
-  --shadow-1: 0 1px 2px rgba(51, 47, 40, 0.08);
-  --shadow-2: 0 4px 12px rgba(51, 47, 40, 0.1);
+  --shadow-1: 0 1px 2px rgba(10, 26, 71, 0.06);
+  --shadow-2: 0 8px 24px rgba(10, 26, 71, 0.08);
 
   --motion-fast: 150ms;
   --motion-base: 200ms;
@@ -90,4 +119,57 @@
   :root {
     --motion-safe: 1;
   }
+}
+
+/*
+ * Dark theme (screen 22 "Theme", spec 005 D-05): a client-side preference set with data-theme="dark" on <html>.
+ * Only palette tokens change; every pair in the contrast manifest is verified for BOTH themes by scripts/check-contrast.js.
+ * The surface token keeps its legacy name (--c-bg-white) and simply becomes the dark card surface.
+ */
+:root[data-theme='dark'] {
+  --c-bg: #0e1526;
+  --c-bg-white: #16203a;
+  --c-brand: #8db8f5;
+  --c-brand-strong: #b7d3fa;
+  --c-brand-alt: #7fa9e6;
+  --c-route-open: #7fd1c2;
+  --c-link: #a9c8f7;
+  --c-ink-strong: #f3f6fd;
+  --c-ink: #e3e9f7;
+  --c-ink-muted: #b3bfdc;
+  --c-ink-faint: #a3b0d2;
+
+  --c-tint-blue: #1a2748;
+  --c-tint-sky: #182544;
+  --c-tint-green: #143329;
+  --c-tint-mint: #142f2b;
+  --c-tint-pink: #3a1f2b;
+  --c-tint-lavender: #241f45;
+  --c-tint-cream: #33291a;
+  --c-selected: #1f3462;
+  --c-nav-active: #22376b;
+  --c-track: #2b3a63;
+  --c-progress: #5fa2f2;
+  --c-line: #2b3a63;
+  --c-panel: #16203a;
+
+  --c-status-info: #a9c8f7;
+  --c-status-success: #7fdcb2;
+  --c-status-warning: #f0c36a;
+  --c-status-error: #ff9b8f;
+  --c-status-neutral: #b8bcc4;
+  --c-status-soft-neutral: #23283a;
+
+  --c-eyebrow-open: #7fd1c2;
+  --c-eyebrow-institution: #8db8f5;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* "Reduce motion" preference (in addition to the OS-level prefers-reduced-motion rules of the components) */
+:root[data-reduce-motion='true'] *,
+:root[data-reduce-motion='true'] *::before,
+:root[data-reduce-motion='true'] *::after {
+  animation: none !important;
+  transition: none !important;
 }

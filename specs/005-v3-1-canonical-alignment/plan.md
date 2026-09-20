@@ -11,7 +11,7 @@ Bring the delivered Santulan product to the SanTulan 2.0 build contracts (BUILD 
 1. **Add the canonical PostgreSQL schema `santulan`** — exactly the 28 tables of BUILD 01 §6 — through forward-only raw-SQL migrations run by the existing runner, next to (never inside) the feature-004 platform schema and the feature-002 assessment tables. The SQL packages named in the manifests are not on disk, so the migrations are **authored from the contract text** (tables, constraints, functions, triggers, indexes, RLS, seeds), mapped 1-to-1 to BUILD 01's file list.
 2. **Load and reconcile the v3.1 catalog** from normalized CSVs derived from the BUILD 02 audit workbook (175 + 171 items), with a reconcile-by-default importer, receipts and audit events.
 3. **Add a new backend module `src/modules/santulan/`** that talks only to the canonical schema through a trusted per-transaction context (`SET LOCAL` GUCs), calls the contract's `SECURITY DEFINER` procedures for the write paths, and exposes the BUILD API surface under new paths. The legacy `assessment` module stays untouched until the frontend has cut over.
-4. **Bridge identity**: existing `accounts` sign-in maps to `participants` / `admin_users` through the optional `auth_provider` + `auth_provider_subject_id` pair; OTP sits behind an adapter so the managed provider is configuration.
+4. **Identity**: OTP and password sign-in sit behind an `IdentityProvider` adapter that maps a provider + subject to `participants` / `admin_users` (`auth_provider`, `auth_provider_subject_id`). The legacy `accounts` table was removed with the old schema (2026-09-20), so where credentials live for the pilot is open decision D-17.
 5. **Rebuild the frontend** to the Santulan design language and add the public, registration, dashboard, profile and eleven-page admin surfaces defined in the 003 contracts.
 6. **Qualify**: DB tests in rolled-back transactions (the feature-004 harness pattern), API contract/integration tests, the AT/RC and SEC suites with an evidence register, a real backup-restore drill, and a G9 claims scan. Launch stays **NO-GO** until governance gates owned outside engineering close.
 
@@ -51,7 +51,7 @@ Bring the delivered Santulan product to the SanTulan 2.0 build contracts (BUILD 
 | Fail-closed defaults (DRAFT/CLOSED, S1, inactive actions, release OFF) | FR-007, FR-024 | PASS | PASS — seed migration asserts them |
 | Tests first for DB invariants | spec Independent Tests, BUILD test matrices | PASS | PASS — invariants land with a failing DB test before each migration |
 | No new runtime dependency without impact assessment | spec Assumptions | **FLAG** | ACCEPTED — one candidate (`exceljs`), assessed in R-09 |
-| Legacy platform untouched | FR-001 | PASS | PASS — `santulan.*` schema-qualified; legacy routes kept |
+| Old schema removed on request (2026-09-20); `santulan` is the only schema | FR-001 | PASS | PASS — 28 tables, backup taken, old migrations deleted |
 
 No unjustified violations. Complexity that needs justification is in *Complexity Tracking*.
 
@@ -62,7 +62,7 @@ No unjustified violations. Complexity that needs justification is in *Complexity
 ```text
 specs/005-v3-1-canonical-alignment/
 ├── plan.md                      # this file
-├── research.md                  # Phase 0 — decisions R-01…R-18 (D-08…D-16)
+├── research.md                  # Phase 0 — decisions R-01…R-18 (D-08…D-17)
 ├── data-model.md                # Phase 1 — 28 tables, relationships, state machines, objects
 ├── quickstart.md                # Phase 1 — validation scenarios
 ├── contracts/
@@ -107,7 +107,7 @@ backend/
 │   ├── santulan-freeze.js                        # BUILD 01 013 freeze template; refuses without a signed scale hash
 │   └── backup-restore-drill.js                   # dump → clean DB → restore → checks → evidence file
 ├── src/
-│   ├── routes/v1/santulan.routes.js              # new router; legacy /assessments/* untouched
+│   ├── routes/v1/santulan.routes.js              # new router; the legacy /assessments/* routes are dead code (their tables were removed)
 │   └── modules/santulan/
 │       ├── context/                              # withCanonicalTx({actorScope, …}) → SET LOCAL
 │       ├── catalog/  registration/  consent/  delivery/
@@ -136,25 +136,23 @@ frontend/
 | 4 Delivery | US5 | attempt create, sessions, responses, submit, resume model | B05-001…045 |
 | 5 Quality + scoring | US6 | quality runner framework, Q06/Q09, scorer, research view | B06-001…060 |
 | 6 Reporting + development | US7 | report engine, T11/T12, growth plan, pathways, P5 hook | B07-001…080 |
-| 7 Sign-in + roster | US4 | accounts bridge, OTP adapter, roster validation/commit, credential lifecycle | AT-01–09, AT-27 |
+| 7 Sign-in + roster | US4 | identity adapter (D-17), OTP adapter, roster validation/commit, credential lifecycle | AT-01–09, AT-27 |
 | 8 Admin + research | US8 | control plane, audit, institutions, participants, exports | B08-001…084 |
 | 9 Security + QA | US9 | FORCE-RLS negative suite, IP/device throttle, restore drill, AT/RC + SEC evidence, G9 scan | 44 + 29 tests, G1–G10 register |
 | UI (parallel from Phase 3) | US10 | tokens, shells, screens, dashboards | contrast script, per-screen review, SC-010/011 |
 
-**MVP** = Phases 0–3 (schema + catalog + registration + consent gate) — independently demonstrable and the base for everything else. Phase 7 is scheduled after delivery because the demo-account bridge lets Phases 3–6 be exercised earlier.
+**MVP** = Phases 0–3 (schema + catalog + registration + consent gate) — independently demonstrable and the base for everything else. Phase 7 is scheduled after delivery; Phases 3–6 are exercised with tokens minted by the test helpers (there is no demo-account login any more — D-17).
 
-### Cutover strategy (D-06)
+### Cutover strategy (D-06, resolved 2026-09-20)
 
-1. Canonical module ships at new paths (`/api/v1/registrations`, `/consents`, `/attempts`, `/reports`, `/admin/*`, `/research-exports`, `/internal/*`); legacy `/api/v1/assessments/*` keeps working.
-2. Frontend pages switch to the new paths screen by screen behind a single client config flag.
-3. Legacy tables are frozen (writes disabled by the module, not by dropping) once the canonical flow is the default; retirement/drops require an explicit user request (memory: earlier drop broke the module).
+There is no cutover: the old schema is gone. The canonical module ships at its own paths (`/api/v1/registrations`, `/consents`, `/attempts`, `/reports`, `/admin/*`, `/research-exports`, `/internal/*`). Legacy backend code that still queries the removed tables (`modules/assessment`, `modules/auth`, `seeders/*`, `tests/database`, `tests/integration`, `tests/contract`) is dead until it is removed or replaced; deleting it is a separate, explicit step. The frontend is rebuilt against the canonical API screen by screen.
 
 ## Complexity Tracking
 
 | Item | Why needed | Simpler alternative rejected because |
 |------|-----------|--------------------------------------|
-| Two assessment stores side by side (legacy `public` tables and `santulan`) | The contract forbids reshaping the old tables into the 28, and the shipped flow must not break during the build | Migrating in place would alter frozen feature-002/004 data and violate FR-001 |
-| `accounts` → `participants`/`admin_users` bridge | Keeps working sign-in while the managed OTP provider is external | Rebuilding auth first would block every later phase |
-| Two RLS mechanisms (legacy `app.bypass_rls`/`app.current_school_id`; canonical `app.actor_scope`…) | Different schemas, different owners | Reusing the legacy `BYPASSRLS` platform role for canonical access would break BUILD 09 |
+| Legacy backend code left in place but unusable (queries removed tables) | Deleting application code was not part of the request to remove the old schema | Deleting it silently would go beyond the request; it is listed for a decision |
+| Credentials outside the 28 tables (D-17) | Sign-in and temporary passwords need somewhere to live and Constitution VIII forbids Santulan storing passwords | A password column on `participants` would add PII-adjacent data to the canonical schema |
+| No `BYPASSRLS` role exists at all | BUILD 09 forbids it for the runtime; the legacy `app_platform` role was dropped | Privileged reads use `SET LOCAL ROLE santulan_worker` with an explicit `SYSTEM` context instead |
 | New streaming-XLSX dependency (`exceljs`) | 2.22 M rows cannot be built in memory with SheetJS | Hand-writing OOXML is larger and riskier than one MIT-licensed dependency |
 | Migrations authored from prose (SQL packages absent) | Only the `.docx` contracts exist on disk | Waiting for the packages blocks the whole feature; each object is traceable to a contract section instead |

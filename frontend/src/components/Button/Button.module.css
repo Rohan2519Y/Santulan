@@ -104,3 +104,17 @@
 .tone-success.secondary:hover:not(:disabled) {
   background: var(--c-status-soft-success);
 }
+
+/* variant: route-open / route-institution - the two registration-route buttons (design-system §2.1); white label >= 4.5:1 */
+.route-open {
+  background: var(--c-route-open);
+  color: var(--c-bg-white);
+}
+.route-institution {
+  background: var(--c-brand-alt);
+  color: var(--c-bg-white);
+}
+.route-open:hover:not(:disabled),
+.route-institution:hover:not(:disabled) {
+  filter: brightness(0.92);
+}

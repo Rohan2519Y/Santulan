@@ -15,6 +15,10 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: err.message, details: {} } });
   }
 
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Malformed JSON body', details: {} } });
+  }
+
   if (err && err.name === 'ZodError') {
     return res.status(400).json({
       error: { code: 'VALIDATION_ERROR', message: 'Request validation failed', details: { issues: err.issues } },

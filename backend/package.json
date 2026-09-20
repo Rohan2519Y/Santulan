@@ -8,12 +8,16 @@
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "test": "jest --runInBand",
-    "test:db": "jest --runInBand tests/database",
-    "db:migrate": "node scripts/migrate.js && node scripts/grant-runtime-role.js",
-    "db:seed": "node seeders/assessment.seeder.js",
-    "db:seed:platform": "node seeders/platform.seeder.js",
+    "db:migrate": "node scripts/migrate.js && node scripts/santulan-grant-roles.js",
+    "db:seed:dev": "node seeders/santulan/dev.seeder.js",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "db:grant:santulan": "node scripts/santulan-grant-roles.js",
+    "db:generate:seed": "node scripts/santulan-generate-seed-sql.js",
+    "catalog:generate": "node scripts/catalog-generate-csv.js",
+    "catalog:verify": "node scripts/catalog-offline-verify.js",
+    "catalog:reconcile": "node scripts/catalog-reconcile.js",
+    "test:santulan": "jest --runInBand tests/santulan"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

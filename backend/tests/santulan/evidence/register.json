@@ -1,0 +1,14 @@
+{
+  "deliveryLoad": {
+    "participantsSaving": 40,
+    "savesPerParticipant": 10,
+    "saveRequests": 400,
+    "saveTotalMs": 4183,
+    "participantsSubmitting": 80,
+    "submitTotalMs": 1780,
+    "poolMax": 10,
+    "recordedAt": "2026-09-20T05:10:46.465Z",
+    "informational": true,
+    "database": "scratch (local)"
+  }
+}

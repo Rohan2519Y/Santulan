@@ -2,7 +2,7 @@
 
 **Branch**: `005-v3-1-canonical-alignment` | **Date**: 2026-09-19 | **Plan**: [plan.md](plan.md)
 
-Phase 0 resolves every open technical question in the plan. Product/governance questions stay in the spec (D-01…D-07); the technical decisions found here are numbered **D-08…D-16** and carry a default so `tasks.md` can be generated. Each item: **Decision · Rationale · Alternatives**.
+Phase 0 resolves every open technical question in the plan. Product/governance questions stay in the spec (D-01…D-07); the technical decisions found here are numbered **D-08…D-17** and carry a default so `tasks.md` can be generated. Each item: **Decision · Rationale · Alternatives**.
 
 ---
 
@@ -58,18 +58,17 @@ Phase 0 resolves every open technical question in the plan. Product/governance q
 
 **Alternatives**: `TEXT` + `CHECK` (loses the contract's enum names).
 
-## R-07 — Identity bridge, OTP and credential lifecycle (D-14)
+## R-07 — Identity, OTP and credential lifecycle (D-14, D-16 superseded by D-17)
+
+**Context change (2026-09-20)**: the legacy `accounts` table no longer exists. The canonical schema stores only `participants.auth_provider` + `auth_provider_subject_id` and `admin_users.auth_provider` + `auth_provider_subject_id` — no password, OTP, name or email (BUILD 03, Constitution VIII).
 
 **Decision**:
-- *Bridge*: `participants.auth_provider = 'santulan-accounts'`, `auth_provider_subject_id = accounts.account_id::text` (pair is unique). Admins map the same way through `admin_users`. Login still authenticates against `accounts` (platform connection), then a small lookup (as `SYSTEM`) resolves `participant_id` / `admin_user_id` and the JWT carries them plus the role. Nothing else is copied.
-- *OPEN OTP*: an `IdentityProvider` adapter (`requestOtp`, `verifyOtp`, `revoke`) with a **development adapter** that logs the code to the server console and never stores it, and a production adapter supplied by configuration. Expiry, rate-limit and replay rules are enforced in the adapter contract and tested against the dev adapter.
-- *Institutional credentials*: use the existing `accounts` columns without adding any — a roster row creates an account with `status='pending'` and `password_hash = bcrypt(temp)` (the doc's `password_required_unless_pending` permits it); the pending state marks "temporary". Login of a pending account is allowed **only** through the temporary-credential path, which forces set-permanent-password and moves it to `active`; a reset writes a new hash and sets `pending` again, invalidating the previous one at once (AT-27). The credential export is generated in memory at creation time and never persisted.
+- An `IdentityProvider` adapter (`requestOtp`, `verifyOtp`, `authenticate(santulanId, password)`, `setPassword`, `issueTemporaryCredential`, `revoke`) maps whatever the provider authenticates to a `(provider, subject)` pair; a small lookup (as `SYSTEM`) resolves `participant_id` / `admin_user_id` and the JWT carries them plus the role.
+- *OPEN OTP*: the dev adapter logs the code to the server console, never stores it, and enforces expiry, single use and rate limits; production supplies the managed provider.
+- *Institutional credentials and admin passwords*: **decision D-17 (approved 2026-09-20).** The managed provider owns them in production. For development the adapter needs a credential store; the default is a **dev-only table outside the canonical schema** (not one of the 28, not created without the requester's approval). Until approved, US4 credential tasks are blocked and tests use tokens minted by `tests/santulan/helpers/tokens.js`.
+- Roster PII (name, gender, city…) is used transiently for validation and the credential file; only `Reg. Number → external_student_id`, age, cohort and institution are stored canonically.
 
-**Rationale**: No new columns or tables; matches BUILD 00 §7 (managed provider authoritative, Santulan keeps only provider + subject). Roster PII (name, gender, city…) is used transiently for the export and only `Reg. Number → external_student_id` is stored.
-
-**Institutional account bridge (D-16, default applied)**: `accounts.name` is `NOT NULL` and `account_type='school_user'` requires `school_id`. Institutional accounts are created with `name = <Santulan ID>` (no roster name is stored), `role='student'`, `account_type='school_user'`, `login_id = Santulan ID`, and a legacy `schools` row per canonical institution (`status='pilot'`) to satisfy `school_id_matches_account_type`. OPEN participants create no `accounts` row (provider reference only).
-
-**Alternatives**: a `must_change_password` column (extra column on the legacy table, not needed); storing the temporary password for re-export (forbidden — plaintext secrets).
+**Alternatives**: password columns on `participants`/`admin_users` (violates BUILD 03 and Constitution VIII); re-creating `accounts` (contradicts the requester's removal of the old schema).
 
 ## R-08 — API surface and coexistence
 
@@ -159,6 +158,7 @@ Phase 0 resolves every open technical question in the plan. Product/governance q
 | D-11 | Unstated enum values use the minimal implied set | as R-06 | SQL package obtained |
 | D-12 | `exceljs` streaming writer | approve dependency | reviewer objects |
 | D-13 | Throttle behind an interface, in-memory default | dev only | before launch (shared store) |
-| D-14 | Credential lifecycle inside `accounts` (pending + hash) | as R-07 | managed provider replaces accounts |
+| D-14 | Identity behind an adapter (was: credentials inside `accounts`, now impossible) | as R-07 | D-17 decided |
 | D-15 | Control plane event-sourced in `audit_logs` | as R-18 | change control approves a control table |
-| D-16 | Institutional accounts via a legacy `schools` row per institution; `name = Santulan ID` | as R-07 | managed provider replaces accounts |
+| D-16 | *(superseded — `accounts` and the legacy `schools` row no longer exist)* | — | — |
+| D-17 | Dev credential store for institutional/admin passwords outside the 28 tables | **APPROVED 2026-09-20; implemented** (`dev_identity.credentials`, bcrypt, refuses production) | done |

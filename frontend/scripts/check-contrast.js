@@ -26,6 +26,17 @@ function parseRootTokens(css) {
   return tokens;
 }
 
+/** Overrides declared by the dark theme block (:root[data-theme='dark']). */
+function parseDarkTokens(css) {
+  const m = css.match(/:root\[data-theme='dark'\]\s*\{([^}]*)\}/);
+  if (!m) throw new Error("No :root[data-theme='dark'] block found in tokens.css");
+  const out = {};
+  const re = /(--[\w-]+)\s*:\s*([^;]+);/g;
+  let d;
+  while ((d = re.exec(m[1]))) out[d[1]] = d[2].trim();
+  return out;
+}
+
 function resolveOneLevelVar(value, tokens) {
   const varMatch = value.match(/^var\((--[\w-]+)\)$/);
   if (varMatch && tokens[varMatch[1]]) {
@@ -102,6 +113,41 @@ const PAIR_MANIFEST = [
   { fg: '--c-status-error', bg: '--c-panel', level: 'AA-normal', note: 'error status text on panel' },
   { fg: '--c-status-neutral', bg: '--c-panel', level: 'AA-normal', note: 'neutral status text on panel' },
 
+  // Design-system §5 manifest (feature 003): brand fills, route buttons, links, tints, eyebrows
+  { fg: '--c-bg-white', bg: '--c-brand', level: 'AA-normal', note: 'white on brand button (>= 10:1)' },
+  { fg: '--c-bg-white', bg: '--c-brand-alt', level: 'AA-normal', note: 'white on INSTITUTION route button' },
+  { fg: '--c-bg-white', bg: '--c-route-open', level: 'AA-normal', note: 'white on OPEN route button' },
+  { fg: '--c-link', bg: '--c-bg-white', level: 'AA-normal', note: 'outlined-button label / inline link on white' },
+  { fg: '--c-link', bg: '--c-bg', level: 'AA-normal', note: 'link on page background' },
+  { fg: '--c-brand', bg: '--c-selected', level: 'AA-normal', note: 'brand text on a selected row' },
+  { fg: '--c-brand', bg: '--c-nav-active', level: 'AA-normal', note: 'active sidebar item text' },
+  { fg: '--c-ink-strong', bg: '--c-bg-white', level: 'AA-normal', note: 'serif headings on white' },
+  { fg: '--c-ink-strong', bg: '--c-bg', level: 'AA-normal', note: 'serif headings on page background' },
+  { fg: '--c-eyebrow-open', bg: '--c-bg-white', level: 'AA-normal', note: 'OPEN route eyebrow on white' },
+  { fg: '--c-eyebrow-institution', bg: '--c-tint-blue', level: 'AA-normal', note: 'INSTITUTION route eyebrow on its tint' },
+  { fg: '--c-progress', bg: '--c-track', level: 'AA-large', note: 'progress fill on its track (graphical object)' },
+  { fg: '--c-status-success', bg: '--c-bg-white', level: 'AA-normal', note: 'success text on white' },
+  { fg: '--c-status-warning', bg: '--c-bg-white', level: 'AA-normal', note: 'warning text on white' },
+  { fg: '--c-status-error', bg: '--c-bg-white', level: 'AA-normal', note: 'error text on white' },
+  { fg: '--c-ink', bg: '--c-tint-blue', level: 'AA-normal', note: 'ink on --c-tint-blue' },
+  { fg: '--c-ink-muted', bg: '--c-tint-blue', level: 'AA-normal', note: 'muted ink on --c-tint-blue' },
+  { fg: '--c-ink', bg: '--c-tint-sky', level: 'AA-normal', note: 'ink on --c-tint-sky' },
+  { fg: '--c-ink-muted', bg: '--c-tint-sky', level: 'AA-normal', note: 'muted ink on --c-tint-sky' },
+  { fg: '--c-ink', bg: '--c-tint-green', level: 'AA-normal', note: 'ink on --c-tint-green' },
+  { fg: '--c-ink-muted', bg: '--c-tint-green', level: 'AA-normal', note: 'muted ink on --c-tint-green' },
+  { fg: '--c-ink', bg: '--c-tint-mint', level: 'AA-normal', note: 'ink on --c-tint-mint' },
+  { fg: '--c-ink-muted', bg: '--c-tint-mint', level: 'AA-normal', note: 'muted ink on --c-tint-mint' },
+  { fg: '--c-ink', bg: '--c-tint-pink', level: 'AA-normal', note: 'ink on --c-tint-pink' },
+  { fg: '--c-ink-muted', bg: '--c-tint-pink', level: 'AA-normal', note: 'muted ink on --c-tint-pink' },
+  { fg: '--c-ink', bg: '--c-tint-lavender', level: 'AA-normal', note: 'ink on --c-tint-lavender' },
+  { fg: '--c-ink-muted', bg: '--c-tint-lavender', level: 'AA-normal', note: 'muted ink on --c-tint-lavender' },
+  { fg: '--c-ink', bg: '--c-tint-cream', level: 'AA-normal', note: 'ink on --c-tint-cream' },
+  { fg: '--c-ink-muted', bg: '--c-tint-cream', level: 'AA-normal', note: 'muted ink on --c-tint-cream' },
+  { fg: '--c-ink', bg: '--c-selected', level: 'AA-normal', note: 'ink on --c-selected' },
+  { fg: '--c-ink-muted', bg: '--c-selected', level: 'AA-normal', note: 'muted ink on --c-selected' },
+  { fg: '--c-ink', bg: '--c-nav-active', level: 'AA-normal', note: 'ink on --c-nav-active' },
+  { fg: '--c-ink-muted', bg: '--c-nav-active', level: 'AA-normal', note: 'muted ink on --c-nav-active' },
+
   // Focus ring vs. the surfaces it appears on (WCAG 1.4.11 non-text contrast, 3:1)
   { fg: '--c-brand', bg: '--c-surface', level: 'AA-large', note: 'focus ring on card surface' },
   { fg: '--c-brand', bg: '--c-bg-white', level: 'AA-large', note: 'focus ring on form fields' },
@@ -113,31 +159,37 @@ function levelThreshold(level) {
 
 function main() {
   const css = fs.readFileSync(TOKENS_PATH, 'utf8');
-  const tokens = parseRootTokens(css);
+  const light = parseRootTokens(css);
+  const themes = { light, dark: { ...light, ...parseDarkTokens(css) } };
 
   const failures = [];
-  for (const pair of PAIR_MANIFEST) {
-    const fgHex = resolveToken(pair.fg, tokens);
-    const bgHex = resolveToken(pair.bg, tokens);
-    const ratio = contrast.hex(fgHex, bgHex);
-    const threshold = levelThreshold(pair.level);
-    if (ratio < threshold) {
-      failures.push({ ...pair, fgHex, bgHex, ratio: ratio.toFixed(2), threshold });
+  let checked = 0;
+  for (const [theme, tokens] of Object.entries(themes)) {
+    for (const pair of PAIR_MANIFEST) {
+      // the admin navigation is a fixed dark surface in both themes, so its pairs are checked once
+      if (theme === 'dark' && pair.fg.startsWith('--c-nav-')) continue;
+      const fgHex = resolveToken(pair.fg, tokens);
+      const bgHex = resolveToken(pair.bg, tokens);
+      const ratio = contrast.hex(fgHex, bgHex);
+      const threshold = levelThreshold(pair.level);
+      checked += 1;
+      if (ratio < threshold) failures.push({ ...pair, theme, fgHex, bgHex, ratio: ratio.toFixed(2), threshold });
     }
   }
 
   if (failures.length > 0) {
-    console.error(`check:contrast FAILED - ${failures.length} pair(s) below WCAG AA:\n`);
+    console.error(`check:contrast FAILED - ${failures.length} pair(s) below WCAG AA:
+`);
     for (const f of failures) {
       console.error(
-        `  ${f.fg} (${f.fgHex}) on ${f.bg} (${f.bgHex}) = ${f.ratio}:1, needs >= ${f.threshold}:1 [${f.level}] - ${f.note}`
+        `  [${f.theme}] ${f.fg} (${f.fgHex}) on ${f.bg} (${f.bgHex}) = ${f.ratio}:1, needs >= ${f.threshold}:1 [${f.level}] - ${f.note}`
       );
     }
     process.exitCode = 1;
     return;
   }
 
-  console.log(`check:contrast passed - ${PAIR_MANIFEST.length} pair(s) meet WCAG 2.1 AA.`);
+  console.log(`check:contrast passed - ${checked} pair checks (light and dark themes) meet WCAG 2.1 AA.`);
 }
 
 main();

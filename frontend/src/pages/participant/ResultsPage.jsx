@@ -1,79 +1,58 @@
+/*
+ * Results view. Shows ONLY what the server releases to this participant (domain results at an interpretable evidence state);
+ * nothing is inferred client-side. A domain without enough data reads "Not enough data" (never zero). There is no benchmark, no
+ * band, no comparison and no prescriptive content while those are gated. If nothing is released yet, the page says so calmly.
+ * TODO(copy): wording is placeholder text awaiting the content owner.
+ */
 import { useEffect, useState } from 'react';
-import { getScores, getReport } from '../../services/assessmentApi';
-import ScoreCard from '../../components/ScoreCard/ScoreCard';
-import Card from '../../components/Card/Card';
+import { Link } from 'react-router-dom';
+import styles from '../../styles/ui.module.css';
+import { RadarChart, RailCard } from '../../components/participantKit';
 import Skeleton from '../../components/Skeleton/Skeleton';
-import EmptyState from '../../components/EmptyState/EmptyState';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
-import styles from './ResultsPage.module.css';
+import { api } from '../../services/santulanApi';
+import { DOMAIN_NAMES } from './AssessmentPage';
 
-function LoadingGrid() {
-  return (
-    <div className={styles.grid} aria-busy="true">
-      <span className="sr-only" role="status">
-        Loading your results…
-      </span>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <Card key={i}>
-          <Skeleton height={18} width="70%" className={styles.skeletonGap} />
-          <Skeleton height={36} width="40%" className={styles.skeletonGap} />
-          <Skeleton height={28} />
-        </Card>
-      ))}
-    </div>
-  );
-}
+export const toAxes = (scores) => Object.keys(DOMAIN_NAMES).map((code) => {
+  const row = scores.find((s) => s.domainCode === code);
+  return { code, name: DOMAIN_NAMES[code], score: row && row.score != null ? row.score : null };
+});
 
-export default function ResultsPage({ attemptId, reportId }) {
-  const [scores, setScores] = useState(null);
-  const [report, setReport] = useState(null);
-  const [error, setError] = useState(null);
-
+export default function ResultsPage() {
+  const [view, setView] = useState({ loading: true });
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const [scoresRes, reportRes] = await Promise.all([getScores(attemptId), getReport(reportId)]);
-        setScores(scoresRes.scores);
-        setReport(reportRes);
-      } catch (err) {
-        setError(err.message);
-      }
+        const reg = await api.registrationState();
+        if (!reg.attempt) { if (!cancelled) setView({ none: true }); return; }
+        const model = await api.attempt(reg.attempt.attemptId);
+        const scores = model.status === 'REPORT_READY' || model.status === 'SCORED' ? (await api.scores(reg.attempt.attemptId)).scores : [];
+        if (!cancelled) setView({ status: model.status, scores });
+      } catch (err) { if (!cancelled) setView({ error: err.message }); }
     })();
-  }, [attemptId, reportId]);
+    return () => { cancelled = true; };
+  }, []);
 
-  if (error) return <StatusMessage type="error" message={error} />;
-  if (!scores || !report) return <LoadingGrid />;
-
-  if (report.releasedSections.length === 0) {
-    return <EmptyState message="No report yet" />;
-  }
-
-  // A held/quality-hold/ineligible attempt surfaces exactly one neutral section.
-  const isNeutral = report.releasedSections.length === 1 && report.releasedSections[0].sectionType === 'T11_HOLD_NEUTRAL';
-  if (isNeutral) {
-    return (
-      <Card className={styles.neutralCard}>
-        <StatusMessage type="neutral" message={report.releasedSections[0].content.title} />
-        <p className={styles.neutralBody}>{report.releasedSections[0].content.body}</p>
-      </Card>
-    );
-  }
+  if (view.loading) return <div aria-busy="true"><Skeleton /></div>;
+  if (view.error) return <StatusMessage type="error" message={view.error} />;
+  if (view.none) return <p>There is nothing to show yet.</p>;
+  if (view.status === 'QUALITY_HOLD') return <StatusMessage type="neutral" message="Your responses are being reviewed." />;
+  if (view.status === 'INVALID') return <StatusMessage type="neutral" message="This attempt could not be processed for a report." />;
 
   return (
-    <div className={styles.page}>
-      <h2 className={styles.title}>Your results</h2>
-      <div className={styles.grid}>
-        {report.releasedSections.map((section) => (
-          <ScoreCard
-            key={`${section.sectionType}-${section.domainCode}`}
-            domainName={section.content.domainName || section.content.title}
-            rawScore={section.content.rawScore}
-            completenessRate={section.content.completenessRate}
-            scoreStatus={section.content.scoreStatus}
-            body={section.content.body}
-          />
-        ))}
-      </div>
+    <div className={styles.stack}>
+      <h1 className={styles.h2}>Your results</h1>
+      {view.scores.length === 0 ? (
+        <RailCard tone="sky" title="Not ready yet">
+          <p>There is nothing to show yet. We will make your report available here when it is ready. <Link className={styles.pageLink} to="/student/generating">See progress</Link></p>
+        </RailCard>
+      ) : (
+        <>
+          <p className={styles.lead}>These are the areas we can show you from what you told us, on a scale from 1.00 to 5.00.</p>
+          <RadarChart axes={toAxes(view.scores)} />
+        </>
+      )}
     </div>
   );
 }
