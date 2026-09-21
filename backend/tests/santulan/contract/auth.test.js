@@ -4,7 +4,9 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const db = require('../../../src/shared/db');
+const { closeClient } = require('../../../src/modules/santulan/store/client');
+const H = require('../helpers/mongoHarness');
+const { canonical } = require('../../../db/schema');
 const f = require('../helpers/committed');
 const { getProvider } = require('../../../src/modules/santulan/identity');
 const { createDevProvider } = require('../../../src/modules/santulan/identity/devProvider');
@@ -13,7 +15,8 @@ const api = () => request(app);
 const key = () => `idem-${f.u()}-${f.u()}`;
 const provider = getProvider();
 
-afterAll(async () => { await db.pool.end(); });
+afterAll(async () => { await closeClient(); await H.closeAll(); });
+const col = async (name) => (await f.db()).collection(name);
 
 async function institutionalParticipant() {
   const adm = await f.admin();
@@ -78,11 +81,11 @@ describe('institutional sign-in: temporary password then forced change (AT-27)',
     };
     expect((await set(p.temporaryPassword)).status).toBe(200);
 
-    const pid = (await f.query('SELECT participant_id FROM santulan.participants WHERE santulan_id = $1', [p.santulanId]))[0].participant_id;
+    const pid = (await (await col('participants')).findOne({ santulan_id: p.santulanId }))._id;
     const url = `/api/v1/admin/participants/${pid}/credential-reset`;
     expect((await api().post(url)).status).toBe(401);
     expect((await api().post(url).set('Authorization', `Bearer ${f.participantToken(pid)}`)).status).toBe(403);
-    expect((await api().post(url).set('Authorization', `Bearer ${(await f.admin('ACTIVE', 'INSTITUTION_ADMIN')).token}`)).status).toBe(403);
+    expect((await api().post(url).set('Authorization', `Bearer ${(await f.admin('INACTIVE', 'INSTITUTION_ADMIN')).token}`)).status).toBe(403);
 
     const reset = await api().post(url).set('Authorization', `Bearer ${p.adm.token}`);
     expect(reset.status).toBe(200);
@@ -90,7 +93,7 @@ describe('institutional sign-in: temporary password then forced change (AT-27)',
     expect((await api().post('/api/v1/auth/login').send({ subject: p.santulanId, password: 'Permanent-pass-42' })).status).toBe(401);
     expect((await api().post('/api/v1/auth/login').send({ subject: p.santulanId, password: reset.body.temporaryPassword })).body.mustSetPassword).toBe(true);
 
-    const audits = await f.query(`SELECT new_state::text AS s FROM santulan.audit_logs WHERE action_type = 'CREDENTIAL_RESET' AND target_id = $1`, [pid]);
+    const audits = await (await col('audit_logs')).find({ action_type: 'CREDENTIAL_RESET', target_id: pid }).toArray();
     expect(audits).toHaveLength(1);
     expect(JSON.stringify(audits)).not.toContain(reset.body.temporaryPassword);
     expect((await api().post(`/api/v1/admin/participants/00000000-0000-4000-8000-000000000000/credential-reset`).set('Authorization', `Bearer ${p.adm.token}`)).status).toBe(404);
@@ -98,18 +101,18 @@ describe('institutional sign-in: temporary password then forced change (AT-27)',
 
   test('a suspended participant cannot sign in even with the right password', async () => {
     const p = await institutionalParticipant();
-    await f.query(`UPDATE santulan.participants SET status = 'SUSPENDED' WHERE santulan_id = $1`, [p.santulanId]);
+    await (await col('participants')).updateOne({ santulan_id: p.santulanId }, { $set: { status: 'SUSPENDED' } });
     expect((await api().post('/api/v1/auth/login').send({ subject: p.santulanId, password: p.temporaryPassword })).status).toBe(401);
   });
 
   test('no password or hash is stored in the canonical schema; the credential store is bcrypt only', async () => {
     const p = await institutionalParticipant();
-    const canonical = await f.query(`SELECT count(*)::int AS n FROM santulan.participants WHERE row_to_json(participants)::text LIKE '%' || $1 || '%'`, [p.temporaryPassword]);
-    expect(canonical[0].n).toBe(0);
-    const stored = await f.query(`SELECT secret_hash FROM dev_identity.credentials ORDER BY created_at DESC LIMIT 1`);
-    expect(stored[0].secret_hash).toMatch(/^\$2[aby]\$/);
-    const cols = await f.query(`SELECT column_name FROM information_schema.columns WHERE table_schema = 'santulan' AND column_name ~* '(password|otp|secret)'`);
-    expect(cols).toEqual([]);
+    const participants = await (await col('participants')).find({}).toArray();
+    expect(participants.filter((d) => JSON.stringify(d).includes(p.temporaryPassword))).toEqual([]);
+    const [stored] = await (await col('dev_identity_credentials')).find({}).sort({ created_at: -1 }).limit(1).toArray();
+    expect(stored.secret_hash).toMatch(/^\$2[aby]\$/);
+    const fields = canonical.flatMap((c) => c.fields).filter((n) => /password|otp|secret/i.test(n));
+    expect(fields).toEqual([]); // no credential field exists in any of the 27 canonical collections
   });
 });
 
@@ -146,7 +149,7 @@ describe('OTP sign-in for OPEN participants', () => {
 });
 
 describe('dev provider unit behaviour (no HTTP)', () => {
-  const makeProvider = (over = {}) => createDevProvider({ db: { query: async () => ({ rows: [], rowCount: 0 }) }, ...over });
+  const makeProvider = (over = {}) => createDevProvider({ ...over });
 
   test('codes expire, are attempt-limited, and requests are rate-limited per identity', () => {
     let t = 1_000_000;

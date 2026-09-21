@@ -20,7 +20,7 @@ jest.mock('../services/santulanApi', () => ({
   api: {
     routeAge: jest.fn(), requestOtp: jest.fn(), verifyOtp: jest.fn(), declareAge: jest.fn(), login: jest.fn(), setPassword: jest.fn(),
     registrationState: jest.fn(), consentGate: jest.fn(), consentRequirements: jest.fn(), attempt: jest.fn(), items: jest.fn(),
-    responses: jest.fn(), resume: jest.fn(), scores: jest.fn(), saveResponse: jest.fn(), pause: jest.fn(), submit: jest.fn(),
+    responses: jest.fn(), resume: jest.fn(), report: jest.fn(), saveResponse: jest.fn(), pause: jest.fn(), submit: jest.fn(),
     grantConsent: jest.fn(), withdrawConsent: jest.fn(), createAttempt: jest.fn(),
   },
 }));
@@ -32,7 +32,21 @@ const PROHIBITED = [
   [/\b(reliable|proven|scientifically)\b/i, 'strength claim'], [/personalised insights?|personalized insights?/i, 'insight promise'],
 ];
 
-const attemptModel = (status) => ({ attemptId: 'a1', status, session: { n: 2, of: 4 }, progress: { completed: 3, total: 3, percent: 100 }, lastSavedAt: '2026-09-20T10:00:00Z', canContinue: true });
+const attemptModel = (status, reportId = null) => ({ attemptId: 'a1', status, session: { n: 2, of: 4 }, progress: { completed: 3, total: 3, percent: 100 }, lastSavedAt: '2026-09-20T10:00:00Z', canContinue: true, reportId });
+
+/** A released report: C1 plotted, C2 not enough data, the rest not enough data; one approved descriptive section. */
+const readyReport = () => ({
+  reportId: 'r1', state: 'REPORT_READY',
+  sections: [
+    { type: 'PROFILE', locale: 'en', contentVersion: 'profile-v1', order: 1, content: JSON.stringify({
+      scale: { min: 1, max: 5 }, context: { questionSet: 'set', revision: 1, developmentalBand: 'D2', assessedOn: '2026-09-20' },
+      domains: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'].map((code) => (code === 'C1'
+        ? { code, name: 'Body & Self-Regulation', display: 'PLOTTED', score: 4.25, completeness: 1, completenessStatus: 'COMPLETE' }
+        : { code, name: code, display: 'NOT_ENOUGH_DATA', score: null, completeness: null, completenessStatus: null, message: 'Not enough data yet' })),
+    }) },
+    { type: 'MEANING', domain: 'C1', locale: 'en', contentVersion: 'v1', order: 2, content: 'This area is about how you notice and work with your body.' },
+  ],
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -43,13 +57,12 @@ beforeEach(() => {
     { consentId: 'c1', consentType: 'STUDENT_ASSENT', status: 'PENDING', giverRelationship: 'SELF' },
     { consentId: 'c2', consentType: 'PARENT_GUARDIAN_CONSENT', status: 'VERIFIED', giverRelationship: 'PARENT' },
   ] });
-  api.items.mockResolvedValue({ scale: { points: 5, anchors: { 1: 'Almost never', 2: 'Rarely', 3: 'Sometimes', 4: 'Often', 5: 'Almost always' } }, items: [
-    { itemId: 'i1', order: 1, domainCode: 'C1', text: 'I notice when my body feels tense.' }, { itemId: 'i2', order: 2, domainCode: 'C2', text: 'I can name how I feel.' },
+  const five = ['Almost never', 'Rarely', 'Sometimes', 'Often', 'Almost always'].map((text, i) => ({ position: i + 1, text }));
+  api.items.mockResolvedValue({ items: [
+    { itemId: 'i1', order: 1, domainCode: 'C1', text: 'I notice when my body feels tense.', options: five }, { itemId: 'i2', order: 2, domainCode: 'C2', text: 'I can name how I feel.', options: [{ position: 1, text: 'Yes' }, { position: 2, text: 'No' }] },
   ] });
   api.responses.mockResolvedValue({ responses: [{ itemId: 'i1', value: '3', version: 1 }] });
-  api.scores.mockResolvedValue({ scores: [
-    { domainCode: 'C1', score: 4.25, completeness: 1, evidenceState: 'S2' }, { domainCode: 'C2', score: null, completeness: 0.5, evidenceState: 'S2' },
-  ] });
+  api.report.mockResolvedValue(readyReport());
 });
 
 const SCREENS = [
@@ -81,12 +94,12 @@ describe('prohibited-claims scan (T118)', () => {
 
   test('the released results view shows real values and "Not enough data" for a null domain, and passes the same scan', async () => {
     api.registrationState.mockResolvedValue({ santulanId: 'STN-ABCDEFGHJKMNPQRSTVWX', participationRoute: 'OPEN', assessmentTrack: 'ADOLESCENT', isMinor: false, attempt: { attemptId: 'a1', status: 'REPORT_READY' } });
-    api.attempt.mockResolvedValue(attemptModel('REPORT_READY'));
+    api.attempt.mockResolvedValue(attemptModel('REPORT_READY', 'r1'));
     const { container } = renderPage(<ResultsPage />);
     await screen.findByText(/on a scale from 1.00 to 5.00/);
     const text = pageText(container);
     expect(text).toMatch(/4.25/);
-    expect(text).toMatch(/Not enough data/);
+    expect(text).toMatch(/Not enough data yet/);
     expect(container.querySelector('svg[role="img"]')).not.toBeNull();
     for (const [pattern, label] of PROHIBITED) expect({ label, hit: (text.match(pattern) || [])[0] || null }).toEqual({ label, hit: null });
   });
@@ -96,6 +109,6 @@ describe('prohibited-claims scan (T118)', () => {
     api.attempt.mockResolvedValue(attemptModel('QUALITY_HOLD'));
     renderPage(<ResultsPage />);
     expect(await screen.findByText('Your responses are being reviewed.')).toBeInTheDocument();
-    expect(api.scores).not.toHaveBeenCalled();
+    expect(api.report).not.toHaveBeenCalled();
   });
 });

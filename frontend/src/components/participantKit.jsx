@@ -122,7 +122,8 @@ export function RadarChart({ axes }) {
         {axes.map((a) => (
           <li key={a.code} className={styles.rowBetween}>
             <span>{a.code} {a.name}</span>
-            <strong>{a.score == null ? 'Not enough data' : a.score.toFixed(2)}</strong>
+            <strong>{a.score == null ? (a.message || 'Not enough data yet') : a.score.toFixed(2)}</strong>
+            {a.score != null && a.note && <span className={styles.muted}>{a.note}</span>}
           </li>
         ))}
       </ul>

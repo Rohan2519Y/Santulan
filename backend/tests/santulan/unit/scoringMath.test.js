@@ -1,59 +1,84 @@
-/*
- * T090 — scoring arithmetic against KNOWN VECTORS (BUILD 06 §3, §6). The scorer lives in the database (server-only), so the
- * vectors run through santulan.score_attempt in the rolled-back harness; the expected values are computed here in JS from the
- * committed catalog files, independently of the SQL. Denominators are the eligible items of the attempt's own frozen version.
- */
-const { withTx } = require('../harness');
-const F = require('../helpers/scoringFixtures');
+/* Scoring arithmetic (B06; SC-015, SC-016): the scoring master's worked examples, the boundary table, and the option-position rule. Pure. */
+const { scoreDomain, completenessStatus, decideEvidence, round2 } = require('../../../src/modules/santulan/domain/scoringRules');
+const { optionValue } = require('../../../src/modules/santulan/domain/optionScale');
 
-const ENUM_EXPECTED = {
-  [F.ADOL]: { C1: 24, C2: 24, C3: 24, C4: 10, C5: 14, C6: 20, C7: 59 },
-  [F.EA]: { C1: 23, C2: 21, C3: 24, C4: 10, C5: 14, C6: 20, C7: 59 },
-};
+const five = (positions) => positions.map((position) => ({ position, optionCount: 5 }));
 
-describe.each([F.ADOL, F.EA])('domain means for %s', (label) => {
-  test('eligible-item denominators match the frozen catalog', () => {
-    for (const [d, n] of Object.entries(ENUM_EXPECTED[label])) expect(F.eligibleCount(label, d)).toBe(n);
+describe('master worked examples A-D (SC-015)', () => {
+  test('A: 8 eligible, answered 4,4,3,5,4,3,4,5 -> mean 4.00 COMPLETE', () => {
+    expect(scoreDomain({ eligible: 8, answers: five([4, 4, 3, 5, 4, 3, 4, 5]) })).toEqual({ eligibleItems: 8, validItems: 8, completenessStatus: 'COMPLETE', completenessRate: 1, rawScore: 4 });
   });
+  test('B: 10 eligible, 9 valid 4,3,5,4,4,3,4,5,4 -> completeness 0.9, sum 36, mean 4.00 COMPLETE_WITH_MISSING (no imputation)', () => {
+    const r = scoreDomain({ eligible: 10, answers: five([4, 3, 5, 4, 4, 3, 4, 5, 4]) });
+    expect(r).toEqual({ eligibleItems: 10, validItems: 9, completenessStatus: 'COMPLETE_WITH_MISSING', completenessRate: 0.9, rawScore: 4 });
+  });
+  test('C: 8 of 10 answered -> completeness 0.8 INCOMPLETE, score kept for research', () => {
+    const r = scoreDomain({ eligible: 10, answers: five([5, 5, 5, 5, 5, 5, 5, 5]) });
+    expect(r).toMatchObject({ validItems: 8, completenessStatus: 'INCOMPLETE', completenessRate: 0.8, rawScore: 5 });
+  });
+  test('D: 6 of 10 answered -> completeness 0.6 INSUFFICIENT, no score', () => {
+    const r = scoreDomain({ eligible: 10, answers: five([3, 3, 3, 3, 3, 3]) });
+    expect(r).toMatchObject({ validItems: 6, completenessStatus: 'INSUFFICIENT', completenessRate: 0.6, rawScore: null });
+  });
+  test('nothing answered is INSUFFICIENT with no score (never a score of 1)', () => {
+    expect(scoreDomain({ eligible: 10, answers: [] })).toMatchObject({ validItems: 0, completenessStatus: 'INSUFFICIENT', rawScore: null, completenessRate: 0 });
+  });
+});
 
-  test('all answers 1 -> every domain mean 1.00, complete, one row per domain (A01, A07, A08, A10)', () => withTx(async (tx) => {
-    const s = await F.submittedAttempt(tx, { label, value: () => '1', quality: 'CLEAR' });
-    expect((await F.score(tx, s.a.attempt_id)).outcome).toBe('SCORED');
-    const rows = await F.scoreRows(tx, s.a.attempt_id);
-    expect(rows.map((r) => r.domain_code)).toEqual(F.DOMAINS);
-    for (const r of rows) expect([r.raw_score, r.completeness_rate, r.score_status]).toEqual(['1.00', '1.0000', 'S1']);
-  }));
+describe('B06-011..015 the boundary table is exact integer arithmetic', () => {
+  test.each([
+    [10, 10, 'COMPLETE'], [9, 10, 'COMPLETE_WITH_MISSING'], [8, 10, 'INCOMPLETE'], [7, 10, 'INCOMPLETE'], [6, 10, 'INSUFFICIENT'], [0, 10, 'INSUFFICIENT'],
+    [4, 5, 'INCOMPLETE'], [3, 5, 'INSUFFICIENT'], [5, 8, 'INCOMPLETE'], [6, 8, 'INCOMPLETE'], [7, 8, 'COMPLETE_WITH_MISSING'], [1, 1, 'COMPLETE'], [1, 2, 'INSUFFICIENT'],
+    [61, 100, 'INCOMPLETE'], [60, 100, 'INSUFFICIENT'], [80, 100, 'INCOMPLETE'], [81, 100, 'COMPLETE_WITH_MISSING'],
+  ])('%i of %i -> %s', (valid, eligible, status) => {
+    expect(completenessStatus(valid, eligible)).toBe(status);
+  });
+  test('exactly 60 percent is INSUFFICIENT and exactly 80 percent is INCOMPLETE, whatever the size of the domain', () => {
+    for (const eligible of [5, 10, 15, 20, 25, 50, 100]) {
+      expect(completenessStatus((eligible * 60) / 100, eligible)).toBe('INSUFFICIENT');
+      expect(completenessStatus((eligible * 80) / 100, eligible)).toBe('INCOMPLETE');
+    }
+  });
+  test('invalid inputs are refused', () => {
+    expect(() => completenessStatus(11, 10)).toThrow(RangeError);
+    expect(() => completenessStatus(-1, 10)).toThrow(RangeError);
+    expect(() => completenessStatus(0, 0)).toThrow(RangeError);
+    expect(() => completenessStatus(1.5, 10)).toThrow(RangeError);
+  });
+});
 
-  test('all answers 5 -> every domain mean 5.00', () => withTx(async (tx) => {
-    const s = await F.submittedAttempt(tx, { label, value: () => '5', quality: 'CLEAR' });
-    await F.score(tx, s.a.attempt_id);
-    expect((await F.scoreRows(tx, s.a.attempt_id)).map((r) => r.raw_score)).toEqual(Array(7).fill('5.00'));
-  }));
+describe('B06-070 the option-position rule inside a domain mean', () => {
+  test('mixed option counts: a 3-option last answer, a 2-option last answer and a 5-option last answer all count as 5', () => {
+    const r = scoreDomain({ eligible: 3, answers: [{ position: 3, optionCount: 3 }, { position: 2, optionCount: 2 }, { position: 5, optionCount: 5 }] });
+    expect(r.rawScore).toBe(5);
+    expect(scoreDomain({ eligible: 3, answers: [{ position: 1, optionCount: 3 }, { position: 1, optionCount: 2 }, { position: 1, optionCount: 20 }] }).rawScore).toBe(1);
+  });
+  test('the middle of 3 options and the middle of 9 options both count as 3', () => {
+    expect(scoreDomain({ eligible: 2, answers: [{ position: 2, optionCount: 3 }, { position: 5, optionCount: 9 }] }).rawScore).toBe(3);
+  });
+  test('the mean is rounded to two decimals, half up, without floating point drift', () => {
+    expect(round2(2.675)).toBe(2.68);
+    expect(round2(1.005)).toBe(1.01);
+    expect(round2(4)).toBe(4);
+    // 4 options: values 1, 2.333.., 3.666.., 5
+    expect(scoreDomain({ eligible: 3, answers: [{ position: 2, optionCount: 4 }, { position: 3, optionCount: 4 }, { position: 4, optionCount: 4 }] }).rawScore).toBe(3.67);
+  });
+  test('every score is inside 1.00-5.00 and equals the mean of the position values (2, 3, 5, 9, 20 options)', () => {
+    for (const n of [2, 3, 5, 9, 20]) {
+      const answers = Array.from({ length: n }, (_, i) => ({ position: i + 1, optionCount: n }));
+      const r = scoreDomain({ eligible: n, answers });
+      expect(r.rawScore).toBeGreaterThanOrEqual(1);
+      expect(r.rawScore).toBeLessThanOrEqual(5);
+      expect(r.rawScore).toBe(3); // an even spread of positions averages to the midpoint of the scale
+      expect(optionValue(1, n)).toBe(1);
+    }
+  });
+});
 
-  test('a mixed vector matches hand-computed (JS) means; means are rounded to 2 decimals', () => withTx(async (tx) => {
-    const value = (r) => String(((Number(r.display_order) * 7 + r.item_code.length) % 5) + 1);
-    const s = await F.submittedAttempt(tx, { label, value, quality: 'CLEAR' });
-    await F.score(tx, s.a.attempt_id);
-    const rows = await F.scoreRows(tx, s.a.attempt_id);
-    const expected = F.expectedMeans(label, value);
-    expect(Object.fromEntries(rows.map((r) => [r.domain_code, r.raw_score]))).toEqual(expected);
-    expect(new Set(Object.values(expected)).size).toBeGreaterThan(1);                          // the vector really varies by domain
-  }));
-
-  test('only the CURRENT response version of an item is used (A01)', () => withTx(async (tx) => {
-    const s = await F.submittedAttempt(tx, { label, value: () => '2' });
-    // revise the first C1 item 2 -> 5 as a new immutable version, before quality/scoring (attempt is SUBMITTED, so use the owner path)
-    const first = s.items.find((i) => i.domain_code === 'C1');
-    const old = await tx.one('SELECT response_id FROM santulan.responses WHERE attempt_id = $1 AND item_id = $2', [s.a.attempt_id, first.item_id]);
-    await tx.exec('SET LOCAL session_replication_role = replica');
-    await tx.exec('UPDATE santulan.responses SET is_current = false WHERE response_id = $1', [old.response_id]);
-    await tx.exec(`INSERT INTO santulan.responses (attempt_id, item_id, response_value, response_version, is_current, supersedes_response_id, idempotency_key)
-                   VALUES ($1, $2, '5', 2, true, $3, 'fixture-revision-1')`, [s.a.attempt_id, first.item_id, old.response_id]);
-    await tx.exec("SET LOCAL session_replication_role = 'origin'");
-    await F.qualityEvent(tx, s.a.attempt_id, 'CLEAR');
-    await F.score(tx, s.a.attempt_id);
-    const c1 = (await F.scoreRows(tx, s.a.attempt_id))[0];
-    const n = F.eligibleCount(label, 'C1');
-    expect(c1.raw_score).toBe(((2 * (n - 1) + 5) / n).toFixed(2));
-  }));
+describe('evidence decision keeps the score and the state apart', () => {
+  test('the score never depends on the switches', () => {
+    expect(scoreDomain({ eligible: 2, answers: five([4, 4]) }).rawScore).toBe(4);
+    expect(decideEvidence('C1', 'COMPLETE', {}, {})).toBe('S1');
+    expect(decideEvidence('C1', 'COMPLETE', {}, { pilotS2: true })).toBe('S2');
+  });
 });

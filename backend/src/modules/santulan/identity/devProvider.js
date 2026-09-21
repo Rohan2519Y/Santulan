@@ -3,18 +3,25 @@
  * itself never stores passwords or OTPs in the canonical schema (BUILD 03, Constitution VIII).
  *
  *  - OTP: in-memory, never persisted, single use, expires (default 10 min), attempt- and rate-limited per identity.
- *  - Passwords / temporary credentials: bcrypt hashes in dev_identity.credentials (created by scripts/dev-identity-setup.js,
- *    outside the 28 canonical tables). A temporary credential has must_change = true; setting a new password clears it and
+ *  - Passwords / temporary credentials: bcrypt hashes in the dev-only collection `dev_identity_credentials` (outside the 27
+ *    canonical collections, CR-006-7). A temporary credential has must_change = true; setting a new password clears it and
  *    the old secret can never be used again.
  */
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const store = require('../store');
+const devIdentity = require('../store/repositories/devIdentity');
 
 const PROVIDER = 'santulan-dev';
 const OTP_PROVIDER = 'santulan-dev-otp';
 const DUMMY_HASH = bcrypt.hashSync('no-such-credential', 10);
 
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+
+/** Credential-version claim (SEC-29): a millisecond-precise fingerprint of the credential's updated_at. */
+const credentialVersion = (updatedAt) => (updatedAt ? sha256(String(new Date(updatedAt).getTime())) : undefined);
+
+const asSystem = (fn) => store.withScope(store.systemScope(), fn, { transaction: true });
 
 /** Normalises an OTP identity to a stable, non-reversible provider subject. */
 function otpSubject(channel, identity) {
@@ -35,7 +42,7 @@ function generateTemporaryPassword() {
   return `${out}7`; // always contains letters and a digit
 }
 
-function createDevProvider({ db, now = () => Date.now(), otpTtlMs = 10 * 60 * 1000, otpMaxAttempts = 5, otpMaxRequestsPerHour = 5, log = () => {} } = {}) {
+function createDevProvider({ now = () => Date.now(), otpTtlMs = 10 * 60 * 1000, otpMaxAttempts = 5, otpMaxRequestsPerHour = 5, log = () => {} } = {}) {
   const otps = new Map();      // subject -> { hash, expiresAt, attempts }
   const requests = new Map();  // subject -> [timestamps]
 
@@ -73,21 +80,17 @@ function createDevProvider({ db, now = () => Date.now(), otpTtlMs = 10 * 60 * 10
 
     // ------------------------------------------------------------ passwords / temporary credentials
     async authenticate(subjectId, password) {
-      const { rows } = await db.query('SELECT secret_hash, must_change, status FROM dev_identity.credentials WHERE provider = $1 AND subject_id = $2', [PROVIDER, subjectId]);
-      const row = rows[0];
-      const ok = await bcrypt.compare(String(password || ''), row ? row.secretHash : DUMMY_HASH);   // equal timing for unknown ids
+      const row = await store.withScope(store.systemScope(), (tx) => devIdentity.findCredential(tx, PROVIDER, subjectId));
+      const ok = await bcrypt.compare(String(password || ''), row ? row.secretHash : DUMMY_HASH); // equal timing for unknown ids
       if (!row || !ok || row.status !== 'active') return { ok: false, mustChange: false };
-      return { ok: true, mustChange: row.mustChange };
+      return { ok: true, mustChange: row.mustChange, updatedAt: row.updatedAt };
     },
 
     /** Issues a new temporary credential; any previous secret stops working immediately. The plaintext is returned once. */
     async issueTemporaryCredential(subjectId) {
       const temp = generateTemporaryPassword();
-      await db.query(
-        `INSERT INTO dev_identity.credentials (provider, subject_id, secret_hash, must_change, status) VALUES ($1, $2, $3, true, 'active')
-         ON CONFLICT (provider, subject_id) DO UPDATE SET secret_hash = EXCLUDED.secret_hash, must_change = true, status = 'active', updated_at = now()`,
-        [PROVIDER, subjectId, await bcrypt.hash(temp, 10)],
-      );
+      const hash = await bcrypt.hash(temp, 10);
+      await asSystem((tx) => devIdentity.upsertTemporary(tx, PROVIDER, subjectId, hash));
       return temp;
     },
 
@@ -96,18 +99,14 @@ function createDevProvider({ db, now = () => Date.now(), otpTtlMs = 10 * 60 * 10
       const problem = passwordProblem(newPassword);
       if (problem) return { ok: false, problem };
       const hash = await bcrypt.hash(newPassword, 10);
-      const { rowCount } = await db.query(
-        `UPDATE dev_identity.credentials SET secret_hash = $3, must_change = false, updated_at = now()
-          WHERE provider = $1 AND subject_id = $2 AND must_change = true AND status = 'active'`,
-        [PROVIDER, subjectId, hash],
-      );
-      return { ok: rowCount > 0, problem: rowCount > 0 ? null : 'no temporary credential to replace' };
+      const r = await asSystem((tx) => devIdentity.replaceTemporary(tx, PROVIDER, subjectId, hash));
+      return { ok: r.ok, problem: r.ok ? null : 'no temporary credential to replace', updatedAt: r.updatedAt };
     },
 
     async revoke(subjectId) {
-      await db.query(`UPDATE dev_identity.credentials SET status = 'disabled', updated_at = now() WHERE provider = $1 AND subject_id = $2`, [PROVIDER, subjectId]);
+      await asSystem((tx) => devIdentity.disableCredential(tx, PROVIDER, subjectId));
     },
   };
 }
 
-module.exports = { createDevProvider, PROVIDER, OTP_PROVIDER, otpSubject, passwordProblem };
+module.exports = { createDevProvider, PROVIDER, OTP_PROVIDER, otpSubject, passwordProblem, credentialVersion };

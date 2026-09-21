@@ -8,7 +8,9 @@
 const fs = require('fs');
 const config = require('../../../config');
 
-const ALLOWED = new Set(['S1', 'S2', 'SH']);
+// The file can HOLD (SH), PIN to research-only (S1) or - with the advanced-evidence switch - assign S3-S5. It can NEVER promote a
+// domain to S2 (only the audited pilot-S2 switch does) and S0 cannot be configured (feature 006, scoring master).
+const ALLOWED = new Set(['S1', 'SH', 'S3', 'S4', 'S5']);
 const DOMAINS = new Set(['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']);
 class EvidenceConfigError extends Error {}
 

@@ -10,13 +10,13 @@ describe('age routing (T03-001…006, AT-B00-01/02/03)', () => {
   });
   test.each([13, 15, 17])('T03-002/003 age %i routes to ADOLESCENT, minor, parent consent + student assent', (age) => {
     expect(resolveAgeRoute(age)).toEqual({
-      eligible: true, assessmentTrack: 'ADOLESCENT', isMinor: true, versionLabel: 'santulan-adolescent-pilot-v3.1',
+      eligible: true, assessmentTrack: 'ADOLESCENT', isMinor: true,
       requiredConsents: ['PARENT_GUARDIAN_CONSENT', 'STUDENT_ASSENT'],
     });
   });
   test.each([18, 21, 25])('T03-004/005 age %i routes to EMERGING_ADULT, adult, self-consent only', (age) => {
     expect(resolveAgeRoute(age)).toEqual({
-      eligible: true, assessmentTrack: 'EMERGING_ADULT', isMinor: false, versionLabel: 'santulan-emergingadult-pilot-v3.1',
+      eligible: true, assessmentTrack: 'EMERGING_ADULT', isMinor: false,
       requiredConsents: ['ADULT_SELF_CONSENT'],
     });
   });

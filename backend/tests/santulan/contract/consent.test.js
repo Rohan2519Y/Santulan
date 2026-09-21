@@ -4,7 +4,8 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const db = require('../../../src/shared/db');
+const { closeClient } = require('../../../src/modules/santulan/store/client');
+const H = require('../helpers/mongoHarness');
 const config = require('../../../src/config');
 const f = require('../helpers/committed');
 const { setWithdrawalHook, defaultHook } = require('../../../src/modules/santulan/consent/withdrawalHook');
@@ -14,12 +15,13 @@ const PROTO = 'TEST-PROTOCOL-1';
 const INTERNAL = { 'X-Internal-Api-Key': 'test-internal-key' };
 const key = () => `idem-${f.u()}-${f.u()}`;
 
-afterAll(async () => { await db.pool.end(); });
+afterAll(async () => { await f.cleanupFixtures(); await closeClient(); await H.closeAll(); });
+const col = async (name) => (await f.db()).collection(name);
 
 async function participant(age) {
   const res = await api().post('/api/v1/registrations/open').set('Idempotency-Key', key()).send({ age });
   expect(res.status).toBe(201);
-  const pid = (await f.query('SELECT participant_id FROM santulan.participants WHERE santulan_id = $1', [res.body.santulanId]))[0].participant_id;
+  const pid = (await (await col('participants')).findOne({ santulan_id: res.body.santulanId }))._id;
   return { pid, token: f.participantToken(pid) };
 }
 const bearer = (t) => ({ Authorization: `Bearer ${t}` });
@@ -71,9 +73,8 @@ describe('minor: both records VERIFIED open the gate, and the gate never creates
     expect((await verify(parent.consentId)).status).toBe(200);
     expect((await gate(p)).body).toEqual({ open: true, missingTypes: [] });
 
-    const attempts = await f.query('SELECT count(*)::int AS n FROM santulan.assessment_attempts WHERE participant_id = $1', [p.pid]);
-    expect(attempts[0].n).toBe(0);                                                                            // consent is necessary, not sufficient
-    const stored = await f.query('SELECT status, verification_method FROM santulan.consents WHERE participant_id = $1 ORDER BY consent_type', [p.pid]);
+    expect(await (await col('assessment_attempts')).countDocuments({ participant_id: p.pid })).toBe(0);                                                                            // consent is necessary, not sufficient
+    const stored = (await (await col('consents')).find({ participant_id: p.pid }).sort({ consent_type: 1 }).toArray()).map((c) => ({ status: c.status, verification_method: c.verification_method }));
     expect(stored).toEqual([{ status: 'VERIFIED', verification_method: 'TEST_METHOD_A' }, { status: 'VERIFIED', verification_method: 'TEST_METHOD_A' }]);
   });
 
@@ -90,7 +91,7 @@ describe('minor: both records VERIFIED open the gate, and the gate never creates
 describe('creation rules (T04-005…010, 013, 028; §13)', () => {
   test('unapproved protocol, delegated giver, wrong type for age, wrong giver and duplicates are refused with no row created', async () => {
     const minor = await participant(14); const adult = await participant(19);
-    const rows = async (pid) => (await f.query('SELECT count(*)::int AS n FROM santulan.consents WHERE participant_id = $1', [pid]))[0].n;
+    const rows = async (pid) => (await col('consents')).countDocuments({ participant_id: pid });
 
     const unapproved = await create({ participantId: minor.pid, consentType: 'STUDENT_ASSENT', giverRelationship: 'SELF', protocolVersion: 'NOT-APPROVED' });
     expect(unapproved.status).toBe(422); expect(unapproved.body.error.code).toBe('PROTOCOL_UNAPPROVED');
@@ -134,8 +135,8 @@ describe('verification method is an approved code, never evidence (T04-023…026
       const res = await verify(c.consentId, method);
       expect(res.status).toBe(method.length > 64 ? 400 : 422);
       expect(JSON.stringify(res.body)).not.toContain(method);   // the value is never echoed back
-      const row = (await f.query('SELECT status, verification_method FROM santulan.consents WHERE consent_id = $1', [c.consentId]))[0];
-      expect(row).toEqual({ status: 'GRANTED', verification_method: null });
+      const row = await (await col('consents')).findOne({ _id: c.consentId });
+      expect({ status: row.status, verification_method: row.verification_method }).toEqual({ status: 'GRANTED', verification_method: null });
     });
 
   test('audit rows carry ids and states only', async () => {
@@ -143,7 +144,7 @@ describe('verification method is an approved code, never evidence (T04-023…026
     const c = (await create({ participantId: p.pid, consentType: 'ADULT_SELF_CONSENT', giverRelationship: 'SELF' })).body;
     await api().post(`/api/v1/consents/${c.consentId}/grant`).set(bearer(p.token)).send({});
     await verify(c.consentId, 'TEST_METHOD_A');
-    const audits = await f.query(`SELECT action_type, actor_type, new_state::text AS s FROM santulan.audit_logs WHERE target_id = $1 ORDER BY occurred_at, action_type`, [c.consentId]);
+    const audits = (await (await col('audit_logs')).find({ target_id: c.consentId }).sort({ occurred_at: 1, action_type: 1 }).toArray()).map((a) => ({ action_type: a.action_type, actor_type: a.actor_type, s: JSON.stringify(a.new_state) }));
     expect(audits.map((a) => a.action_type)).toEqual(['CONSENT_CREATED', 'CONSENT_GRANTED', 'CONSENT_VERIFIED']);
     expect(audits.map((a) => a.actor_type)).toEqual(['SYSTEM', 'PARTICIPANT', 'SYSTEM']);
     expect(JSON.stringify(audits)).not.toMatch(/@|[0-9]{6}|token|otp/i);
@@ -163,14 +164,14 @@ describe('withdrawal (T04-011…017, 021, 033, 034; §11)', () => {
 
     const calls = [];
     setHook(async (tx, ctx) => { calls.push(ctx); });
-    const responsesBefore = (await f.query('SELECT count(*)::int AS n FROM santulan.responses'))[0].n;
+    const responsesBefore = await (await col('responses')).countDocuments({});
     const w = await api().post(`/api/v1/consents/${c.consentId}/withdraw`).set(bearer(p.token)).send({});
     expect(w.status).toBe(200);
     expect(w.body).toMatchObject({ status: 'WITHDRAWN', gateOpen: false });
     expect(calls).toHaveLength(1);
     expect(calls[0]).toMatchObject({ participantId: p.pid, consentId: c.consentId });
     expect((await gate(p)).body).toEqual({ open: false, missingTypes: ['ADULT_SELF_CONSENT'] });
-    expect((await f.query('SELECT count(*)::int AS n FROM santulan.responses'))[0].n).toBe(responsesBefore);
+    expect(await (await col('responses')).countDocuments({})).toBe(responsesBefore);
 
     for (const path of ['grant', 'withdraw']) {
       const again = await api().post(`/api/v1/consents/${c.consentId}/${path}`).set(INTERNAL).send({});
@@ -185,7 +186,7 @@ describe('withdrawal (T04-011…017, 021, 033, 034; §11)', () => {
     const p = await participant(17);
     const c = (await create({ participantId: p.pid, consentType: 'STUDENT_ASSENT', giverRelationship: 'SELF' })).body;
     expect((await api().post(`/api/v1/consents/${c.consentId}/withdraw`).set(bearer(p.token)).send({})).status).toBe(200);   // PENDING -> WITHDRAWN
-    const audits = await f.query(`SELECT action_type FROM santulan.audit_logs WHERE target_id = $1 ORDER BY occurred_at, action_type`, [c.consentId]);
+    const audits = await (await col('audit_logs')).find({ target_id: c.consentId }).sort({ occurred_at: 1, action_type: 1 }).toArray();
     expect(audits.map((a) => a.action_type).sort()).toEqual(['CONSENT_CREATED', 'CONSENT_WITHDRAWAL_WORKFLOW_PENDING', 'CONSENT_WITHDRAWN']);   // last two share one transaction
   });
 
@@ -196,6 +197,6 @@ describe('withdrawal (T04-011…017, 021, 033, 034; §11)', () => {
     expect((await api().post(`/api/v1/consents/${c.consentId}/withdraw`).set(bearer(b.token)).send({})).status).toBe(404);
     expect((await api().get('/api/v1/consents/requirements').set(bearer(b.token))).body.consents).toEqual([]);
     expect((await api().post('/api/v1/consents/not-a-uuid/withdraw').set(bearer(b.token)).send({})).status).toBe(404);
-    expect((await f.query('SELECT status FROM santulan.consents WHERE consent_id = $1', [c.consentId]))[0].status).toBe('PENDING');
+    expect((await (await col('consents')).findOne({ _id: c.consentId })).status).toBe('PENDING');
   });
 });

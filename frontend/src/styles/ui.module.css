@@ -15,6 +15,7 @@
 .h1 { font-family: var(--font-serif); font-size: var(--fs-hero); line-height: var(--lh-tight); color: var(--c-ink-strong); margin: 0 0 var(--sp-4); }
 .h2 { font-family: var(--font-serif); font-size: var(--fs-2xl); line-height: var(--lh-tight); color: var(--c-ink-strong); margin: 0 0 var(--sp-3); }
 .h3 { font-family: var(--font-serif); font-size: var(--fs-lg); color: var(--c-ink-strong); margin: 0 0 var(--sp-2); }
+.h4 { font-family: var(--font-sans, inherit); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-ink-strong); margin: 0 0 var(--sp-1); }
 .lead { font-size: var(--fs-md); line-height: var(--lh-relaxed); color: var(--c-ink-muted); max-width: 60ch; margin: 0 0 var(--sp-5); }
 .muted { color: var(--c-ink-muted); }
 .script { font-family: var(--font-script); font-size: var(--fs-lg); color: var(--c-brand); }

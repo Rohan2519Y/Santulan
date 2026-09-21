@@ -1,0 +1,7 @@
+{
+  "version": "growth-ranking-research-v0",
+  "status": "RESEARCH_STAGE_NOT_VALIDATED",
+  "note": "Weights are configuration parameters for pilot comparison, not validated psychometric cutoffs (BUILD 07 PG-04, audit B07-AUD-009). Do not treat any value here as approved.",
+  "weights": { "evidence": 1, "need": 1, "completeness": 1 },
+  "evidenceValues": { "S2": 0.5, "S3": 0.7, "S4": 0.85, "S5": 1 }
+}

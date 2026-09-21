@@ -1,13 +1,20 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, FileUp, SlidersHorizontal, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, ClipboardList, ShieldAlert, FileText, ListChecks, SlidersHorizontal, Download, ScrollText, ToggleRight, LogOut, Menu, X } from 'lucide-react';
 import styles from './AdminLayout.module.css';
 
 export const NAV_ITEMS = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/admin/participants', label: 'Participants', icon: Users },
+  { to: '/admin/institutions', label: 'Institutions', icon: Building2 },
   { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList },
-  { to: '/admin/item-pools', label: 'Item pools', icon: FileUp },
-  { to: '/admin/participation', label: 'Participation', icon: SlidersHorizontal },
+  { to: '/admin/quality-review', label: 'Quality review', icon: ShieldAlert },
+  { to: '/admin/reports', label: 'Reports', icon: FileText },
+  { to: '/admin/question-sets', label: 'Question sets', icon: ListChecks },
+  { to: '/admin/participation', label: 'Assessment control', icon: SlidersHorizontal },
+  { to: '/admin/exports', label: 'Research exports', icon: Download },
+  { to: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
+  { to: '/admin/release-flags', label: 'Release switches', icon: ToggleRight },
 ];
 
 /**

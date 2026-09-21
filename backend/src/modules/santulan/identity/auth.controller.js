@@ -6,11 +6,13 @@
 const { z } = require('zod');
 const { HttpError } = require('../../../shared/errors');
 const { strictObject } = require('../shared/http');
-const { withSystemTx, withCanonicalTx } = require('../context/canonicalTx');
+const store = require('../store');
+const identity = require('../store/repositories/identity');
 const { writeAudit } = require('../audit/auditService');
 const { signToken, verifyPurposeToken } = require('../../../shared/middleware/auth');
 const { SANTULAN_ID_PATTERN } = require('../registration/santulanId');
 const { getProvider } = require('./index');
+const { credentialVersion } = require('./devProvider');
 
 const channel = z.enum(['email', 'mobile']);
 const requestOtpSchema = strictObject({ channel, identity: z.string().min(3).max(254) });
@@ -18,16 +20,20 @@ const verifyOtpSchema = strictObject({ channel, identity: z.string().min(3).max(
 const loginSchema = strictObject({ subject: z.string().min(1).max(128), password: z.string().min(1).max(200) });
 const setPasswordSchema = strictObject({ newPassword: z.string().min(1).max(200) });
 
-const sessionFor = (r) => (r.participantId
-  ? signToken({ sub: r.participantId, role: 'participant', participantId: r.participantId })
+// Credential-version claim (SEC-29): a session token records the dev credential's updated_at (millisecond-precise) as a
+// hash; the middleware re-checks it, so even an immediate password reset revokes every earlier session.
+const pvFor = credentialVersion;
+
+const sessionFor = (r, pv) => (r.participantId
+  ? signToken({ sub: r.participantId, role: 'participant', participantId: r.participantId, ...(pv ? { pv } : {}) })
   : signToken({ sub: r.adminUserId, role: 'admin', adminUserId: r.adminUserId }));
 
 /** Resolves the canonical participant or active admin bound to a provider subject; null when none. */
 async function resolveSubject(provider, subject) {
-  return withSystemTx(async (tx) => {
-    const p = (await tx.query(`SELECT participant_id, status FROM santulan.participants WHERE auth_provider = $1 AND auth_provider_subject_id = $2`, [provider, subject])).rows[0];
+  return store.withScope(store.systemScope(), async (tx) => {
+    const p = await identity.findParticipantByAuthSubject(tx, provider, subject);
     if (p) return p.status === 'ACTIVE' ? { participantId: p.participantId } : null;
-    const a = (await tx.query(`SELECT admin_user_id, status FROM santulan.admin_users WHERE auth_provider = $1 AND auth_provider_subject_id = $2`, [provider, subject])).rows[0];
+    const a = await identity.findAdminByAuthSubject(tx, provider, subject);
     return a && a.status === 'ACTIVE' ? { adminUserId: a.adminUserId } : null;
   });
 }
@@ -35,8 +41,10 @@ async function resolveSubject(provider, subject) {
 /** A user types their Santulan ID; the credential is stored under the provider subject bound to that participant. */
 async function credentialSubject(provider, typed) {
   if (!SANTULAN_ID_PATTERN.test(typed)) return typed;
-  const row = await withSystemTx(async (tx) => (await tx.query(
-    'SELECT auth_provider_subject_id FROM santulan.participants WHERE santulan_id = $1 AND auth_provider = $2', [typed, provider.PROVIDER])).rows[0]);
+  const row = await store.withScope(store.systemScope(), async (tx) => {
+    const p = await identity.findParticipantBySantulanId(tx, typed);
+    return p && p.authProvider === provider.PROVIDER ? p : null;
+  });
   return row ? row.authProviderSubjectId : `unknown:${typed}`; // unknown ids still pay the same hashing cost
 }
 
@@ -72,7 +80,7 @@ async function login(req, res, next) {
     if (auth.mustChange) {
       return res.json({ mustSetPassword: true, setPasswordToken: signToken({ sub: subject, purpose: 'set-password', subject }, '15m') });
     }
-    return res.json({ accessToken: sessionFor(who) });
+    return res.json({ accessToken: sessionFor(who, pvFor(auth.updatedAt)) });
   } catch (err) { return next(err); }
 }
 
@@ -87,7 +95,7 @@ async function setPassword(req, res, next) {
     if (!result.ok) throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid token');
     const who = await resolveSubject(provider.PROVIDER, subject);
     if (!who) throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid token');
-    res.json({ accessToken: sessionFor(who) });
+    res.json({ accessToken: sessionFor(who, pvFor(result.updatedAt)) });
   } catch (err) { next(err); }
 }
 
@@ -95,13 +103,12 @@ async function setPassword(req, res, next) {
 async function credentialReset(req, res, next) {
   try {
     const provider = getProvider();
-    const p = await withCanonicalTx({ actorScope: 'SUPER_ADMIN', adminUserId: req.actor.adminUserId, asWorker: true }, async (tx) => {
-      const { rows } = await tx.query('SELECT participant_id, santulan_id, auth_provider, auth_provider_subject_id FROM santulan.participants WHERE participant_id = $1', [req.params.id]);
-      const row = rows[0];
+    const p = await store.withScope(store.superAdminScope(req.actor.adminUserId), async (tx) => {
+      const row = await identity.getParticipant(tx, req.params.id);
       if (!row || row.authProvider !== provider.PROVIDER) throw new HttpError(404, 'NOT_FOUND', 'Participant not found');
       await writeAudit(tx, { actorType: 'ADMIN', actorId: req.actor.adminUserId, actionType: 'CREDENTIAL_RESET', targetEntity: 'participants', targetId: row.participantId, correlationId: req.correlationId });
       return row;
-    });
+    }, { transaction: true });
     const temporaryPassword = await provider.issueTemporaryCredential(p.authProviderSubjectId);
     res.json({ santulanId: p.santulanId, temporaryPassword });
   } catch (err) { next(err); }

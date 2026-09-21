@@ -14,7 +14,7 @@ const emptySchema = strictObject({});
 const pauseSchema = strictObject({ reason: z.enum(['PARTICIPANT', 'LOGOUT']).optional() });
 const saveResponseSchema = strictObject({
   itemId: z.string().uuid(),
-  value: z.string().regex(/^[0-9]{1,2}$/),                      // the frozen scale (1-5) is enforced by the database
+  value: z.string().regex(/^[0-9]{1,2}$/),                      // the chosen option's position; the range is that question's option count (OPTION_OUT_OF_RANGE)
   responseTimeMs: z.number().int().min(0).max(3600000).optional(),
   presentedOrder: z.number().int().min(1).max(1000).optional(),
   idempotencyKey: z.string().min(16).max(128),

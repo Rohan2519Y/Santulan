@@ -3,9 +3,9 @@ const CODES = require('./codes');
 
 function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
   if (err instanceof HttpError) {
-    return res.status(err.status).json({
-      error: { code: err.code, message: err.message, details: err.details || {} },
-    });
+    const error = { code: err.code, message: err.message, details: err.details || {} };
+    if (err.totalProblems !== undefined) error.totalProblems = err.totalProblems; // upload rejections list every problem (capped) plus the total
+    return res.status(err.status).json({ error });
   }
 
   if (err && err.name === 'MulterError') {

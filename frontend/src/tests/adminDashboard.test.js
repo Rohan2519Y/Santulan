@@ -241,10 +241,10 @@ describe('Modal', () => {
 
 /* ------------------------------------------------------------------ dashboard shell + overview */
 describe('Admin shell and Overview', () => {
-  test('sidebar lists the four areas, marks the current page, and shows who is signed in', async () => {
+  test('sidebar lists the areas, marks the current page, and shows who is signed in', async () => {
     renderAt('/admin');
     const nav = await screen.findByRole('navigation', { name: 'Admin' });
-    expect(within(nav).getAllByRole('link').map((a) => a.textContent)).toEqual(['Overview', 'Submissions', 'Item pools', 'Participation']);
+    expect(within(nav).getAllByRole('link').map((a) => a.textContent)).toEqual(['Overview', 'Submissions', 'Question sets', 'Item pools', 'Participation', 'Release switches']);
     expect(within(nav).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getAllByText('Santulan Admin').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('admin@santulan.local')).toBeInTheDocument();

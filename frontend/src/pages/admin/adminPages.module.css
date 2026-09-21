@@ -374,3 +374,124 @@
   background: var(--c-status-soft-error);
   color: var(--c-status-error);
 }
+
+/* ---- shared by the operations pages (participants, institutions, exports, audit log, ...) ---- */
+.gateList {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+  color: var(--c-ink);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: flex-end;
+  margin-bottom: var(--sp-4);
+}
+
+.filterField {
+  display: grid;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink);
+}
+
+.filterField input,
+.filterField select,
+.textInput {
+  font: inherit;
+  min-height: 40px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+
+.filterField input:focus-visible,
+.filterField select:focus-visible,
+.textInput:focus-visible,
+.reasonBox:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.reasonLabel {
+  display: block;
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.reasonBox {
+  width: 100%;
+  font: inherit;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+
+.dialogForm {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.tree {
+  list-style: none;
+  margin: 0;
+  padding-left: var(--sp-5);
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.treeRoot {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.treeItem {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.itemHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font-weight: var(--fw-semibold);
+  color: var(--c-ink-strong);
+}
+
+.dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-sm);
+}
+
+.dl dt {
+  color: var(--c-ink-muted);
+}
+
+.dl dd {
+  margin: 0;
+  color: var(--c-ink);
+}

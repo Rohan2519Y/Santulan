@@ -7,26 +7,33 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
-    "test": "jest --runInBand",
-    "db:migrate": "node scripts/migrate.js && node scripts/santulan-grant-roles.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "db:local:init": "node scripts/mongo-local.js init",
+    "db:local:start": "node scripts/mongo-local.js start",
+    "db:local:stop": "node scripts/mongo-local.js stop",
+    "db:local:status": "node scripts/mongo-local.js status",
+    "db:migrate": "node scripts/db-migrate.js",
+    "db:scratch": "node scripts/db-scratch.js",
+    "db:seed:reference": "node scripts/seed-reference.js",
     "db:seed:dev": "node seeders/santulan/dev.seeder.js",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "db:grant:santulan": "node scripts/santulan-grant-roles.js",
-    "db:generate:seed": "node scripts/santulan-generate-seed-sql.js",
-    "catalog:generate": "node scripts/catalog-generate-csv.js",
-    "catalog:verify": "node scripts/catalog-offline-verify.js",
-    "catalog:reconcile": "node scripts/catalog-reconcile.js",
-    "test:santulan": "jest --runInBand tests/santulan"
+    "db:verify": "node scripts/db-verify.js",
+    "questions:convert": "node scripts/questions-convert-catalog.js",
+    "pipeline:once": "node scripts/pipeline-once.js",
+    "wording:load": "node scripts/wording-load.js",
+    "export:synthetic": "node scripts/export-synthetic.js",
+    "release:manifest": "node scripts/release-manifest.js",
+    "drill:backup-restore": "node scripts/backup-restore-drill.js",
+    "test:santulan": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --forceExit"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
+    "exceljs": "4.4.0",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "7.6.0",
     "multer": "^1.4.5-lts.1",
-    "pg": "^8.13.1",
     "uuid": "^9.0.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.23.8"
@@ -42,6 +49,10 @@
     ],
     "setupFilesAfterEnv": [
       "<rootDir>/tests/setup.js"
+    ],
+    "reporters": [
+      "default",
+      "<rootDir>/tests/santulan/evidence/reporter.js"
     ],
     "testTimeout": 20000
   }

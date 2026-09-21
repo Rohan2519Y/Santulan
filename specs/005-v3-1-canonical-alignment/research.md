@@ -1,3 +1,5 @@
+> SUPERSEDED FOR STORAGE by feature 006 (PostgreSQL removed 2026-09-20); behavioural rules still apply
+
 # Research: v3.1 Canonical Alignment (005)
 
 **Branch**: `005-v3-1-canonical-alignment` | **Date**: 2026-09-19 | **Plan**: [plan.md](plan.md)

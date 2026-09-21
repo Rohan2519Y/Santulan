@@ -39,27 +39,31 @@ function authenticate(req, res, next) {
   try {
     const payload = verify(readBearer(req));
     if (payload.purpose) throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid token');
-    req.user = { id: payload.sub, role: payload.role, participantId: payload.participantId || null, adminUserId: payload.adminUserId || null };
+    req.user = {
+      id: payload.sub,
+      role: payload.role,
+      participantId: payload.participantId || null,
+      adminUserId: payload.adminUserId || null,
+      pv: payload.pv || null,
+    };
     next();
   } catch (err) {
     next(err);
   }
 }
 
-// Loaded lazily: the canonical tx helper depends on shared/db, which must not be required at module load by tests
-// that only exercise token helpers.
-const lookup = async (sql, params) => {
-  const { withSystemTx } = require('../../modules/santulan/context/canonicalTx');
-  return withSystemTx(async (tx) => (await tx.query(sql, params)).rows[0] || null);
-};
+// The store is loaded lazily so tests that only exercise token helpers never need a database connection.
+const sessionCheck = () => require('../../modules/santulan/identity/sessionCheck'); // eslint-disable-line global-require
 
 function requireParticipantToken(req, res, next) {
   authenticate(req, res, async (err) => {
     if (err) return next(err);
     try {
       if (req.user.role !== 'participant' || !req.user.participantId) throw new HttpError(403, 'FORBIDDEN', 'Participant access required');
-      const row = await lookup('SELECT status FROM santulan.participants WHERE participant_id = $1', [req.user.participantId]);
+      const row = await sessionCheck().participantSession(req.user.participantId);
       if (!row || row.status !== 'ACTIVE') throw new HttpError(403, 'FORBIDDEN', 'Participant is not active');
+      // Credential-version revocation (SEC-29 / T072): a token minted before a password reset or suspension is dead.
+      if (req.user.pv && sessionCheck().currentVersion(row) !== req.user.pv) throw new HttpError(403, 'FORBIDDEN', 'Session revoked. Please sign in again.');
       req.actor = { scope: 'PARTICIPANT', participantId: req.user.participantId };
       return next();
     } catch (e) {
@@ -73,7 +77,7 @@ function requireActiveSuperAdmin(req, res, next) {
     if (err) return next(err);
     try {
       if (req.user.role !== 'admin' || !req.user.adminUserId) throw new HttpError(403, 'FORBIDDEN', 'Administrator access required');
-      const row = await lookup('SELECT role, status FROM santulan.admin_users WHERE admin_user_id = $1', [req.user.adminUserId]);
+      const row = await sessionCheck().adminSession(req.user.adminUserId);
       if (!row || row.status !== 'ACTIVE' || row.role !== 'SUPER_ADMIN') throw new HttpError(403, 'FORBIDDEN', 'An active SUPER_ADMIN is required');
       req.actor = { scope: 'SUPER_ADMIN', adminUserId: req.user.adminUserId };
       return next();

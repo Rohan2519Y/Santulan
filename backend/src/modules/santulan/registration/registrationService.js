@@ -1,15 +1,20 @@
 /*
- * Participant registration (BUILD 03 §12 transaction sequence). Registration creates an identity and routes it; it NEVER
- * creates an assessment attempt or a consent record and never implies consent or eligibility to start.
+ * Participant registration (BUILD 03 section 12 transaction sequence), on the store. Registration creates an identity and
+ * routes it; it NEVER creates an assessment attempt or a consent record and never implies consent or eligibility to start.
+ * One transaction: validate -> resolve the idempotency key -> scope -> insert -> audit (which also records the outcome under a
+ * deterministic id, so two simultaneous requests with one key cannot both commit).
  */
+const { v4: uuidv4 } = require('uuid');
 const { HttpError } = require('../../../shared/errors');
-const { withSystemTx } = require('../context/canonicalTx');
+const store = require('../store');
+const identity = require('../store/repositories/identity');
 const { writeAudit } = require('../audit/auditService');
-const { payloadHash, keyToken, lockKey, findOutcome } = require('../shared/idempotency');
+const { payloadHash, keyToken, outcomeId, findOutcome, isRace } = require('../shared/idempotency');
 const { resolveAgeRoute } = require('./routing');
-const { generateSantulanId } = require('./santulanId');
+const rules = require('../domain/registrationRules');
 
 const ACTION_CREATED = 'REGISTRATION_CREATED';
+const MAX_ATTEMPTS = 6;
 
 const toResponse = (p, route) => ({
   santulanId: p.santulanId,
@@ -19,15 +24,19 @@ const toResponse = (p, route) => ({
   requiredConsents: route.requiredConsents,
 });
 
+const sys = () => store.systemScope();
+
 /** Best-effort audit of a refused registration in its own transaction (the failed one was rolled back). */
 async function auditRejected(reason, route, correlationId) {
   try {
-    await withSystemTx((tx) => writeAudit(tx, {
+    await store.withScope(sys(), (tx) => writeAudit(tx, {
       actorType: 'SYSTEM', actionType: 'REGISTRATION_REJECTED', targetEntity: 'participants',
       newState: { reason, route }, correlationId,
-    }));
+    }), { transaction: true });
   } catch (e) { /* the refusal itself is what the caller reports */ }
 }
+
+const isSantulanIdCollision = (err) => err && err.code === 'DUPLICATE_IDENTITY' && err.cause && /santulan_id/.test(err.cause.message || '');
 
 /**
  * @param {object} input  route ('OPEN'|'INSTITUTIONAL'), age, language, institutionId, cohortId, externalStudentId,
@@ -45,74 +54,55 @@ async function register(input) {
   }
   const hash = payloadHash({ route, age, language, institutionId, cohortId, externalStudentId, authProvider, authProviderSubjectId });
 
-  try {
-    return await withSystemTx(async (tx) => {
-      await lockKey(tx, 'registration', idempotencyKey);
-      const prior = await findOutcome(tx, ACTION_CREATED, idempotencyKey);
-      if (prior) {
-        if (prior.newState.payload_hash !== hash) {
-          throw new HttpError(409, 'IDEMPOTENCY_CONFLICT', 'The Idempotency-Key was already used with a different request');
-        }
-        const { rows } = await tx.query('SELECT * FROM santulan.participants WHERE participant_id = $1', [prior.targetId]);
-        return { replay: true, participantId: rows[0].participantId, body: toResponse(rows[0], routing), participant: rows[0] };
+  const once = () => store.withScope(sys(), async (tx) => {
+    const prior = await findOutcome(tx, ACTION_CREATED, idempotencyKey);
+    if (prior) {
+      if (prior.newState.payload_hash !== hash) {
+        throw new HttpError(409, 'IDEMPOTENCY_CONFLICT', 'The Idempotency-Key was already used with a different request');
       }
-
-      await tx.raw('SELECT santulan.build03_assert_catalog_route($1::smallint)', [age]); // SN012 => 503 CATALOG_DRIFT
-
-      if (route === 'INSTITUTIONAL') {
-        const { rows } = await tx.query(
-          `SELECT 1 FROM santulan.institutions i JOIN santulan.cohorts c ON c.institution_id = i.institution_id
-            WHERE i.institution_id = $1 AND c.cohort_id = $2 AND i.status = 'ACTIVE' AND c.status = 'ACTIVE'`,
-          [institutionId, cohortId],
-        );
-        if (!rows.length) throw new HttpError(422, 'SCOPE_INVALID', 'The institution or cohort is not available');
-      }
-
-      let participant = null;
-      for (let attempt = 0; attempt < 5 && !participant; attempt += 1) {
-        await tx.raw('SAVEPOINT reg_insert');
-        try {
-          const { rows } = await tx.query(
-            `INSERT INTO santulan.participants (santulan_id, participation_route, institution_id, cohort_id, external_student_id,
-                                                age_years_at_registration, administration_language, auth_provider, auth_provider_subject_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-            [generateSantulanId(), route, institutionId, cohortId, externalStudentId, age, language, authProvider, authProviderSubjectId],
-          );
-          participant = rows[0];
-          await tx.raw('RELEASE SAVEPOINT reg_insert');
-        } catch (err) {
-          await tx.raw('ROLLBACK TO SAVEPOINT reg_insert');
-          if (!(err.code === '23505' && /santulan_id/.test(err.constraint || ''))) throw err; // only an ID collision retries
-        }
-      }
-      if (!participant) throw new Error('could not allocate a unique Santulan ID');
-
-      await writeAudit(tx, {
-        actorType: 'SYSTEM', actionType: ACTION_CREATED, targetEntity: 'participants', targetId: participant.participantId,
-        newState: { payload_hash: hash, route, track: participant.assessmentTrack, request_correlation_id: requestCorrelationId },
-        correlationId: keyToken(idempotencyKey),
-      });
-      return { replay: false, participantId: participant.participantId, body: toResponse(participant, routing), participant };
-    });
-  } catch (err) {
-    if (err.code === 'CATALOG_DRIFT') {
-      await auditRejected('ROUTING_DRIFT_BLOCKED', route, requestCorrelationId);
-    } else if (err.code === 'SCOPE_INVALID') {
-      await auditRejected('SCOPE_INVALID', route, requestCorrelationId);
+      const existing = await identity.getParticipant(tx, prior.targetId);
+      return { replay: true, participantId: existing.participantId, body: toResponse(existing, routing), participant: existing };
     }
+
+    await rules.assertScope(tx, { route, institutionId, cohortId, externalStudentId });
+
+    const doc = rules.buildParticipant({ _id: uuidv4(), route, age, language, institutionId, cohortId, externalStudentId, authProvider, authProviderSubjectId });
+    const participant = await identity.insertParticipant(tx, doc);
+
+    await writeAudit(tx, {
+      id: outcomeId(ACTION_CREATED, idempotencyKey),
+      actorType: 'SYSTEM', actionType: ACTION_CREATED, targetEntity: 'participants', targetId: participant.participantId,
+      newState: { payload_hash: hash, route, track: participant.assessmentTrack, request_correlation_id: requestCorrelationId },
+      correlationId: keyToken(idempotencyKey),
+    });
+    return { replay: false, participantId: participant.participantId, body: toResponse(participant, routing), participant };
+  }, { transaction: true });
+
+  try {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      try {
+        return await once();
+      } catch (err) {
+        // A Santulan ID collision (improbable) or a lost idempotency race: run the whole transaction again.
+        if ((isSantulanIdCollision(err) || isRace(err)) && attempt < MAX_ATTEMPTS) continue;
+        throw err;
+      }
+    }
+    throw new Error('registration did not converge');
+  } catch (err) {
+    if (err.code === 'SCOPE_INVALID') await auditRejected('SCOPE_INVALID', route, requestCorrelationId);
     throw err;
   }
 }
 
 /** Minimal registration state for the authenticated participant (never returns the auth subject or external id). */
 async function getRegistrationState(participantId) {
-  const { withCanonicalTx } = require('../context/canonicalTx');
-  return withCanonicalTx({ actorScope: 'PARTICIPANT', participantId }, async (tx) => {
-    const { rows } = await tx.query('SELECT * FROM santulan.participants WHERE participant_id = $1', [participantId]);
-    if (!rows[0]) throw new HttpError(404, 'NOT_FOUND', 'Participant not found');
+  return store.withScope(store.participantScope(participantId), async (tx) => {
+    const p = await identity.getParticipant(tx, participantId);
+    if (!p) throw new HttpError(404, 'NOT_FOUND', 'Participant not found');
     // the participant's most recent attempt (id + status only), so the dashboard can pick up where they are
-    const attempt = (await tx.query('SELECT attempt_id, status FROM santulan.assessment_attempts WHERE participant_id = $1 ORDER BY created_at DESC LIMIT 1', [participantId])).rows[0];
-    return { ...toResponse(rows[0], resolveAgeRoute(rows[0].ageYearsAtRegistration)), attempt: attempt ? { attemptId: attempt.attemptId, status: attempt.status } : null };
+    const [attempt] = await tx.c.assessment_attempts.find({ participant_id: participantId }, { sort: { created_at: -1 }, limit: 1 });
+    return { ...toResponse(p, resolveAgeRoute(p.ageYearsAtRegistration)), attempt: attempt ? { attemptId: attempt._id, status: attempt.status } : null };
   });
 }
 

@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import ProgressSummary from '../components/ProgressSummary/ProgressSummary';
-import ResponseScale from '../components/ResponseScale/ResponseScale';
 import ScoreCard from '../components/ScoreCard/ScoreCard';
 
 describe('ProgressSummary', () => {
@@ -18,34 +17,6 @@ describe('ProgressSummary', () => {
 
   test('is axe-clean', async () => {
     const { container } = render(<ProgressSummary answered={1} total={5} domainName="C1" sessionCount={1} maxSessions={4} />);
-    expect(await axe(container)).toHaveNoViolations();
-  });
-});
-
-describe('ResponseScale', () => {
-  const anchors = { 1: 'Almost never', 2: 'Rarely', 3: 'Sometimes', 4: 'Often', 5: 'Almost always' };
-
-  test('renders 5 selectable options and reports the chosen value, with no right/wrong styling', () => {
-    const onChange = jest.fn();
-    render(<ResponseScale anchors={anchors} value={null} onChange={onChange} name="item-1" />);
-    const options = screen.getAllByRole('radio');
-    expect(options).toHaveLength(5);
-
-    // FR-005: no option carries a "correct"/"incorrect" affordance
-    expect(screen.queryByText(/correct/i)).not.toBeInTheDocument();
-    expect(document.querySelector('[class*="success"]')).not.toBeInTheDocument();
-    expect(document.querySelector('[class*="error"]')).not.toBeInTheDocument();
-  });
-
-  test('selecting an option calls onChange with that value', async () => {
-    const onChange = jest.fn();
-    render(<ResponseScale anchors={anchors} value={null} onChange={onChange} name="item-1" />);
-    await userEvent.click(screen.getByRole('radio', { name: /often/i }));
-    expect(onChange).toHaveBeenCalledWith(4);
-  });
-
-  test('is axe-clean', async () => {
-    const { container } = render(<ResponseScale anchors={anchors} value={3} onChange={() => {}} name="item-2" />);
     expect(await axe(container)).toHaveNoViolations();
   });
 });

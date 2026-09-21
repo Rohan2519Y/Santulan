@@ -3,7 +3,6 @@
  * provider (spec 005 D-17 / BUILD 00 §7).
  */
 const config = require('../../../config');
-const db = require('../../../shared/db');
 const { createDevProvider } = require('./devProvider');
 
 let provider = null;
@@ -13,7 +12,6 @@ function getProvider() {
   if (config.identityProvider === 'dev') {
     if (config.env === 'production') throw new Error('The dev identity provider must not be used in production');
     provider = createDevProvider({
-      db,
       log: (channel, code) => { if (config.env === 'development') console.log(`[dev identity] OTP for ${channel}: ${code}`); }, // eslint-disable-line no-console
     });
     return provider;

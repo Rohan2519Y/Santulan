@@ -1,0 +1,77 @@
+/* Answer choices for one question (2-20 options). Neutral selection only: no success/error colour (FR-005). */
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/* more than five options read best as a single column */
+.many {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 64px;
+  min-height: 48px;
+  flex: 1 1 96px;
+  padding: var(--sp-2);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--c-surface-strong);
+  background: var(--c-bg-white);
+  color: var(--c-ink);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease);
+}
+
+.many .option {
+  flex-direction: row;
+  justify-content: flex-start;
+  flex: 0 0 auto;
+  text-align: left;
+  gap: var(--sp-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option {
+    transition: none;
+  }
+}
+
+.option:hover {
+  border-color: var(--c-brand);
+}
+
+.option:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.selected {
+  background: var(--c-brand-soft);
+  border-color: var(--c-brand);
+  border-width: 3px;
+}
+
+.selected .text {
+  color: var(--c-brand-strong);
+  font-weight: var(--fw-semibold);
+}
+
+.position {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-md);
+  min-width: 1.5em;
+}
+
+.text {
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}

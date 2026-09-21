@@ -27,5 +27,4 @@ module.exports = {
   score: handler((req) => service.scoreAttempt(attemptId(req), req.body.scoringVersion, req.correlationId)),
   qualityFlags: handler((req) => service.listQualityFlags(attemptId(req))),
   safeguarding: handler((req) => fireQ09({ attemptId: attemptId(req), triggerSource: req.body.triggerSource, correlationId: req.correlationId })),
-  myScores: handler((req) => service.getScores(req.actor.participantId, attemptId(req))),
 };

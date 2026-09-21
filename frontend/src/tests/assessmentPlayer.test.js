@@ -9,10 +9,10 @@ jest.mock('../services/santulanApi', () => ({
   api: { registrationState: jest.fn(), attempt: jest.fn(), items: jest.fn(), responses: jest.fn(), resume: jest.fn(), saveResponse: jest.fn(), pause: jest.fn(), submit: jest.fn() },
 }));
 
-const ANCHORS = { 1: 'Almost never', 2: 'Rarely', 3: 'Sometimes', 4: 'Often', 5: 'Almost always' };
+const FIVE = ['Almost never', 'Rarely', 'Sometimes', 'Often', 'Almost always'].map((text, i) => ({ position: i + 1, text }));
 const ITEMS = [
-  { itemId: 'i1', order: 1, domainCode: 'C1', text: 'I notice when my body feels tense.' },
-  { itemId: 'i2', order: 2, domainCode: 'C2', text: 'I can name how I feel.' },
+  { itemId: 'i1', order: 1, domainCode: 'C1', text: 'I notice when my body feels tense.', options: FIVE },
+  { itemId: 'i2', order: 2, domainCode: 'C2', text: 'I can name how I feel.', options: FIVE },
 ];
 const model = (over = {}) => ({ attemptId: 'a1', status: 'IN_PROGRESS', session: { n: 1, of: 4 }, progress: { completed: 0, total: 2, percent: 0 }, lastSavedAt: null, canContinue: true, ...over });
 const network = () => Object.assign(new Error('We could not reach the server.'), { code: 'NETWORK_ERROR', status: 0 });
@@ -21,7 +21,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   api.registrationState.mockResolvedValue({ attempt: { attemptId: 'a1', status: 'IN_PROGRESS' } });
   api.attempt.mockResolvedValue(model());
-  api.items.mockResolvedValue({ scale: { points: 5, anchors: ANCHORS }, items: ITEMS });
+  api.items.mockResolvedValue({ items: ITEMS });
   api.responses.mockResolvedValue({ responses: [] });
   api.resume.mockResolvedValue(model());
   api.saveResponse.mockResolvedValue({ responseId: 'r1' });
@@ -47,7 +47,7 @@ describe('assessment player (T131)', () => {
     expect(pageText(container)).not.toMatch(/score/i);
   });
 
-  test('the item screen uses the frozen 1-5 scale with the server anchors and gives no right/wrong cue', async () => {
+  test('the item screen shows the options of that question in order and gives no right/wrong cue', async () => {
     await openFirstItem();
     expect(screen.getAllByRole('radio')).toHaveLength(5);
     expect(screen.getByText('Almost never')).toBeInTheDocument();
@@ -62,7 +62,7 @@ describe('assessment player (T131)', () => {
     const [attemptId, body] = api.saveResponse.mock.calls[0];
     expect(attemptId).toBe('a1');
     expect(Object.keys(body).sort()).toEqual(['idempotencyKey', 'itemId', 'presentedOrder', 'value']);
-    expect(body).toMatchObject({ itemId: 'i1', value: 4 });
+    expect(body).toMatchObject({ itemId: 'i1', value: 4 }); // the chosen option's position
     expect(body.idempotencyKey.length).toBeGreaterThanOrEqual(16);
     expect(await screen.findByText('All answers saved')).toBeInTheDocument();
   });
@@ -113,5 +113,44 @@ describe('assessment player (T131)', () => {
     renderPage(<AssessmentPage />, { route: '/student/assessment' });
     await waitFor(() => expect(api.items).not.toHaveBeenCalled());
     expect(screen.queryByText('Your assessment')).not.toBeInTheDocument();
+  });
+});
+
+describe('variable options (feature 006)', () => {
+  const opts = (n) => Array.from({ length: n }, (_, i) => ({ position: i + 1, text: `Choice ${i + 1}` }));
+  const withOptions = async (n) => {
+    api.items.mockResolvedValue({ items: [{ ...ITEMS[0], options: opts(n) }, ITEMS[1]] });
+    await openFirstItem();
+  };
+
+  test('a 2-option question renders exactly two radios; a 3-option question exactly three', async () => {
+    await withOptions(2);
+    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    expect(screen.getByRole('radio', { name: /Choice 2/ })).toBeInTheDocument();
+  });
+
+  test('a 20-option question renders all twenty in the given order and each is reachable by keyboard', async () => {
+    await withOptions(20);
+    const radios = screen.getAllByRole('radio');
+    expect(radios).toHaveLength(20);
+    expect(radios.map((r) => r.textContent.replace(/^\d+\s*/, ''))).toEqual(opts(20).map((o) => o.text));
+    radios[0].focus();
+    await userEvent.keyboard('{End}');
+    await waitFor(() => expect(api.saveResponse).toHaveBeenCalledWith('a1', expect.objectContaining({ itemId: 'i1', value: 20 })));
+  });
+
+  test('the saved value is the option POSITION as a number, for the last option of a 9-option question', async () => {
+    await withOptions(9);
+    await userEvent.click(screen.getByRole('radio', { name: /Choice 9/ }));
+    await waitFor(() => expect(api.saveResponse).toHaveBeenCalledTimes(1));
+    expect(api.saveResponse.mock.calls[0][1]).toMatchObject({ itemId: 'i1', value: 9 });
+  });
+
+  test('an OPTION_OUT_OF_RANGE refusal from the server is shown and the buffered write is dropped', async () => {
+    api.saveResponse.mockRejectedValueOnce(Object.assign(new Error('Choose one of the 5 options for this question'), { code: 'OPTION_OUT_OF_RANGE', status: 422 }));
+    await openFirstItem();
+    await userEvent.click(screen.getByRole('radio', { name: /5.*Almost always/ }));
+    expect(await screen.findByText(/choose one of the 5 options/i)).toBeInTheDocument();
+    await waitFor(() => expect(api.saveResponse).toHaveBeenCalledTimes(1));
   });
 });

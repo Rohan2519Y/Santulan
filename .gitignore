@@ -1,0 +1,6 @@
+
+# Local MongoDB instance (feature 006)
+backend/.mongo/
+backend/exports/
+backend/backups/*.archive.gz
+backend/release/evidence/*.local

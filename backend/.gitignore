@@ -49,3 +49,9 @@ backups/
 
 # Catalog reconcile receipts (release evidence, not source)
 catalog_receipt_*.json
+
+# Local MongoDB instance (data, keyFile, config), generated exports, archives (feature 006)
+.mongo/
+exports/
+backups/*.archive.gz
+release/evidence/*.local

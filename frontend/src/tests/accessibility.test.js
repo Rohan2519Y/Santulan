@@ -3,25 +3,33 @@ import { axe } from 'jest-axe';
 import Button from '../components/Button/Button';
 import Field from '../components/Field/Field';
 import StatusMessage from '../components/StatusMessage/StatusMessage';
-import ResponseScale from '../components/ResponseScale/ResponseScale';
+import QuestionOptions from '../components/QuestionOptions/QuestionOptions';
 import FlagBadge from '../components/FlagBadge/FlagBadge';
+
+describe('Question options (feature 006) are axe-clean for 2, 5 and 20 options', () => {
+  const opts = (n) => Array.from({ length: n }, (_, i) => ({ position: i + 1, text: `Choice ${i + 1}` }));
+  test.each([2, 5, 20])('%i options', async (n) => {
+    const { container } = render(<QuestionOptions options={opts(n)} value={2} onChange={() => {}} name={`q${n}`} />);
+    expect(await axe(container)).toHaveNoViolations();
+    expect(screen.getAllByRole('radio')).toHaveLength(n);
+    expect(screen.getAllByRole('radio').filter((r) => r.getAttribute('aria-checked') === 'true')).toHaveLength(1);
+  });
+});
 
 describe('Cross-cutting accessibility (US3)', () => {
   test('shared components are axe-clean', async () => {
-    const anchors = { 1: 'Almost never', 2: 'Rarely', 3: 'Sometimes', 4: 'Often', 5: 'Almost always' };
     const { container } = render(
       <div>
         <Button variant="primary">Continue</Button>
         <Field label="Email" name="email" />
         <StatusMessage type="warning" message="Session limit reached" />
-        <ResponseScale anchors={anchors} value={2} onChange={() => {}} name="a1" />
         <FlagBadge flagCode="Q02" disposition={null} />
       </div>
     );
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  test('Button, Field control, and ResponseScale option each define a non-default focus-visible style (FR-003)', () => {
+  test('Button and Field control each define a non-default focus-visible style (FR-003)', () => {
     render(
       <div>
         <Button variant="primary">Go</Button>

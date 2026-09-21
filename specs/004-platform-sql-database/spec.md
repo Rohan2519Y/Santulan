@@ -1,3 +1,5 @@
+> SUPERSEDED FOR STORAGE by feature 006 (PostgreSQL removed 2026-09-20); behavioural rules still apply
+
 # Feature Specification: Platform SQL Database
 
 **Feature Branch**: `004-platform-sql-database`

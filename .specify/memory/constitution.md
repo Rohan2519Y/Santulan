@@ -1,28 +1,3 @@
-<!--
-SYNC IMPACT REPORT (temporary review scratch — remove before commit)
-Version change: 2.0.0 → 2.0.1  [PATCH: clarification — the old platform schema no longer exists]
-  (1.0.0 initial ratification 2026-09-19; 1.0.1 deferred the CAPTCHA build; 2.0.0 removed it; 2.0.1 updates the
-  workflow note about the removed feature-004 schema.)
-Modified principles (2.0.0): IX Security by Construction — CAPTCHA requirement removed;
-  X Audit Mode — security suite count now excludes SEC-15 (not applicable).
-Principles introduced in 1.0.0: I Source of Truth & Change Control · II One Engine, Two Configurations ·
-  III Canonical Schema, Strictly Per the Documents · IV Immutability & Provenance ·
-  V Fail Closed, Server Authority · VI Consent, Assent & Safeguarding Gates ·
-  VII Evidence-Gated Interpretation · VIII Privacy Minimisation · IX Security by Construction ·
-  X Audit Mode & Test-First Evidence
-Added sections: Release & Launch Governance; Development Workflow & Quality Gates; Governance
-Removed sections: none
-Source: docs/Santulan 2.0 (BUILD 00 Baseline Lock v3.1 + Master Baseline v3.0, BUILD 01–09,
-  RELEASE_01) and the standing project rule "database strictly per the docs".
-Templates reviewed (not modified here): plan-template.md (Constitution Check reads this file at
-  runtime), spec-template.md, tasks-template.md, checklist-template.md — no edits required.
-Follow-up TODOs:
-  - TODO(GOVERNANCE_OWNERS): name the accountable owners for protocol/legal, psychometrics,
-    safeguarding, security and release approvals (the contracts assign them by role only).
-  - Existing plan.md Constitution Check for feature 005 was derived before ratification; re-run
-    /speckit-plan checks against this document when the plan is next revised.
--->
-
 # Santulan Constitution
 
 ## Core Principles
@@ -31,10 +6,12 @@ Follow-up TODOs:
 The SanTulan 2.0 build contracts in `docs/Santulan 2.0/` are the engineering source of truth. When
 artifacts conflict, the authority order is: (1) Theoretical & Construct Foundation 2.0;
 (2) approved remediation decisions recorded in the BUILD 00 Baseline Lock (currently v3.1);
-(3) the item files (`PILOT_READY` pool, then the two age-band `TECH_READY` files);
+(3) the frozen question sets the owner has uploaded in the approved format (the earlier
+`PILOT_READY` pool and `TECH_READY` files are historical references only);
 (4) the Pilot 1.2 ERD master; (5) the Development & Reporting master; (6) the Competency
-Framework; (7) the roadmap; (8) Competency Mapping. Item wording comes from the frozen item files,
-construct identity from Foundation 2.0, and database behaviour from the latest BUILD 01 contract.
+Framework; (7) the roadmap; (8) Competency Mapping. Item wording comes from the frozen question
+set a participant was given, construct identity from Foundation 2.0, and data-model behaviour from
+the latest BUILD 01 contract as amended by change record 006 (the MongoDB data store).
 - Engineers MUST NOT choose between conflicting sources silently: record the conflict, apply an
   already-approved rectification, or stop the affected release gate.
 - No one MAY change a psychological construct, score meaning, consent rule or safety rule in code
@@ -42,48 +19,68 @@ construct identity from Foundation 2.0, and database behaviour from the latest B
   artifacts and entities, migration, test impact, release-gate impact, new version, hashes).
 - A frozen artifact MUST NOT be overwritten; a change creates a new version. A changed source hash
   is a hard stop until a new approved version or change record exists.
-- Where prose and executable SQL differ, stop and raise a change record; never pick one silently.
+- Where prose and an executable artefact (migration, validation rule, index definition) differ,
+  stop and raise a change record; never pick one silently.
 Rationale: the program is audit-driven; every deviation must be traceable and reviewable.
 
 ### II. One Engine, Two Configurations, Deterministic Routing
 There is exactly one assessment engine. Age selects one of two configurations, never a separate
-codebase: 13–17 → Adolescent (`santulan-adolescent-pilot-v3.1`, 175 items); 18–25 → Emerging Adult
-(`santulan-emergingadult-pilot-v3.1`, 171 items). Pilot eligibility is 13–25 inclusive; age 18
+codebase: 13–17 → Adolescent; 18–25 → Emerging Adult. Pilot eligibility is 13–25 inclusive; age 18
 ALWAYS routes to Emerging Adult and no Adolescent path exists for age 18.
-- Routing MUST be enforced at API, service and database layers and covered by boundary tests at
+- Routing MUST be enforced at API, service and data-store layers and covered by boundary tests at
   ages 12, 13, 17, 18, 25 and 26.
-- The administered version MUST be stored on the attempt (`assessment_version_id`,
+- The administered question set MUST be stored on the attempt (`assessment_version_id`,
   `age_years_at_attempt`) and MUST NEVER be inferred later from a participant's current age.
-- Routing MUST use the version's age range or the resolver function, never an item's `age_band`.
-- Item identity is version-scoped: `(assessment_version_id, item_code)`; there is no global
-  item-code join across versions. Only `CORE` items are active; `V`, `SJT`, `O` are reserved.
+- Routing MUST use the set's age group or the resolver function, never an item's `age_band`. Each
+  question set is uploaded for exactly one age group and every question's age band MUST fit it. At
+  most one question set is open for participation per age group at a time (inferred by change
+  record 006; pending owner confirmation).
+- Item identity is set-scoped: `(assessment_version_id, item_code)`; there is no global item-code
+  join across sets. Only `CORE` items are active; `V`, `SJT`, `O` are reserved.
+- Question sets are populated only by an owner-approved spreadsheet upload in the approved format;
+  no question set is preloaded or seeded from workbooks. An uploaded set is a draft until it is
+  frozen, and frozen sets are never edited (Principle IV).
 Rationale: non-overlapping routing removes the age-18 ambiguity closed as R-AGE-01 / AF-01.
 
-### III. Canonical Schema, Strictly Per the Documents (NON-NEGOTIABLE)
-The canonical PostgreSQL schema (`santulan`) contains exactly the 28 entities of BUILD 01 §6. The
-database MUST be built strictly as documented: nothing invented beyond the contract.
-- No additional table, column, index, enum value, trigger, function or role MAY be added without a
-  numbered change record, migration and the user's explicit approval. A minimal addition is
-  allowed only when a genuine defect fix requires it, and MUST be recorded as such.
-- Every physical column MUST be atomic (no combined `created_at / updated_at` labels), with
-  explicit nullability, keys, constraints, indexes, enum values and delete behaviour.
-- Migrations are forward-only in pilot/production; rollback is a forward fix or point-in-time
-  restore. An applied migration MUST NOT be edited; a fix is a new numbered file. The dev-only
+### III. Canonical Data Model, Strictly Per the Documents (NON-NEGOTIABLE)
+The canonical data model is the 28 entities of BUILD 01 §6, held in MongoDB — the only system of
+record; no relational database is used anywhere — plus only the additions approved by change record
+006: per-question answer options and the question-upload record. Each entity is persisted as its own
+collection or, where it is an owned child with no independent lifecycle, embedded in its parent, as
+recorded in the plan. It MUST be built strictly as documented: nothing invented beyond the contract.
+- No additional collection, field, index, enum value, validation rule, database credential or role
+  MAY be added without a numbered change record and the user's explicit approval. A minimal addition
+  is allowed only when a genuine defect fix requires it, and MUST be recorded as such.
+- Every collection MUST carry an explicit, versioned schema validation rule: every field atomic
+  (no combined `created_at / updated_at` labels), with explicit type, requiredness and allowed
+  values, and no undeclared fields.
+- Every invariant the contracts express as a constraint — unique keys, "one open / one current"
+  partial-unique rules, reference restrictions, value ranges — MUST be enforced in the data store
+  itself (validation rules and named unique or partial-unique indexes), never by application code
+  alone, and MUST be covered by a failing-first test.
+- References are by identifier. Identity, assessment, response, score and lineage data MUST have no
+  deletion path; removal cascades only to owned report / growth / pathway-review child data;
+  archival is status-based.
+- Data migrations are forward-only in pilot/production; rollback is a forward fix or point-in-time
+  restore. An applied migration MUST NOT be edited; a fix is a new numbered migration. The dev-only
   reset script MUST NEVER run against pilot or production data.
-- Identity, assessment, response, score and lineage foreign keys use `RESTRICT`; `CASCADE` is
-  limited to owned report/growth/pathway-review child aggregates; archival is status-based.
 - Values the contract does not state MUST be marked as assumptions and reconciled if the source
   package appears; they MUST NOT be presented as contract.
 Rationale: "no silent schema additions" is a locked engineering decision (BUILD 01 App. B) and the
-project's standing instruction that the docs are the complete design, not a starting point.
+project's standing instruction that the docs are the complete design. The owner replaced the storage
+engine (change record 006), not the discipline.
 
 ### IV. Immutability & Provenance
 Raw and released data are history and MUST NOT be rewritten.
 - `responses` are append-only versions: a correction inserts a new row, retires `is_current` on the
   prior row, and never updates or deletes content — for every role, including administrators and
-  workers. Exactly one CURRENT response exists per (attempt, item), enforced by a database index.
-- Assessment versions, response scales, items, scoring rules and report content versions are
-  immutable after freeze; changing them creates a new version.
+  workers. Exactly one CURRENT response exists per (attempt, item), enforced by a unique
+  (partial-unique) index in the data store.
+- Question sets, their questions and answer options, response scales, scoring rules and report
+  content versions are immutable after freeze; changing them creates a new version.
+- Immutability MUST hold beneath the application code, not by convention: no application path and
+  no runtime credential may update or delete an immutable record beyond the narrowly defined
+  permitted mutations below, and a test MUST prove that an administrator path cannot either.
 - `score_results`, quality detection facts, report section snapshots and `audit_logs` are
   immutable; the only permitted mutations are review/disposition fields and the report-section
   release flag.
@@ -99,11 +96,14 @@ Absent, ambiguous or unauthorised state MUST resolve to denial.
   Opening participation is a separate, audited operational release.
 - The server is authoritative for scoring, eligibility, state transitions, session counts, the
   administered version and permissions. Clients MUST NOT supply scores, quality dispositions,
-  assessment versions, Santulan IDs or database context; unknown request keys are rejected.
+  assessment versions, Santulan IDs or data-access scope; unknown request keys are rejected.
 - Invalid state transitions, version mismatches (Q06) and unapproved configuration MUST fail
   closed. Missing evidence-state configuration defaults to S1 (research only), never a promotion.
 - A privileged mutation succeeds only if its audit record persists; audit failure fails the
   operation.
+- Multi-step state changes (submit, report completion, consent transitions, safeguarding pathway
+  and plan pause, question-set upload and freeze, export generation) are atomic: fully applied or
+  not at all.
 - Pause/stop/reopen is a control plane and MUST NOT mutate or retire frozen versions or items.
 Rationale: the platform collects sensitive data from minors; safe defaults protect participants.
 
@@ -144,7 +144,7 @@ Rationale: operational launch is not psychometric validation (Gate G9).
 
 ### VIII. Privacy Minimisation
 Collect and store only what the pilot needs.
-- The canonical schema MUST NOT contain name, email, phone, address, date of birth, guardian name
+- The canonical data model MUST NOT contain name, email, phone, address, date of birth, guardian name
   or government ID. Identity is a private UUID plus an opaque, non-semantic, never-reused Santulan
   ID that encodes no personal characteristic; authentication stores only a provider reference.
 - Passwords and OTP secrets are never stored by Santulan; logs and audit rows MUST redact auth
@@ -158,33 +158,43 @@ Collect and store only what the pilot needs.
 Rationale: data minimisation is a stated boundary (BUILD 03, BUILD 08) and protects minors.
 
 ### IX. Security by Construction
-Isolation is enforced in the database and repeated in the application.
-- Row-level security keyed on `institution_id` is enabled and forced; institution-scoped access
-  needs an exact non-NULL institution match — NULL (OPEN participants) is never a shared tenant;
-  no context means no rows.
-- The web runtime role MUST NOT have `BYPASSRLS` and MUST NOT own the tables. Tenant/actor context
-  is set per transaction (`SET LOCAL` equivalent) from server-verified state only and MUST NOT leak
-  across pooled connections. The legacy platform's `BYPASSRLS` role MUST NOT touch canonical data.
+Isolation is enforced in one scoped data-access layer, backed by the data store, and repeated in
+tests. The document store has no row-level security, so isolation is a design obligation, not a
+feature that can be assumed.
+- Every read and write of participant- or tenant-derived data MUST go through one data-access layer
+  that derives actor, participant and institution scope from server-verified session state and
+  applies it to every query. No route MAY build an unscoped query. Institution-scoped access needs
+  an exact non-NULL institution match — NULL (OPEN participants) is never a shared tenant; no
+  context means no data.
+- Scope MUST be request-scoped and MUST NOT be accepted from request input or leak between
+  concurrent requests (no module-level or shared mutable scope state).
+- The web runtime connects with a least-privilege credential: it MUST NOT be an owner or root
+  credential, MUST NOT be able to change roles, collections, validation rules or indexes, and MUST
+  NOT hold update or delete rights on immutable collections. Migrations and administration use a
+  separate credential that the running application never holds.
 - OPEN registration requires per-IP and per-device throttling, separate from OTP expiry,
   rate-limit and replay controls; institutional sign-in is not subject to it.
   Passwords are hashed; TLS in transit and encryption at rest are mandatory.
 - Separate development, staging and pilot environments. A backup that has never been restored is
   not evidence: an actual restore into a clean environment MUST pass before launch.
-- Privileged operations (credential generation/reset, assessment control, exports, status
-  changes) MUST be audit logged; the pilot has one active admin role, SUPER_ADMIN.
+- Privileged operations (credential generation/reset, assessment control, question-set upload,
+  freeze and open, exports, status changes) MUST be audit logged; the pilot has one active admin
+  role, SUPER_ADMIN.
 Rationale: cross-institution leakage is a NO-GO condition and cannot be a single-layer defence.
 
 ### X. Audit Mode & Test-First Evidence (NON-NEGOTIABLE)
 Audit mode is permanently on; it is delivery discipline, not a debug flag.
 - Every build artifact MUST be independently checkable against its declared source and
-  predecessor: named and hashed sources, atomic schema, version traceability, boundary and consent
-  tests, item/count checks, quality/scoring/report/security/export/change audits.
+  predecessor: named and hashed sources, atomic data model, version traceability, boundary and
+  consent tests, item/count checks, quality/scoring/report/security/export/change audits.
 - Tests come first for invariants: write the failing test (unit, integration, boundary, negative,
   concurrency, idempotency, security, migration, data-integrity) before the implementation.
 - The canonical suite (AT-01–AT-32 and RC-01–RC-12, 44 tests), the security suite (29 applicable tests; SEC-15 is not applicable) and
   each BUILD's mandatory matrix MUST pass with a recorded evidence reference. A test without
   evidence is not PASS. Static generation is not a substitute for executing against a live
-  PostgreSQL 15+ database.
+  MongoDB deployment that provides the atomicity and access controls this document requires.
+- Evidence gathered against a previous data store does not carry over: after any change of storage
+  engine every suite MUST be re-executed and re-evidenced before it counts toward a gate.
 - Every technical document MUST state its dependencies, requirements (MUST/MUST NOT), data
   contract, state machines, API contract, security notes, evidence boundary, tests, audit findings,
   definition of done and release manifest.
@@ -213,19 +223,24 @@ Rationale: BUILD 00 §14 makes evidence, hashes and change records the unit of p
 
 - Work follows the Spec Kit flow: specification → plan → tasks → implementation. Every plan's
   Constitution Check MUST evaluate this document; unjustified violations block the plan.
-- Backend changes to the canonical schema go through numbered raw-SQL migrations; nothing is added
-  to the 28 tables, indexes or enums without approval (Principle III).
+- Changes to the canonical data model go through numbered, forward-only data migrations; nothing is
+  added to the collections, fields, indexes, validation rules or enums without approval
+  (Principle III).
 - Each pull request MUST reference the requirement and test IDs it satisfies, state any change
-  record, and confirm: no new PII column, no client-supplied score or version, no prohibited claim,
-  no weakened partial unique index (`uq_one_nonterminal_attempt_per_participant`,
-  `uq_current_response`), and no runtime role with `BYPASSRLS`.
+  record, and confirm: no new PII field, no client-supplied score or version, no prohibited claim,
+  no weakened unique or partial-unique index (one open attempt per participant, one current
+  response per attempt and question), no unscoped data-access path, and no runtime credential
+  able to update or delete immutable collections or to alter roles, collections or indexes.
 - New third-party runtime dependencies require an impact assessment; the frontend MUST hold no
   scoring logic and MUST render the server-selected configuration and frozen scale metadata.
 - User-facing surfaces conform to the approved design system and pass WCAG 2.1 AA; copy is scanned
   for prohibited claims before release (Gate G9).
-- The former feature-004 school platform schema (`docs/SQL-Database-Schema.md`) and the feature-002 assessment
-  tables were removed from the local database on 2026-09-20 at the requester's direction; `santulan` is the only
-  schema. No BYPASSRLS role exists, and none may be introduced for canonical data.
+- MongoDB is the only system of record (change record 006, 2026-09-20, at the project owner's
+  direction). The relational database — the canonical `santulan` schema, the earlier feature-004
+  school platform schema and feature-002 assessment tables, and all SQL tooling, roles and
+  dump/restore scripts — is removed from the platform; a relational database MUST NOT be
+  reintroduced without a MAJOR amendment. Existing backups are left untouched pending the owner's
+  decision.
 
 ## Governance
 
@@ -245,4 +260,4 @@ conflict, the constitution prevails until amended.
 - **Guidance**: runtime development guidance lives in the feature specs and the BUILD documents;
   the Spec Kit templates read this file at execution time.
 
-**Version**: 2.0.1 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-20
+**Version**: 3.0.0 | **Ratified**: 2026-09-19 | **Last Amended**: 2026-09-20

@@ -1,16 +1,15 @@
 /*
- * The assessment version is chosen by the SERVER from the participant's stored track (derived from the age stored at
- * registration). The client never supplies a version, an age or a track (contracts/api.md §4).
+ * The question set is chosen by the SERVER: the single OPEN set of the participant's age group (spec FR-019/FR-020, api-delta
+ * section 2). The age group comes from the age stored at registration; the client never supplies a version, an age or a track.
+ * At most one set can be open per age group (uq_one_open_set_per_age_group), so the choice is unambiguous.
  */
-const { HttpError } = require('../../../shared/errors');
+const { controlPlane } = { controlPlane: require('../domain/controlPlane') };
 
-async function selectVersion(tx, participant) {
-  const { rows } = await tx.query(
-    `SELECT assessment_version_id, version_label, status, participation_state, participant_min_age, participant_max_age
-       FROM santulan.assessment_versions WHERE configuration = $1`, [participant.assessmentTrack],
-  );
-  if (rows.length !== 1) throw new HttpError(503, 'CATALOG_DRIFT', 'The assessment catalog is not in its expected state');
-  return rows[0];
+/** @returns the OPEN + FROZEN question-set document for the participant's track, or throws ASSESSMENT_NOT_OPEN. */
+async function selectSet(tx, participant) {
+  const set = await tx.c.assessment_versions.findOne({ configuration: participant.assessmentTrack, participation_state: 'OPEN', status: 'FROZEN' });
+  if (!set) throw controlPlane.notOpen();
+  return set;
 }
 
-module.exports = { selectVersion };
+module.exports = { selectSet };

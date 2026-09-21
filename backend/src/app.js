@@ -3,6 +3,7 @@ const cors = require('cors');
 const config = require('./config');
 const { errorHandler } = require('./shared/errors');
 const santulanRoutes = require('./routes/v1/santulan.routes');
+const store = require('./modules/santulan/store');
 
 const app = express();
 
@@ -18,6 +19,12 @@ app.use(
 app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// Store health (G-17): `ok` only when the runtime user, the replica set and the data-model version all check out. No detail is
+// returned to callers; the reason is available to operators through `npm run db:local:status` and the server log.
+app.get('/api/v1/health', async (req, res) => {
+  const h = await store.health();
+  res.status(h.store === 'ok' ? 200 : 503).json({ store: h.store });
+});
 
 app.use('/api/v1', santulanRoutes);
 

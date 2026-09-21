@@ -10,11 +10,12 @@ const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000/api/v1
 const SESSION_KEY = 'santulan.session';
 
 export class ApiError extends Error {
-  constructor(message, { status = 0, code = 'NETWORK_ERROR', details = {} } = {}) {
+  constructor(message, { status = 0, code = 'NETWORK_ERROR', details = {}, totalProblems } = {}) {
     super(message);
     this.status = status;
     this.code = code;
     this.details = details;
+    this.totalProblems = totalProblems;
   }
 }
 
@@ -49,12 +50,13 @@ async function call(path, { method = 'GET', body, token, headers = {} } = {}) {
     res = await fetch(`${API_BASE}${path}`, {
       method,
       headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        // a FormData body (file upload) sets its own multipart Content-Type with the boundary
+        ...(body !== undefined && !(typeof FormData !== 'undefined' && body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
         ...(token === undefined ? authHeader() : token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,
       },
       credentials: 'include',
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : (typeof FormData !== 'undefined' && body instanceof FormData ? body : JSON.stringify(body)),
     });
   } catch (err) {
     throw new ApiError('We could not reach the server. Please check your connection and try again.', { code: 'NETWORK_ERROR' });
@@ -62,7 +64,7 @@ async function call(path, { method = 'GET', body, token, headers = {} } = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const e = data && data.error ? data.error : {};
-    throw new ApiError(e.message || 'Something went wrong. Please try again.', { status: res.status, code: e.code || 'ERROR', details: e.details || {} });
+    throw new ApiError(e.message || 'Something went wrong. Please try again.', { status: res.status, code: e.code || 'ERROR', details: e.details || {}, totalProblems: e.totalProblems });
   }
   return data;
 }
@@ -105,6 +107,116 @@ export const api = {
   }),
   submit: (id, submissionKey) => call(`/attempts/${id}/submit`, { method: 'POST', body: { submissionKey } }),
 
-  // results: only what the server releases to this participant
-  scores: (id) => call(`/attempts/${id}/scores`),
+  // results: only what the server releases to this participant, read from the released report (the score endpoint is withdrawn)
+  report: (id) => call(`/reports/${id}`),
+};
+
+// ---------------------------------------------------------------------------------------------- release switches (Super Admin)
+export const releaseFlagApi = {
+  /** { pilotS2, advancedEvidence, developmentRelease, pathwayRelease }, each { value, changedAt, changedBy, reason }. Server state only. */
+  list: () => call('/admin/release-flags'),
+  set: (flag, value, reason) => call(`/admin/release-flags/${flag}`, { method: 'POST', body: { value, reason } }),
+};
+
+// ---------------------------------------------------------------------------------------------- question sets (Super Admin)
+export const questionSetApi = {
+  /** Uploads a workbook as a draft set. Only the file and the age group are sent; everything else is decided by the server. */
+  upload: (file, ageGroup) => {
+    const form = new FormData();
+    form.append('ageGroup', ageGroup);
+    form.append('file', file);
+    return call('/admin/question-sets', { method: 'POST', body: form });
+  },
+  list: (filters = {}) => {
+    const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => v)).toString();
+    return call(`/admin/question-sets${q ? `?${q}` : ''}`);
+  },
+  get: (id) => call(`/admin/question-sets/${id}`),
+  freeze: (id) => call(`/admin/question-sets/${id}/freeze`, { method: 'POST', body: {} }),
+  open: (id, reason) => call(`/admin/question-sets/${id}/open`, { method: 'POST', body: { reason } }),
+  close: (id, reason) => call(`/admin/question-sets/${id}/close`, { method: 'POST', body: { reason } }),
+  /** Downloads the blank template (needs the bearer token, so it is fetched and saved rather than linked). */
+  downloadTemplate: async () => {
+    let res;
+    try { res = await fetch(`${API_BASE}/admin/question-sets/template`, { headers: authHeader(), credentials: 'include' }); } catch (err) {
+      throw new ApiError('We could not reach the server. Please check your connection and try again.', { code: 'NETWORK_ERROR' });
+    }
+    if (!res.ok) throw new ApiError('The template could not be downloaded.', { status: res.status, code: 'ERROR' });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'santulan_question_set_template.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+};
+
+// ---------------------------------------------------------------------------------------------- admin operations (Super Admin)
+const qs = (filters = {}) => {
+  const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => v !== undefined && v !== null && v !== '')).toString();
+  return q ? `?${q}` : '';
+};
+
+/** Fetches a file with the bearer token and saves it (a plain link cannot carry the token). Never shows a server path. */
+async function saveFile(path, fallbackName, failure) {
+  let res;
+  try { res = await fetch(`${API_BASE}${path}`, { headers: authHeader(), credentials: 'include' }); } catch (err) {
+    throw new ApiError('We could not reach the server. Please check your connection and try again.', { code: 'NETWORK_ERROR' });
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError((data.error && data.error.message) || failure, { status: res.status, code: (data.error && data.error.code) || 'ERROR' });
+  }
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const named = /filename="([^"]+)"/.exec(disposition);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ? named[1] : fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export const adminApi = {
+  monitoring: () => call('/admin/monitoring/summary'),
+  control: () => call('/admin/assessment-control'),
+  setControl: (state, reason) => call('/admin/assessment-control', { method: 'POST', body: { state, ...(reason ? { reason } : {}) } }),
+
+  institutions: () => call('/admin/institutions'),
+  createInstitution: (body) => call('/admin/institutions', { method: 'POST', body }),
+  updateInstitution: (id, body) => call(`/admin/institutions/${id}`, { method: 'PATCH', body }),
+  createCohort: (body) => call('/admin/cohorts', { method: 'POST', body }),
+  updateCohort: (id, body) => call(`/admin/cohorts/${id}`, { method: 'PATCH', body }),
+
+  participants: (filters) => call(`/admin/participants${qs(filters)}`),
+  setParticipantStatus: (id, status, reason) => call(`/admin/participants/${id}/status`, { method: 'POST', body: { status, reason } }),
+  resetCredential: (id) => call(`/admin/participants/${id}/credential-reset`, { method: 'POST', body: {} }),
+
+  /** Roster import: mode 'validate' returns row errors and writes nothing; 'commit' is all-or-nothing after a clean validate. */
+  importRoster: (file, { institutionId, cohortId, mode }) => {
+    const form = new FormData();
+    form.append('institutionId', institutionId);
+    form.append('cohortId', cohortId);
+    form.append('mode', mode);
+    form.append('roster', file);
+    return call('/cohorts/import', { method: 'POST', body: form });
+  },
+  downloadCredentials: (importId) => saveFile(`/admin/credentials/export/${importId}`, 'santulan-credentials.csv', 'The credential file is unavailable or was already downloaded.'),
+
+  submissions: (filters) => call(`/admin/submissions${qs(filters)}`),
+  submission: (attemptId) => call(`/admin/submissions/${attemptId}`),
+  qualityFlags: (filters) => call(`/admin/quality-flags${qs(filters)}`),
+  reviewFlag: (flagId, disposition, note) => call(`/admin/quality-flags/${flagId}`, { method: 'PATCH', body: { disposition, ...(note ? { note } : {}) } }),
+  retryReport: (reportId) => call(`/internal/reports/${reportId}/retry`, { method: 'POST', body: {} }),
+  auditLogs: (filters) => call(`/admin/audit-logs${qs(filters)}`),
+
+  exports: () => call('/research-exports'),
+  requestExport: (body, idempotencyKey) => call('/research-exports', { method: 'POST', body, headers: { 'Idempotency-Key': idempotencyKey } }),
+  downloadExport: (exportId) => saveFile(`/research-exports/${exportId}/download`, 'santulan_research_export.xlsx', 'The export could not be downloaded.'),
 };

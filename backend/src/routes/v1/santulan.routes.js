@@ -4,6 +4,7 @@
  * or database context from the client.
  */
 const { Router } = require('express');
+const multer = require('multer');
 const config = require('../../config');
 const { validate } = require('../../shared/utils/validate');
 const { requireParticipantToken, requireActiveSuperAdmin, requireInternalOrSuperAdmin, requireParticipantOrPrivileged, requireInternal } = require('../../shared/middleware/auth');
@@ -14,18 +15,33 @@ const consent = require('../../modules/santulan/consent/consent.controller');
 const delivery = require('../../modules/santulan/delivery/delivery.controller');
 const scoring = require('../../modules/santulan/scoring/scoring.controller');
 const registration = require('../../modules/santulan/registration/registration.controller');
+const roster = require('../../modules/santulan/admin/roster/roster.controller');
+const questionSets = require('../../modules/santulan/questionsets/questionSet.controller');
+const releaseFlags = require('../../modules/santulan/admin/releaseFlags.controller');
+const admin = require('../../modules/santulan/admin/admin.controller');
+const researchExports = require('../../modules/santulan/research/export.controller');
+const reports = require('../../modules/santulan/reporting/reporting.controller');
+const growth = require('../../modules/santulan/growth/growth.controller');
+const pathways = require('../../modules/santulan/pathways/pathway.controller');
+const { registerP5Hook } = require('../../modules/santulan/pathways/p5Hook');
+
+// Q09 -> P5 wiring (BUILD 07 §15): the hook is unconditional and never gated by a release flag.
+registerP5Hook();
 
 const router = Router();
 router.use(correlation);
 
 const registrationThrottle = createRegistrationThrottle(config.registrationThrottle);
+const rosterUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('roster');
 
 // --- Authentication (dev identity adapter, D-17)
+// The OPEN-registration throttle protects the OTP flow only (throttle.js §7); institutional/participant login uses a
+// password + bcrypt (per-identity limits), never this middleware (SEC-17).
 const authThrottle = createRegistrationThrottle(config.registrationThrottle);
 router.post('/auth/request-otp', authThrottle, validate(auth.requestOtpSchema), auth.requestOtp);
 router.post('/auth/verify-otp', authThrottle, validate(auth.verifyOtpSchema), auth.verifyOtp);
-router.post('/auth/login', authThrottle, validate(auth.loginSchema), auth.login);
-router.post('/auth/set-password', authThrottle, validate(auth.setPasswordSchema), auth.setPassword);
+router.post('/auth/login', validate(auth.loginSchema), auth.login);
+router.post('/auth/set-password', validate(auth.setPasswordSchema), auth.setPassword);
 router.post('/admin/participants/:id/credential-reset', requireActiveSuperAdmin, auth.credentialReset);
 
 // --- Identity, registration and age routing (BUILD 03)
@@ -34,6 +50,23 @@ router.post('/registrations/open', registrationThrottle, validate(registration.o
 router.post('/registrations/institutional', requireActiveSuperAdmin, validate(registration.institutionalSchema), registration.registerInstitutional);
 router.post('/participants/age-declaration', registrationThrottle, validate(registration.ageDeclarationSchema), registration.ageDeclaration);
 router.get('/registration/state', requireParticipantToken, registration.state);
+
+// --- Roster import + one-time credential export (BUILD 03 §9 / US4). Super admin; validates before it ever writes.
+router.post('/cohorts/import', requireActiveSuperAdmin, rosterUpload, roster.importRoster);
+router.get('/admin/credentials/export/:importId', requireActiveSuperAdmin, roster.exportCredentials);
+
+// --- Question sets (feature 006): spreadsheet upload into draft sets. Active SUPER_ADMIN only.
+router.get('/admin/question-sets/template', requireActiveSuperAdmin, questionSets.template);
+router.post('/admin/question-sets', requireActiveSuperAdmin, questionSets.receiveUpload, questionSets.upload);
+router.get('/admin/question-sets', requireActiveSuperAdmin, questionSets.list);
+router.get('/admin/question-sets/:id', requireActiveSuperAdmin, questionSets.get);
+router.post('/admin/question-sets/:id/freeze', requireActiveSuperAdmin, validate(questionSets.schemas.freezeSchema), questionSets.freeze);
+router.post('/admin/question-sets/:id/open', requireActiveSuperAdmin, validate(questionSets.schemas.reasonSchema), questionSets.open);
+router.post('/admin/question-sets/:id/close', requireActiveSuperAdmin, validate(questionSets.schemas.reasonSchema), questionSets.close);
+
+// --- Release switches (scoring master section 15): four audited switches, all OFF by default. Active SUPER_ADMIN only.
+router.get('/admin/release-flags', requireActiveSuperAdmin, releaseFlags.list);
+router.post('/admin/release-flags/:flag', requireActiveSuperAdmin, validate(releaseFlags.setSchema), releaseFlags.set);
 
 // --- Consent, assent and the verification gate (BUILD 04). Consent never creates an attempt.
 router.get('/consents/requirements', requireParticipantToken, consent.requirements);
@@ -58,6 +91,40 @@ router.post('/internal/attempts/:id/quality', requireInternal, validate(scoring.
 router.post('/internal/attempts/:id/score', requireInternal, validate(scoring.scoreSchema), scoring.score);
 router.get('/internal/attempts/:id/quality-flags', requireInternal, scoring.qualityFlags);
 router.post('/internal/attempts/:id/safeguarding', requireInternal, validate(scoring.safeguardingSchema), scoring.safeguarding);
-router.get('/attempts/:id/scores', requireParticipantToken, scoring.myScores);
+// GET /attempts/:id/scores is withdrawn (feature 006): the chart is read from the PROFILE section of the released report.
+
+// --- Admin operations (BUILD 08): control plane, institutions, cohorts, participants, monitoring, quality review, audit log
+router.get('/admin/assessment-control', requireActiveSuperAdmin, admin.getControl);
+router.post('/admin/assessment-control', requireActiveSuperAdmin, validate(admin.controlSchema), admin.setControl);
+router.get('/admin/institutions', requireActiveSuperAdmin, admin.listInstitutions);
+router.post('/admin/institutions', requireActiveSuperAdmin, validate(admin.institutionCreateSchema), admin.createInstitution);
+router.patch('/admin/institutions/:id', requireActiveSuperAdmin, validate(admin.institutionUpdateSchema), admin.updateInstitution);
+router.get('/admin/cohorts', requireActiveSuperAdmin, admin.listCohorts);
+router.post('/admin/cohorts', requireActiveSuperAdmin, validate(admin.cohortCreateSchema), admin.createCohort);
+router.patch('/admin/cohorts/:id', requireActiveSuperAdmin, validate(admin.cohortUpdateSchema), admin.updateCohort);
+router.get('/admin/participants', requireActiveSuperAdmin, admin.listParticipants);
+router.post('/admin/participants/:id/status', requireActiveSuperAdmin, validate(admin.participantStatusSchema), admin.setParticipantStatus);
+router.get('/admin/monitoring/summary', requireActiveSuperAdmin, admin.monitoringSummary);
+router.get('/admin/quality-flags', requireActiveSuperAdmin, admin.listQualityFlags);
+router.patch('/admin/quality-flags/:id', requireActiveSuperAdmin, validate(admin.flagReviewSchema), admin.reviewQualityFlag);
+router.get('/admin/audit-logs', requireActiveSuperAdmin, admin.listAuditLogs);
+router.get('/admin/submissions', requireActiveSuperAdmin, admin.listSubmissions);
+router.get('/admin/submissions/:id', requireActiveSuperAdmin, admin.submissionDetail);
+
+// --- Research export (BUILD 08 section 10)
+router.post('/research-exports', requireActiveSuperAdmin, validate(researchExports.requestSchema), researchExports.request);
+router.get('/research-exports', requireActiveSuperAdmin, researchExports.list);
+router.get('/research-exports/:id', requireActiveSuperAdmin, researchExports.status);
+router.get('/research-exports/:id/download', requireActiveSuperAdmin, researchExports.download);
+
+// --- Reports, growth plans and pathways (BUILD 07). The engines are internal; the participant reads only released snapshots.
+router.post('/internal/attempts/:id/report', requireInternal, validate(reports.emptySchema), reports.generate);
+router.post('/internal/reports/:id/retry', requireInternalOrSuperAdmin, validate(reports.emptySchema), reports.retry);
+router.get('/reports/:id', requireParticipantToken, reports.get);
+router.post('/internal/attempts/:id/pathways', requireInternalOrSuperAdmin, validate(pathways.decisionSchema), pathways.decide);
+router.get('/growth-plans/:id', requireParticipantToken, growth.get);
+router.post('/growth-plans/:id/priorities', requireParticipantToken, validate(growth.priorityUpdateSchema), growth.priorities);
+router.post('/growth-plans/:id/goals', requireParticipantToken, validate(growth.goalSchema), growth.goals);
+router.post('/growth-plans/:id/reviews', requireParticipantToken, validate(growth.reviewSchema), growth.reviews);
 
 module.exports = router;

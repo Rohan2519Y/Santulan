@@ -36,7 +36,7 @@ async function resolveRoute(req, res, next) {
   try {
     const r = resolveAgeRoute(req.body.age);
     if (!r.eligible) throw new HttpError(422, 'AGE_INELIGIBLE', 'Santulan is available for ages 13 to 25');
-    res.json({ eligible: true, assessmentTrack: r.assessmentTrack, isMinor: r.isMinor, requiredConsents: r.requiredConsents, assessmentVersion: r.versionLabel });
+    res.json({ eligible: true, assessmentTrack: r.assessmentTrack, isMinor: r.isMinor, requiredConsents: r.requiredConsents });
   } catch (err) { next(err); }
 }
 

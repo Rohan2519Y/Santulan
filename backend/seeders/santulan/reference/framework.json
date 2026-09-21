@@ -1,0 +1,395 @@
+{
+  "version": "v3.1",
+  "domains": [
+    {
+      "code": "C1",
+      "name": "Body & Self-Regulation"
+    },
+    {
+      "code": "C2",
+      "name": "Emotional Capability"
+    },
+    {
+      "code": "C3",
+      "name": "Relational & Social Capability"
+    },
+    {
+      "code": "C4",
+      "name": "Identity & Self-Concept"
+    },
+    {
+      "code": "C5",
+      "name": "Values, Purpose & Future Agency"
+    },
+    {
+      "code": "C6",
+      "name": "Adaptability & Resilience"
+    },
+    {
+      "code": "C7",
+      "name": "Self-Directed Learning & Executive Capability"
+    }
+  ],
+  "subdomains": [
+    {
+      "code": "C1.1",
+      "domain": "C1",
+      "name": "Interoceptive Awareness"
+    },
+    {
+      "code": "C1.2",
+      "domain": "C1",
+      "name": "Sleep & Recovery"
+    },
+    {
+      "code": "C1.3",
+      "domain": "C1",
+      "name": "Energy Regulation"
+    },
+    {
+      "code": "C1.4",
+      "domain": "C1",
+      "name": "Physical Self-Care"
+    },
+    {
+      "code": "C1.5",
+      "domain": "C1",
+      "name": "Stress–Body Awareness"
+    },
+    {
+      "code": "C1.6",
+      "domain": "C1",
+      "name": "Routine Self-Management"
+    },
+    {
+      "code": "C1.7",
+      "domain": "C1",
+      "name": "Health Behaviour Agency"
+    },
+    {
+      "code": "C2.1",
+      "domain": "C2",
+      "name": "Emotion Awareness"
+    },
+    {
+      "code": "C2.2",
+      "domain": "C2",
+      "name": "Emotion Differentiation"
+    },
+    {
+      "code": "C2.3",
+      "domain": "C2",
+      "name": "Emotional Understanding"
+    },
+    {
+      "code": "C2.4",
+      "domain": "C2",
+      "name": "Emotional Expression"
+    },
+    {
+      "code": "C2.5",
+      "domain": "C2",
+      "name": "Emotion Regulation"
+    },
+    {
+      "code": "C2.6",
+      "domain": "C2",
+      "name": "Distress Tolerance"
+    },
+    {
+      "code": "C2.7",
+      "domain": "C2",
+      "name": "Impulse Regulation"
+    },
+    {
+      "code": "C2.8",
+      "domain": "C2",
+      "name": "Emotional Regulatory Flexibility"
+    },
+    {
+      "code": "C2.9",
+      "domain": "C2",
+      "name": "Self-Compassion"
+    },
+    {
+      "code": "C2.10",
+      "domain": "C2",
+      "name": "Savoring Capacity"
+    },
+    {
+      "code": "C2.11",
+      "domain": "C2",
+      "name": "Emotional Recovery"
+    },
+    {
+      "code": "C3.1",
+      "domain": "C3",
+      "name": "Social/Contextual Cue-Reading"
+    },
+    {
+      "code": "C3.2",
+      "domain": "C3",
+      "name": "Perspective Taking"
+    },
+    {
+      "code": "C3.3",
+      "domain": "C3",
+      "name": "Empathic Concern"
+    },
+    {
+      "code": "C3.4",
+      "domain": "C3",
+      "name": "Communication"
+    },
+    {
+      "code": "C3.5",
+      "domain": "C3",
+      "name": "Collaboration"
+    },
+    {
+      "code": "C3.6",
+      "domain": "C3",
+      "name": "Boundaries"
+    },
+    {
+      "code": "C3.7",
+      "domain": "C3",
+      "name": "Assertiveness"
+    },
+    {
+      "code": "C3.8",
+      "domain": "C3",
+      "name": "Conflict Management"
+    },
+    {
+      "code": "C3.9",
+      "domain": "C3",
+      "name": "Relational Repair"
+    },
+    {
+      "code": "C3.10",
+      "domain": "C3",
+      "name": "Help-Seeking"
+    },
+    {
+      "code": "C3.11",
+      "domain": "C3",
+      "name": "Belonging & Connection"
+    },
+    {
+      "code": "C3.12",
+      "domain": "C3",
+      "name": "Digital Relational Conduct"
+    },
+    {
+      "code": "C4.1",
+      "domain": "C4",
+      "name": "Self-Concept Clarity"
+    },
+    {
+      "code": "C4.2",
+      "domain": "C4",
+      "name": "Self-Worth"
+    },
+    {
+      "code": "C4.3",
+      "domain": "C4",
+      "name": "Identity Coherence"
+    },
+    {
+      "code": "C4.4",
+      "domain": "C4",
+      "name": "Authenticity"
+    },
+    {
+      "code": "C4.5",
+      "domain": "C4",
+      "name": "Autonomy"
+    },
+    {
+      "code": "C5.1",
+      "domain": "C5",
+      "name": "Values Clarity"
+    },
+    {
+      "code": "C7A.1",
+      "domain": "C7",
+      "name": "Attention Regulation"
+    },
+    {
+      "code": "C7B.1",
+      "domain": "C7",
+      "name": "Metacognition"
+    },
+    {
+      "code": "C7C.1",
+      "domain": "C7",
+      "name": "Goal Setting"
+    },
+    {
+      "code": "C5.2",
+      "domain": "C5",
+      "name": "Personal Agency"
+    },
+    {
+      "code": "C7B.2",
+      "domain": "C7",
+      "name": "Strategy Selection"
+    },
+    {
+      "code": "C7C.2",
+      "domain": "C7",
+      "name": "Goal Persistence"
+    },
+    {
+      "code": "C5.3",
+      "domain": "C5",
+      "name": "Purpose & Meaning"
+    },
+    {
+      "code": "C5.4",
+      "domain": "C5",
+      "name": "Future Orientation"
+    },
+    {
+      "code": "C5.5",
+      "domain": "C5",
+      "name": "Decision Capability"
+    },
+    {
+      "code": "C5.6",
+      "domain": "C5",
+      "name": "Pathways Thinking"
+    },
+    {
+      "code": "C5.7",
+      "domain": "C5",
+      "name": "Personal Responsibility"
+    },
+    {
+      "code": "C6.1",
+      "domain": "C6",
+      "name": "Cognitive Flexibility"
+    },
+    {
+      "code": "C6.2",
+      "domain": "C6",
+      "name": "Coping Flexibility"
+    },
+    {
+      "code": "C7A.2",
+      "domain": "C7",
+      "name": "Inhibitory Control"
+    },
+    {
+      "code": "C6.3",
+      "domain": "C6",
+      "name": "Uncertainty Tolerance"
+    },
+    {
+      "code": "C7A.3",
+      "domain": "C7",
+      "name": "Organisational Memory Strategies"
+    },
+    {
+      "code": "C7B.3",
+      "domain": "C7",
+      "name": "Self-Monitoring"
+    },
+    {
+      "code": "C7C.3",
+      "domain": "C7",
+      "name": "Progress Monitoring"
+    },
+    {
+      "code": "C6.4",
+      "domain": "C6",
+      "name": "Setback Response"
+    },
+    {
+      "code": "C7A.4",
+      "domain": "C7",
+      "name": "Task Initiation"
+    },
+    {
+      "code": "C7B.4",
+      "domain": "C7",
+      "name": "Feedback Utilisation"
+    },
+    {
+      "code": "C7C.4",
+      "domain": "C7",
+      "name": "Mastery Orientation"
+    },
+    {
+      "code": "C6.5",
+      "domain": "C6",
+      "name": "Failure Response"
+    },
+    {
+      "code": "C7A.5",
+      "domain": "C7",
+      "name": "Planning"
+    },
+    {
+      "code": "C7B.5",
+      "domain": "C7",
+      "name": "Knowledge Seeking"
+    },
+    {
+      "code": "C7C.5",
+      "domain": "C7",
+      "name": "Performance-Approach Orientation"
+    },
+    {
+      "code": "C6.6",
+      "domain": "C6",
+      "name": "Challenge Orientation"
+    },
+    {
+      "code": "C7A.6",
+      "domain": "C7",
+      "name": "Organisation"
+    },
+    {
+      "code": "C7B.6",
+      "domain": "C7",
+      "name": "Self-Directed Learning"
+    },
+    {
+      "code": "C7C.6",
+      "domain": "C7",
+      "name": "Avoidance Orientation"
+    },
+    {
+      "code": "C6.7",
+      "domain": "C6",
+      "name": "Functional Recovery"
+    },
+    {
+      "code": "C7B.7",
+      "domain": "C7",
+      "name": "Epistemic Humility"
+    },
+    {
+      "code": "C7C.7",
+      "domain": "C7",
+      "name": "Goal Adjustment"
+    },
+    {
+      "code": "C6.8",
+      "domain": "C6",
+      "name": "Learning From Experience"
+    },
+    {
+      "code": "C6.9",
+      "domain": "C6",
+      "name": "Change Readiness"
+    },
+    {
+      "code": "C6.10",
+      "domain": "C6",
+      "name": "Psychological Flexibility"
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import Button from '../Button/Button';
  * A yes/no confirmation. Focus starts on Cancel so a stray Enter never triggers the action.
  * `tone` colours the confirm button (error for destructive actions).
  */
-export default function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', tone = 'brand', busy = false, onConfirm, onCancel, children }) {
+export default function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', tone = 'brand', busy = false, confirmDisabled = false, onConfirm, onCancel, children }) {
   return (
     <Modal
       open={open}
@@ -17,7 +17,7 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'Co
           <Button type="button" variant="secondary" onClick={onCancel} data-autofocus>
             {cancelLabel}
           </Button>
-          <Button type="button" variant="primary" tone={tone} onClick={onConfirm} disabled={busy}>
+          <Button type="button" variant="primary" tone={tone} onClick={onConfirm} disabled={busy || confirmDisabled}>
             {busy ? 'Working…' : confirmLabel}
           </Button>
         </>

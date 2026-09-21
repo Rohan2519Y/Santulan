@@ -1,13 +1,13 @@
 /*
- * Submit -> quality -> score pipeline (BUILD 06 §1, tasks T098). Picks SUBMITTED attempts one at a time
- * (FOR UPDATE SKIP LOCKED, so several workers never process the same attempt), runs the Quality Engine and, only for a CLEAR
- * outcome, the scorer - all in ONE transaction per attempt. HOLD and INVALID outcomes are left exactly as the engines set them.
- * A failure rolls that attempt's transaction back (it stays SUBMITTED and is retried on the next tick); one bad attempt never
- * blocks the others. Idempotent: a second pass finds nothing left to do. Runs only when SCORING_PIPELINE=on.
+ * Submit -> quality -> score pipeline (BUILD 06 section 1), on the store. Picks SUBMITTED attempts one at a time, runs the Quality
+ * Engine and, only for a CLEAR outcome, the scorer - all in ONE transaction per attempt. HOLD and INVALID outcomes are left exactly
+ * as the engines set them. A failure aborts that attempt's transaction (it stays SUBMITTED and is retried on the next tick); one bad
+ * attempt never blocks the others. Several workers converge safely (compare-and-set on the attempt; the unique score index is the
+ * race guard). Idempotent: a second pass finds nothing left to do. Runs only when SCORING_PIPELINE=on.
  */
 const { randomUUID } = require('crypto');
 const config = require('../../config');
-const { withSystemTx } = require('../../modules/santulan/context/canonicalTx');
+const store = require('../../modules/santulan/store');
 const { qualityInTx, scoreInTx } = require('../../modules/santulan/scoring/scoreService');
 
 const BATCH = 50;
@@ -20,16 +20,14 @@ async function runOnce({ scoringVersion = config.scoringVersion, limit = BATCH }
     const correlationId = `pipeline-${randomUUID()}`;
     let current = null;
     try {
-      const result = await withSystemTx(async (tx) => {
-        const row = (await tx.query(
-          `SELECT attempt_id FROM santulan.assessment_attempts WHERE status = 'SUBMITTED' AND attempt_id <> ALL($1::uuid[])
-            ORDER BY submitted_at LIMIT 1 FOR UPDATE SKIP LOCKED`, [skip])).rows[0];
+      const result = await store.withScope(store.systemScope(), async (tx) => {
+        const [row] = await tx.c.assessment_attempts.find({ status: 'SUBMITTED', _id: { $nin: skip } }, { sort: { submitted_at: 1 }, limit: 1, projection: { _id: 1 } });
         if (!row) return null;
-        current = row.attemptId;
-        const q = await qualityInTx(tx, row.attemptId, correlationId);
-        if (q.outcome === 'CLEAR') await scoreInTx(tx, row.attemptId, scoringVersion, correlationId);
+        current = row._id;
+        const q = await qualityInTx(tx, current, correlationId);
+        if (q.outcome === 'CLEAR') await scoreInTx(tx, current, scoringVersion, correlationId);
         return q.outcome;
-      });
+      }, { transaction: true });
       if (result === null) break;
       tally.processed += 1;
       if (result === 'CLEAR') tally.scored += 1; else if (result === 'HOLD') tally.held += 1; else tally.invalid += 1;

@@ -1,50 +1,48 @@
-import { useCallback, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { getSubmissions, getUser, logout } from '../../services/assessmentApi';
+import { useSession } from '../../services/SessionContext';
 import AdminLayout from '../../components/AdminLayout/AdminLayout';
 import { ToastProvider } from '../../components/Toast/Toast';
 import OverviewPage from './OverviewPage';
+import ParticipantsPage from './ParticipantsPage';
+import InstitutionsPage from './InstitutionsPage';
+import RosterImportPage from './RosterImportPage';
 import SubmissionsPage from './SubmissionsPage';
-import ItemPoolsPage from './ItemPoolsPage';
+import QualityReviewPage from './QualityReviewPage';
+import ReportsPage from './ReportsPage';
+import QuestionSetsPage from './QuestionSetsPage';
 import ParticipationPage from './ParticipationPage';
+import ExportsPage from './ExportsPage';
+import AuditLogPage from './AuditLogPage';
+import ReleaseFlagsPage from './ReleaseFlagsPage';
 
 /**
- * The admin dashboard: one shell, four pages, one shared submissions fetch (Overview and
- * Submissions read the same data, so their numbers always agree).
+ * The admin dashboard: one shell, one page per job. Every page reads its own data from the server (counts, lists and state are never
+ * kept or computed in the browser), so what an administrator sees is always what the platform holds.
  */
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [data, setData] = useState({ status: 'loading', submissions: [], error: null, updatedAt: null });
-
-  const load = useCallback(async () => {
-    setData((d) => ({ ...d, status: 'loading', error: null }));
-    try {
-      const res = await getSubmissions();
-      setData({ status: 'ready', submissions: res.submissions, error: null, updatedAt: new Date() });
-    } catch (err) {
-      setData((d) => ({ ...d, status: 'error', error: err.message }));
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
+  const { signOut: endSession } = useSession();
   const signOut = () => {
-    logout();
+    endSession();
     navigate('/login', { replace: true });
   };
 
-  const shared = { submissions: data.submissions, status: data.status, error: data.error, updatedAt: data.updatedAt, onRefresh: load };
-
   return (
     <ToastProvider>
-      <AdminLayout user={getUser()} onSignOut={signOut}>
+      <AdminLayout user={{ name: 'Administrator' }} onSignOut={signOut}>
         <Routes>
-          <Route index element={<OverviewPage {...shared} />} />
-          <Route path="submissions" element={<SubmissionsPage {...shared} />} />
-          <Route path="item-pools" element={<ItemPoolsPage />} />
+          <Route index element={<OverviewPage />} />
+          <Route path="participants" element={<ParticipantsPage />} />
+          <Route path="institutions" element={<InstitutionsPage />} />
+          <Route path="roster-import" element={<RosterImportPage />} />
+          <Route path="submissions" element={<SubmissionsPage />} />
+          <Route path="quality-review" element={<QualityReviewPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="question-sets" element={<QuestionSetsPage />} />
           <Route path="participation" element={<ParticipationPage />} />
+          <Route path="exports" element={<ExportsPage />} />
+          <Route path="audit-log" element={<AuditLogPage />} />
+          <Route path="release-flags" element={<ReleaseFlagsPage />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </AdminLayout>

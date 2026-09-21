@@ -1,6 +1,6 @@
 /*
  * The assessment player (screens 11-15 are REFERENCE only; the sample's four-section questionnaire and profile/consent steps
- * are NOT built - registration owns those). A hub of seven domain blocks, then one item at a time on the frozen 1-5 scale.
+ * are NOT built - registration owns those). A hub of seven domain blocks, then one question at a time with ITS OWN answer options (2 to 20, feature 006).
  *  - Answers are saved through a buffered queue: every logical write keeps ITS OWN idempotency key and is retried with that
  *    same key until the server acknowledges, so a lost reply never creates a second version.
  *  - Pause, session n of 4, last saved and one Continue action come from the server's resume model. No scores anywhere.
@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/ui.module.css';
 import Button from '../../components/Button/Button';
 import ProgressSummary from '../../components/ProgressSummary/ProgressSummary';
-import ResponseScale from '../../components/ResponseScale/ResponseScale';
+import QuestionOptions from '../../components/QuestionOptions/QuestionOptions';
 import Skeleton from '../../components/Skeleton/Skeleton';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
 import { api, newKey } from '../../services/santulanApi';
@@ -28,7 +28,6 @@ export default function AssessmentPage() {
   const [attemptId, setAttemptId] = useState(null);
   const [model, setModel] = useState(null);
   const [items, setItems] = useState([]);
-  const [anchors, setAnchors] = useState({});
   const [answers, setAnswers] = useState({});               // itemId -> value
   const [index, setIndex] = useState(0);
   const [saveState, setSaveState] = useState('saved');      // saved | saving | retrying
@@ -70,7 +69,7 @@ export default function AssessmentPage() {
         if (['SUBMITTED', 'SCORING', 'SCORED', 'REPORT_READY', 'QUALITY_HOLD', 'INVALID', 'EXPIRED'].includes(m.status)) { navigate('/student/generating', { replace: true }); return; }
         const [list, given] = await Promise.all([api.items(id), api.responses(id)]);
         if (cancelled) return;
-        setAttemptId(id); setModel(m); setItems(list.items); setAnchors(list.scale.anchors);
+        setAttemptId(id); setModel(m); setItems(list.items);
         setAnswers(Object.fromEntries(given.responses.map((r) => [r.itemId, Number(r.value)])));
         setPhase('hub');
       } catch (err) { if (!cancelled) { setError(err.message); setPhase('error'); } }
@@ -163,7 +162,7 @@ export default function AssessmentPage() {
       {error && <StatusMessage type="error" message={error} />}
       <p className={styles.muted}>Question {index + 1} of {items.length}</p>
       <h1 className={styles.itemText}>{item.text}</h1>
-      <ResponseScale anchors={anchors} value={answers[item.itemId] ?? null} onChange={(v) => choose(item, v)} name={`item-${item.itemId}`} label="How often is this true for you?" />
+      <QuestionOptions options={item.options} value={answers[item.itemId] ?? null} onChange={(v) => choose(item, v)} name={`item-${item.itemId}`} label="Choose the answer that fits you best" />
       <p className={styles.saveState} role="status">
         {saveState === 'saved' ? 'All answers saved' : saveState === 'saving' ? 'Saving…' : 'Not saved yet - we will keep trying'}
       </p>
