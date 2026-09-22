@@ -1,0 +1,73 @@
+{
+  "drill": "backup-restore",
+  "feature": "006",
+  "operator": "Dell",
+  "host": "DellInspiron3505",
+  "startedAt": "2026-09-22T11:51:09.805Z",
+  "finishedAt": "2026-09-22T11:52:41.829Z",
+  "source": "santulan_qual",
+  "restoreTarget": "santulan_restore_drill_scratch",
+  "archiveSha256": "2e8512221596b189bba104f001deadca9773ce6e208884ba75cfdd70108bf92c",
+  "result": "PASS",
+  "steps": [
+    {
+      "label": "mongodump (source database, gzip archive)",
+      "ok": true,
+      "started": "2026-09-22T11:51:09.909Z",
+      "finished": "2026-09-22T11:51:10.262Z",
+      "exitCode": 0,
+      "error": null,
+      "output": "530\twriting santulan_qual.research_exports to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.143+0530\tdone dumping santulan_qual.reflection_prompts (72 documents)\n2026-09-22T17:21:10.143+0530\twriting santulan_qual._data_migrations to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.154+0530\tdone dumping santulan_qual.dev_identity_credentials (22 documents)\n2026-09-22T17:21:10.154+0530\twriting santulan_qual.quality_flags to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.155+0530\tdone dumping santulan_qual.research_exports (6 documents)\n2026-09-22T17:21:10.155+0530\twriting santulan_qual.items to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.157+0530\tdone dumping santulan_qual.cohorts (9 documents)\n2026-09-22T17:21:10.157+0530\twriting santulan_qual.report_sections to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.158+0530\tdone dumping santulan_qual._data_migrations (5 documents)\n2026-09-22T17:21:10.159+0530\twriting santulan_qual.assessment_versions to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.171+0530\tdone dumping santulan_qual.items (3 documents)\n2026-09-22T17:21:10.171+0530\twriting santulan_qual.growth_reviews to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.174+0530\tdone dumping santulan_qual.quality_flags (4 documents)\n2026-09-22T17:21:10.174+0530\twriting santulan_qual.growth_actions to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.179+0530\tdone dumping santulan_qual.assessment_versions (1 document)\n2026-09-22T17:21:10.179+0530\twriting santulan_qual.pathway_decisions to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.192+0530\tdone dumping santulan_qual.report_sections (2 documents)\n2026-09-22T17:21:10.192+0530\twriting santulan_qual.participant_cohort_history to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.196+0530\tdone dumping santulan_qual.growth_reviews (0 documents)\n2026-09-22T17:21:10.196+0530\twriting santulan_qual.growth_goals to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.197+0530\tdone dumping santulan_qual.growth_actions (0 documents)\n2026-09-22T17:21:10.197+0530\twriting santulan_qual.growth_priorities to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.198+0530\tdone dumping santulan_qual.pathway_decisions (0 documents)\n2026-09-22T17:21:10.198+0530\twriting santulan_qual.growth_plans to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.210+0530\tdone dumping santulan_qual.participant_cohort_history (0 documents)\n2026-09-22T17:21:10.210+0530\twriting santulan_qual.interpretation_rules to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.211+0530\tdone dumping santulan_qual.growth_goals (0 documents)\n2026-09-22T17:21:10.211+0530\twriting santulan_qual.pathway_reviews to archive 'C:\\Users\\Dell\\AppData\\Local\\Temp\\santulan-drill-2026-09-22T11-51-09-803Z.archive.gz'\n2026-09-22T17:21:10.215+0530\tdone dumping santulan_qual.growth_priorities (0 documents)\n2026-09-22T17:21:10.224+0530\tdone dumping santulan_qual.growth_plans (0 documents)\n2026-09-22T17:21:10.224+0530\tdone dumping santulan_qual.interpretation_rules (0 documents)\n2026-09-22T17:21:10.225+0530\tdone dumping santulan_qual.pathway_reviews (0 documents)\n"
+    },
+    {
+      "label": "clean restore target (dropDatabase)",
+      "ok": true,
+      "started": "2026-09-22T11:51:10.263Z",
+      "finished": "2026-09-22T11:51:10.393Z",
+      "output": ""
+    },
+    {
+      "label": "mongorestore (into the scratch target)",
+      "ok": true,
+      "started": "2026-09-22T11:51:10.393Z",
+      "finished": "2026-09-22T11:51:33.951Z",
+      "exitCode": 0,
+      "error": null,
+      "output": " \"unique\":true, \"v\":2}, Key:primitive.D{primitive.E{Key:\"priority_id\", Value:1}}, PartialFilterExpression:primitive.D(nil)}\n2026-09-22T17:21:27.312+0530\trestoring indexes for collection santulan_restore_drill_scratch.participants from metadata\n2026-09-22T17:21:27.312+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"uq_participants_auth_subject\", \"unique\":true, \"v\":2}, Key:primitive.D{primitive.E{Key:\"auth_provider\", Value:1}, primitive.E{Key:\"auth_provider_subject_id\", Value:1}}, PartialFilterExpression:primitive.D{primitive.E{Key:\"auth_provider_subject_id\", Value:primitive.D{primitive.E{Key:\"$type\", Value:\"string\"}}}}}\n2026-09-22T17:21:27.312+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"idx_participants_institution\", \"v\":2}, Key:primitive.D{primitive.E{Key:\"institution_id\", Value:1}}, PartialFilterExpression:primitive.D{primitive.E{Key:\"institution_id\", Value:primitive.D{primitive.E{Key:\"$type\", Value:\"string\"}}}}}\n2026-09-22T17:21:27.312+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"idx_participants_cohort\", \"v\":2}, Key:primitive.D{primitive.E{Key:\"cohort_id\", Value:1}}, PartialFilterExpression:primitive.D{primitive.E{Key:\"cohort_id\", Value:primitive.D{primitive.E{Key:\"$type\", Value:\"string\"}}}}}\n2026-09-22T17:21:27.312+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"uq_participant_institution_external_id\", \"unique\":true, \"v\":2}, Key:primitive.D{primitive.E{Key:\"institution_id\", Value:1}, primitive.E{Key:\"external_student_id\", Value:1}}, PartialFilterExpression:primitive.D{primitive.E{Key:\"external_student_id\", Value:primitive.D{primitive.E{Key:\"$type\", Value:\"string\"}}}}}\n2026-09-22T17:21:27.313+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"uq_participants_santulan_id\", \"unique\":true, \"v\":2}, Key:primitive.D{primitive.E{Key:\"santulan_id\", Value:1}}, PartialFilterExpression:primitive.D(nil)}\n2026-09-22T17:21:27.313+0530\trestoring indexes for collection santulan_restore_drill_scratch.participant_cohort_history from metadata\n2026-09-22T17:21:27.313+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"idx_participant_history_participant\", \"v\":2}, Key:primitive.D{primitive.E{Key:\"participant_id\", Value:1}, primitive.E{Key:\"assigned_at\", Value:-1}}, PartialFilterExpression:primitive.D(nil)}\n2026-09-22T17:21:27.313+0530\trestoring indexes for collection santulan_restore_drill_scratch.growth_priorities from metadata\n2026-09-22T17:21:27.316+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"idx_growth_priorities_plan\", \"v\":2}, Key:primitive.D{primitive.E{Key:\"plan_id\", Value:1}, primitive.E{Key:\"candidate_rank\", Value:1}}, PartialFilterExpression:primitive.D(nil)}\n2026-09-22T17:21:27.714+0530\trestoring indexes for collection santulan_restore_drill_scratch.assessment_attempts from metadata\n2026-09-22T17:21:27.715+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"idx_attempts_participant_status\", \"v\":2}, Key:primitive.D{primitive.E{Key:\"participant_id\", Value:1}, primitive.E{Key:\"status\", Value:1}}, PartialFilterExpression:primitive.D(nil)}\n2026-09-22T17:21:27.715+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"uq_one_nonterminal_attempt_per_participant\", \"unique\":true, \"v\":2}, Key:primitive.D{primitive.E{Key:\"participant_id\", Value:1}}, PartialFilterExpression:primitive.D{primitive.E{Key:\"status\", Value:primitive.D{primitive.E{Key:\"$in\", Value:primitive.A{\"CREATED\", \"STARTED\", \"IN_PROGRESS\", \"PAUSED\", \"SUBMITTED\", \"SCORING\", \"SCORED\", \"QUALITY_HOLD\"}}}}}}\n2026-09-22T17:21:32.149+0530\trestoring indexes for collection santulan_restore_drill_scratch.dev_identity_credentials from metadata\n2026-09-22T17:21:32.149+0530\tindex: &idx.IndexDocument{Options:primitive.M{\"name\":\"uq_dev_identity\", \"unique\":true, \"v\":2}, Key:primitive.D{primitive.E{Key:\"provider\", Value:1}, primitive.E{Key:\"subject_id\", Value:1}}, PartialFilterExpression:primitive.D(nil)}\n2026-09-22T17:21:33.910+0530\t3186 document(s) restored successfully. 0 document(s) failed to restore.\n"
+    },
+    {
+      "label": "recreate the least-privilege role for the restored database",
+      "ok": true,
+      "started": "2026-09-22T11:51:33.951Z",
+      "finished": "2026-09-22T11:51:34.662Z",
+      "output": ""
+    },
+    {
+      "label": "db-verify on the restored copy",
+      "ok": true,
+      "started": "2026-09-22T11:51:34.663Z",
+      "finished": "2026-09-22T11:51:36.257Z",
+      "exitCode": 0,
+      "error": null,
+      "output": "db-verify santulan_restore_drill_scratch: all checks passed\n"
+    },
+    {
+      "label": "store-guarantee suite on the restored copy",
+      "ok": true,
+      "started": "2026-09-22T11:51:36.257Z",
+      "finished": "2026-09-22T11:52:22.007Z",
+      "exitCode": 0,
+      "error": null,
+      "output": "(node:62092) ExperimentalWarning: VM Modules is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nPASS tests/santulan/store/dbVerify.test.js (8.942 s)\nPASS tests/santulan/store/validators.delivery.test.js\nPASS tests/santulan/store/validators.identity.test.js\nPASS tests/santulan/store/validators.content.test.js\nPASS tests/santulan/store/validators.scoring.test.js\nPASS tests/santulan/store/validators.reporting.test.js\nPASS tests/santulan/store/atomicity.test.js\nPASS tests/santulan/store/indexes.test.js\nPASS tests/santulan/store/views.test.js\nPASS tests/santulan/store/validators.research.test.js\nPASS tests/santulan/store/scope.test.js\nPASS tests/santulan/store/startup.test.js\nPASS tests/santulan/store/privileges.test.js\nPASS tests/santulan/store/repoScan.test.js\n\nTest Suites: 14 passed, 14 total\nTests:       133 passed, 133 total\nSnapshots:   0 total\nTime:        43.816 s, estimated 53 s\nRan all test suites matching /tests\\\\santulan\\\\store/i.\nForce exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?\n"
+    },
+    {
+      "label": "end-to-end journey on the restored copy (attempt, answers, submit, quality, score, report)",
+      "ok": true,
+      "started": "2026-09-22T11:52:22.008Z",
+      "finished": "2026-09-22T11:52:41.818Z",
+      "exitCode": 0,
+      "error": null,
+      "output": "(node:64780) ExperimentalWarning: VM Modules is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nPASS tests/santulan/integration/scoringMasterE2E.test.js (17.483 s)\n  the four statuses through the endpoints (SC-015, SC-016)\n    √ 10 of 10 answered in every domain is COMPLETE (default evidence S1) (888 ms)\n    √ 9 of 10 answered in every domain is COMPLETE_WITH_MISSING (default evidence S1) (693 ms)\n    √ 8 of 10 answered in every domain is INCOMPLETE (default evidence S1) (1039 ms)\n    √ 6 of 10 answered in every domain is INSUFFICIENT (default evidence S0) (660 ms)\n  the release switches, the fail-closed report and governed wording (SC-017..SC-022)\n    √ all switches off: every domain S1, the report is the PROFILE only (seven NOT_ENOUGH_DATA) and carries no capability wording (762 ms)\n    √ pilotS2 on gives S2; with NO approved wording the report ends FAILED_RETRYABLE (WORDING_MISSING) and the attempt stays SCORED; governed wording then completes it on retry (4026 ms)\n    √ every switch change is in the audit log with its reason, actor and value; the reports and scores of participants contain no claims (196 ms)\n\nTest Suites: 1 passed, 1 total\nTests:       7 passed, 7 total\nSnapshots:   0 total\nTime:        17.74 s, estimated 20 s\nRan all test suites matching /tests\\\\santulan\\\\integration\\\\scoringMasterE2E.test.js/i.\nForce exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?\n"
+    }
+  ]
+}

@@ -19,6 +19,10 @@
   }
 }
 
+.button svg {
+  flex: none;
+}
+
 .button:focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-offset);
@@ -117,4 +121,14 @@
 .route-open:hover:not(:disabled),
 .route-institution:hover:not(:disabled) {
   filter: brightness(0.92);
+}
+
+/* size and width helpers used by the sample layouts (large call-to-action buttons, full-width buttons on cards) */
+.lg {
+  min-height: 56px;
+  padding: var(--sp-3) var(--sp-6);
+  font-size: var(--fs-md);
+}
+.block {
+  width: 100%;
 }

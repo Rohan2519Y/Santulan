@@ -5,8 +5,11 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Check, ChartColumn, LifeBuoy, Sprout, Users } from 'lucide-react';
 import styles from '../../styles/ui.module.css';
-import { RailCard } from '../../components/participantKit';
+import p from '../../styles/portal.module.css';
+import ImageSlot from '../../components/ImageSlot/ImageSlot';
+import { IconBadge, ButtonLink } from '../../components/participantKit';
 import Button from '../../components/Button/Button';
 import Skeleton from '../../components/Skeleton/Skeleton';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
@@ -50,55 +53,82 @@ export default function DashboardPage() {
   const steps = timeline(state, { gateOpen: data.gate.open });
 
   return (
-    <div className={styles.stack}>
-      <section className={`${styles.heroBand}`}>
-        <h1 className={styles.h2}>{greeting(new Date().getHours())}</h1>
-        <p className={styles.lead}>Thank you for taking the time to be here.</p>
-        <p className={styles.script}>Same you. A brighter tomorrow.</p>
+    <div className={p.page}>
+      <section className={p.dashHero}>
+        <div className={p.dashCopy}>
+          <h1 className={p.greet}>{greeting(new Date().getHours())}</h1>
+          <p className={p.pageLead}>Here&apos;s your dashboard. Keep going — progress happens one step at a time.</p>
+        </div>
+        <p className={p.dashScript} aria-hidden="true">“Growth begins outside your comfort zone.”</p>
+        <ImageSlot slot="dashboardHero" className={p.dashArt} />
       </section>
       {error && <StatusMessage type="error" message={error} />}
-      <section className={`${styles.card} ${styles.toneBlue}`} aria-labelledby="journey-heading">
-        <div className={styles.journey}>
-          <div>
-            <h2 id="journey-heading" className={styles.h3}>Your journey matters</h2>
-            <p><strong>{view.headline}</strong></p>
-            <p className={styles.muted}>{view.body}</p>
-            {state === 'consent-pending' && <p className={styles.muted}>{view.startDisabledReason}</p>}
-          </div>
-          <div className={styles.journeyAction}>
-            {view.action && view.action.kind === 'start' && <Button onClick={start} disabled={busy}>{view.action.label}</Button>}
-            {view.action && view.action.to && <Button onClick={() => navigate(view.action.to)}>{view.action.label}</Button>}
-          </div>
+
+      <section className={p.journey} aria-labelledby="journey-heading">
+        <IconBadge icon={Sprout} tone="blue" size="lg" />
+        <div className={p.journeyBody}>
+          <h2 id="journey-heading" className={styles.h3}>Your journey matters</h2>
+          <p><strong>{view.headline}</strong></p>
+          <p className={styles.muted}>{view.body}</p>
+          {state === 'consent-pending' && <p className={styles.muted}>{view.startDisabledReason}</p>}
+        </div>
+        <div className={p.journeyAction}>
+          {view.action && view.action.kind === 'start' && <Button size="lg" block onClick={start} disabled={busy}>{view.action.label} <ArrowRight size={20} aria-hidden="true" /></Button>}
+          {view.action && view.action.to && <Button size="lg" block onClick={() => navigate(view.action.to)}>{view.action.label} <ArrowRight size={20} aria-hidden="true" /></Button>}
         </div>
       </section>
-      <div className={styles.tiles}>
-        <section className={`${styles.card} ${styles.toneSky}`}>
-          <h2 className={styles.h3}>Assessment</h2>
-          <p className={styles.muted}>Your assessment, at your own pace.</p>
-          <Link className={styles.pageLink} to="/student/assessment">Open assessment</Link>
-        </section>
-        <section className={`${styles.card} ${styles.toneLavender}`}>
-          <h2 className={styles.h3}>Support</h2>
-          <p className={styles.muted}>Help is available if you need it.</p>
-          <Link className={styles.pageLink} to="/student/support">Go to Support</Link>
-        </section>
+
+      <div className={p.tiles}>
+        <Link className={`${p.tile} ${p.tileBlue}`} to="/student/assessment">
+          <IconBadge icon={ChartColumn} tone="blue" />
+          <div>
+            <h2 className={p.tileTitle}>Complete Assessment</h2>
+            <p className={p.tileText}>Discover your strengths and growth areas.</p>
+          </div>
+          <span className={p.tileGo} aria-hidden="true"><ArrowRight size={20} /></span>
+        </Link>
+        <Link className={`${p.tile} ${p.tileLavender}`} to="/student/support">
+          <IconBadge icon={Users} tone="lavender" />
+          <div>
+            <h2 className={p.tileTitle}>Connect for Support</h2>
+            <p className={p.tileText}>Reach out whenever you need guidance.</p>
+          </div>
+          <span className={p.tileGo} aria-hidden="true"><ArrowRight size={20} /></span>
+        </Link>
       </div>
-      <div className={styles.dashLower}>
-      <section className={styles.card} aria-labelledby="progress-heading">
-        <h2 id="progress-heading" className={styles.h3}>Your progress</h2>
-        <ol className={styles.timeline}>
-          {steps.map((s) => (
-            <li key={s.label} className={styles.timelineItem} aria-current={s.current ? 'step' : undefined}>
-              <span className={`${styles.timelineMark} ${s.done ? styles.timelineDone : ''} ${s.current ? styles.timelineNow : ''}`} aria-hidden="true">{s.done ? '✓' : ''}</span>
-              <span>{s.label}{s.done ? ' (done)' : s.current ? ' (in progress)' : ''}</span>
-            </li>
-          ))}
-        </ol>
-      </section>
-      <div className={styles.stack}>
-        <RailCard tone="note" title="A note for you"><p>There are no right or wrong answers. TODO(copy): approved supportive note.</p></RailCard>
-        <RailCard tone="help" title="Need help?"><p>Talk to someone you trust, or visit <Link className={styles.pageLink} to="/student/support">Support</Link>.</p></RailCard>
-      </div>
+
+      <div className={p.dashLower}>
+        <section className={styles.card} aria-labelledby="progress-heading">
+          <h2 id="progress-heading" className={styles.h3}>Your progress</h2>
+          <ol className={p.timeline}>
+            {steps.map((s) => (
+              <li key={s.label} className={`${p.timelineItem} ${s.done ? p.timelineDoneItem : ''}`} aria-current={s.current ? 'step' : undefined}>
+                <span className={`${p.timelineMark} ${s.done ? p.timelineDone : ''} ${s.current ? p.timelineNow : ''}`} aria-hidden="true">{s.done ? <Check size={16} strokeWidth={3} /> : null}</span>
+                <div>
+                  <p className={p.timelineLabel}>{s.label}</p>
+                  <p className={p.timelineStatus}>{s.done ? 'Completed' : s.current ? 'In progress' : 'Pending'}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <div className={styles.stack}>
+          <section className={p.note}>
+            <h2 className={styles.h3}>A Note for You</h2>
+            <p className={p.noteScript}>“Small steps today, a brighter tomorrow.”</p>
+            <p className={styles.muted} style={{ margin: 'var(--sp-2) 0 0' }}>There are no right or wrong answers. TODO(copy): approved supportive note.</p>
+          </section>
+          <section className={`${styles.card} ${p.help}`}>
+            <IconBadge icon={LifeBuoy} tone="blue" />
+            <div className={styles.stack} style={{ gap: 'var(--sp-3)', alignItems: 'flex-start' }}>
+              <div>
+                <h2 className={styles.h3}>Need Help?</h2>
+                <p className={styles.muted} style={{ margin: 0 }}>Our support team is here for you. Reach out anytime.</p>
+              </div>
+              <ButtonLink to="/student/support" variant="secondary" icon block={false}>Contact Support</ButtonLink>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

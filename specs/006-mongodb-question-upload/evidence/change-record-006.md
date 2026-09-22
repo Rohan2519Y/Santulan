@@ -61,6 +61,67 @@ Launch stays NO-GO. PostgreSQL qualification evidence is stale; every matrix ID 
 | CR-006-9 | Added `reports.content_hash` | DEFAULT APPLIED - awaiting owner confirmation |
 | CR-006-10 | Added `interpretation_rules.layer` and index `uq_one_approved_rule_per_dimension` | DEFAULT APPLIED - awaiting owner confirmation |
 | CR-006-11 | Release switches recorded as `RELEASE_FLAG_CHANGED` audit events | DEFAULT APPLIED - awaiting owner confirmation |
+| CR-006-12 | Admin can delete a **draft** question set (`DRAFT → RETIRED`); a frozen/opened set can never be deleted | **OWNER CONFIRMED 2026-09-22** (scope: draft sets only) |
+| CR-006-13 | Adult (18+) self-consent: one checkbox creates+grants+verifies `ADULT_SELF_CONSENT` in a single call (`SELF_ATTESTED` method); a minor's existing parent/guardian consent + assent flow is unchanged | **OWNER CONFIRMED 2026-09-22** (scope: adults only) |
+| CR-006-14 | Minor self-service: one checkbox creates+grants+verifies both `STUDENT_ASSENT` (`SELF_ATTESTED`) and `PARENT_GUARDIAN_CONSENT` (`STUDENT_ATTESTED_FOR_PARENT`) on the minor's own device; a temporary stand-in until a real parent/guardian portal exists. The admin-mediated flow (a real parent verifying their own consent) is unchanged and still available | **OWNER CONFIRMED 2026-09-22** (scope: minor attests on their own device; distinct verification method so provenance is never confused with an actual parent action) |
+
+## CR-006-12 / CR-006-13 — owner-directed changes (2026-09-22)
+
+Unlike CR-006-1…11 (defaults applied pending confirmation), these two were requested directly by the owner during local
+testing and their scope was confirmed by the owner before implementation, so they carry no open confirmation gate.
+
+**CR-006-12 — delete a draft question set.** Owner report: uploading the wrong spreadsheet left no way to remove it from
+the admin review list. Scoping question asked and answered: delete reaches **draft sets only**, never a `FROZEN`/`OPENED`
+set — constitution IV (immutability & provenance of a frozen set) is non-negotiable and was not amended. Implementation:
+`POST /admin/question-sets/{id}/delete` (a `POST` action, never the HTTP `DELETE` verb — store guarantee G-22 stays true),
+reusing the existing `DRAFT → RETIRED` compare-and-set transition (`sets.retireDraft`) already used during upload
+supersession. `items` stay Tier A (insert-only); nothing is physically removed, the set is simply retired. Audited as
+`QUESTION_SET_DELETED`. Files: `backend/src/modules/santulan/domain/questionSetRules.js` (`assertDeletable`),
+`questionSetService.js` (`deleteDraft`), `questionSet.controller.js`, `src/routes/v1/santulan.routes.js`,
+`frontend/src/services/santulanApi.js`, `frontend/src/pages/admin/QuestionSetsPage.jsx`. Tests:
+`backend/tests/santulan/contract/questionSetsLifecycle.test.js` ("CR-006-12" describe block),
+`frontend/src/tests/adminDashboard.test.js`.
+
+**CR-006-13 — adult self-consent.** Owner report: could not give an assessment locally because there was no path to
+verify consent for a test participant, short of the not-yet-written parent/guardian protocol text. Scoping question asked
+and answered: the one-checkbox self-consent applies to **adults only** (`isMinor === false`); a minor's existing
+parent/guardian consent + assent flow is completely unchanged — no safeguarding gate was touched or amended.
+Implementation: `POST /consents/self-consent` (participant token), which creates, grants and verifies the participant's
+own `ADULT_SELF_CONSENT` record in one call using a newly owner-approved verification method, `SELF_ATTESTED`, added to
+`ADULT_SELF_CONSENT`'s `allowedVerificationMethods` in `CONSENT_PROTOCOLS_PATH` (deliberately **absent** from the two
+minor-facing consent types' allow-lists). A minor's token gets `422 SELF_CONSENT_NOT_AVAILABLE`. No approved
+`ADULT_SELF_CONSENT` protocol configured (fail-closed default) → `422 PROTOCOL_UNAPPROVED`, same governance pattern as
+every other consent type. Files: `backend/src/modules/santulan/consent/protocolRegistry.js` (`currentApprovedVersion`),
+`consentService.js` (`selfConsent`), `consent.controller.js`, `src/routes/v1/santulan.routes.js`,
+`backend/config/consent-protocols.example.json`, `backend/config/README.md`,
+`frontend/src/services/santulanApi.js`, `frontend/src/pages/participant/AccountPages.jsx` (`PrivacyPage`). Tests:
+`backend/tests/santulan/contract/consent.test.js`, `frontend/src/tests/selfConsent.test.js` (new file).
+
+**CR-006-14 — minor self-service.** Owner follow-up after CR-006-13: the same local-testing blocker existed for a minor
+participant, since neither `PARENT_GUARDIAN_CONSENT` nor `STUDENT_ASSENT` can be created or completed without an admin,
+and there is no separate parent-facing sign-in on this platform. Two scoping questions were asked and answered before any
+code was written, because this touches the minor safeguarding gate directly: (1) the owner does **not** want the parent
+requirement silently removed for minors — the gate stays exactly as strict (two VERIFIED records still required to open
+it); (2) the checkbox is ticked by **the student themselves, on their own device**, as an explicit, deliberate stand-in
+for a real parent/guardian portal that does not exist yet, not a dev-only shortcut. Implementation:
+`POST /consents/minor-self-service` (participant token, minors only - `422 PARENT_CONSENT_NOT_APPLICABLE` for an adult),
+which creates, grants and verifies **both** required records in one call: `STUDENT_ASSENT` with method `SELF_ATTESTED`
+(a genuine self-attestation, no safeguarding concern), and `PARENT_GUARDIAN_CONSENT` with a **new, distinct** method,
+`STUDENT_ATTESTED_FOR_PARENT`, so the audit trail can never be misread as an actual parent's own action. The two records
+are independent (different collections' worth of protocol governance); if one type's protocol is unapproved the other's
+completion still stands (not rolled back), matching the system's general small-independent-steps philosophy rather than
+one giant cross-type transaction. The existing store-level uniqueness guarantee
+(`uq_consent_active_type_protocol` - one active record per participant/type/protocol version) is unchanged and still
+governs the real upgrade path: a real parent/guardian who wants to formally take over must first withdraw the
+student-attested record (the participant can do this themselves, same as withdrawing any other consent), then the
+ordinary admin-mediated flow (`POST /consents` + `POST /consents/:id/verify`) verifies a fresh one exactly as before.
+Files: `backend/src/modules/santulan/consent/consentService.js` (`grant` gained an `allowNonSelf` escape hatch used only
+by this flow; `ensureVerified`, `minorSelfService`), `consent.controller.js`, `src/routes/v1/santulan.routes.js`,
+`backend/config/consent-protocols.example.json`, `backend/tests/santulan/fixtures/consent-protocols.json`,
+`backend/config/README.md`, `frontend/src/services/santulanApi.js`,
+`frontend/src/pages/participant/AccountPages.jsx` (`PrivacyPage`). Tests:
+`backend/tests/santulan/contract/consent.test.js`, `frontend/src/tests/minorSelfService.test.js` (new file),
+`frontend/src/tests/selfConsent.test.js` (its stale "minor: unchanged" assertions updated to match).
 
 ## Decisions and their outcome
 

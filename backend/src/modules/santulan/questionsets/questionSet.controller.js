@@ -45,6 +45,7 @@ module.exports = {
   freeze: wrap(async (req, res) => { res.json(await service.freeze(req.actor, setId(req), req.correlationId)); }),
   open: wrap(async (req, res) => { res.json(await service.open(req.actor, setId(req), req.body.reason, req.correlationId)); }),
   close: wrap(async (req, res) => { res.json(await service.close(req.actor, setId(req), req.body.reason, req.correlationId)); }),
+  delete: wrap(async (req, res) => { res.json(await service.deleteDraft(req.actor, setId(req), req.correlationId)); }),
   setId,
   schemas,
 };

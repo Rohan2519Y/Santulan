@@ -3,13 +3,18 @@
  *   1 email / mobile   2 one-time code   3 AGE IN YEARS (no date of birth anywhere)   4 consent derived from age   5 Santulan ID
  * The age is the only personal value sent to the server; the opaque Santulan ID comes back from it. Consent records are created
  * and verified by the privileged consent service, so step 5 reports their real status instead of pretending they are done.
+ * Layout: a picture area on the left (an ImageSlot, white until a path is set) with the step's message, and the form card on the
+ * right; below 1080 px the message shortens and below 640 px only the picture strip and the card remain.
  * Copy is placeholder text flagged TODO(copy).
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Check, Info, Leaf, Lock, Mail, ShieldCheck, Smartphone, UserRound, Users } from 'lucide-react';
 import styles from '../../styles/ui.module.css';
+import s from '../../styles/site.module.css';
 import { PublicLayout } from '../../components/layouts';
-import { StepIndicator, OtpInput, CopyField, RailCard, SelectableCard } from '../../components/participantKit';
+import ImageSlot from '../../components/ImageSlot/ImageSlot';
+import { StepIndicator, OtpInput, CopyField, ChoiceCard, IconBadge, InfoNote, ButtonLink } from '../../components/participantKit';
 import Button from '../../components/Button/Button';
 import Field from '../../components/Field/Field';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
@@ -26,6 +31,65 @@ const CONSENT_CARDS = {
 };
 
 const isEligibleAge = (n) => Number.isInteger(n) && n >= 13 && n <= 25;
+
+/** The message on the left of each step (samples 04-08). */
+const HERO = {
+  1: {
+    title: 'Your Journey Begins Here',
+    lead: 'Take the first step towards understanding yourself better. Register as an individual to access the Santulan well-being assessment and development platform.',
+    features: [[UserRound, 'green', 'Simple Registration', 'Just your email or mobile number'], [ShieldCheck, 'blue', 'Safe & Confidential', 'Your information is secure with us'], [Leaf, 'lavender', 'A Brighter Tomorrow', 'Understand, grow and thrive']],
+    script: 'Same You. A Brighter Tomorrow.',
+  },
+  2: { title: 'One More Step Closer', quote: 'Small steps today, a brighter tomorrow.', triad: true },
+  3: {
+    title: 'Your Age Helps Us Support You Better',
+    lead: 'Santulan is designed for adolescents and emerging adults. Please tell us your age so we can ensure the right guidance, consent process and support.',
+    features: [[ShieldCheck, 'blue', 'Age-appropriate experience', 'Content and support suited to your age'], [Users, 'green', 'Additional consent where needed', 'For participants below 18 years'], [Lock, 'lavender', 'Your information is safe', 'We respect and protect your privacy']],
+    script: 'Different Journeys. A Brighter Tomorrow.',
+  },
+  4: {
+    title: 'Consent Creates a Safer Space',
+    lead: 'Santulan values your well-being and follows age-appropriate consent processes. This helps ensure a safe, supportive and responsible experience for everyone.',
+    features: [[ShieldCheck, 'blue', 'Your Safety Matters', 'Age-appropriate consent for a secure experience'], [Users, 'green', 'Support from Parents/Guardians', 'For participants below 18 years'], [Lock, 'lavender', 'Your Information Stays Private', 'We respect your privacy']],
+    script: 'Different Journeys. A Brighter Tomorrow.',
+  },
+  5: {
+    title: 'Your Account is Ready!',
+    lead: 'You have successfully registered for Santulan. Here is your Santulan ID. Please keep it safe for future sign-ins.',
+    features: [[Check, 'blue', 'Keep it safe', 'You will need this ID to sign in'], [ShieldCheck, 'green', 'Your data is secure', 'Your information is used only for participation and support'], [Leaf, 'lavender', 'Next step', 'Your consent is verified, then you can begin']],
+    script: 'Different Journeys. A Brighter Tomorrow.',
+  },
+};
+
+function Message({ step, identity }) {
+  const h = HERO[step];
+  return (
+    <div className={s.splitCopy}>
+      {step > 1 && <p className={s.splitEyebrow}>Open route registration</p>}
+      <p className={s.splitTitle}>{h.title}</p>
+      {step === 2 ? (
+        <>
+          <p className={s.splitLead}>We&apos;ve sent a verification code to <strong>{identity}</strong>. Please enter the code below to verify your account.</p>
+          <blockquote className={s.splitQuote}>“{h.quote}”</blockquote>
+          <p className={s.splitTriad}>Understand · Grow · Thrive</p>
+        </>
+      ) : (
+        <>
+          <p className={s.splitLead}>{h.lead}</p>
+          <ul className={s.splitFeatures}>
+            {h.features.map(([Icon, tone, title, text]) => (
+              <li key={title} className={s.splitFeature}>
+                <IconBadge icon={Icon} tone={tone} size="sm" />
+                <div><p className={s.splitFeatureTitle}>{title}</p><p className={s.splitFeatureText}>{text}</p></div>
+              </li>
+            ))}
+          </ul>
+          <p className={s.splitScript} aria-hidden="true">{h.script}</p>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -47,7 +111,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (seconds <= 0) return undefined;
-    const t = setTimeout(() => setSeconds((s) => s - 1), 1000);
+    const t = setTimeout(() => setSeconds((sec) => sec - 1), 1000);
     return () => clearTimeout(t);
   }, [seconds]);
 
@@ -87,99 +151,155 @@ export default function RegisterPage() {
   });
 
   const contradicts = route && choice && choice !== (route.isMinor ? 'minor' : 'adult');
+  const back = (to) => { setError(''); setStep(to); };
+  const ChannelIcon = channel === 'email' ? Mail : Smartphone;
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
 
   return (
-    <PublicLayout>
-      <div className={styles.floating}>
-        <p className={styles.eyebrow}>Open route registration</p>
-        <StepIndicator current={step} labels={LABELS} />
-        {error && <StatusMessage type="error" message={error} />}
+    <PublicLayout action="register">
+      <div className={s.split}>
+        <ImageSlot slot={`registerStep${step}`} className={s.splitPhoto} />
+        <div className={s.splitShade} aria-hidden="true" />
+        <div className={`${s.splitInner} ${step === 5 ? s.splitInnerWide : ''}`.trim()}>
+          <Message step={step} identity={identity} />
 
-        {step === 1 && (
-          <form className={styles.stack} onSubmit={(e) => { e.preventDefault(); sendCode(); }}>
-            <h1 className={styles.h3}>Let's get you started</h1>
-            <div className={styles.tabs} role="tablist" aria-label="How should we verify you?">
-              {['email', 'mobile'].map((c) => (
-                <button key={c} type="button" role="tab" aria-selected={channel === c} className={`${styles.tab} ${channel === c ? styles.tabActive : ''}`} onClick={() => { setChannel(c); setIdentity(''); }}>
-                  {c === 'email' ? 'Email' : 'Mobile'}
-                </button>
-              ))}
-            </div>
-            <Field label={channel === 'email' ? 'Email address' : 'Mobile number'} type={channel === 'email' ? 'email' : 'tel'} autoComplete={channel === 'email' ? 'email' : 'tel'}
-              value={identity} onChange={(e) => setIdentity(e.target.value)} />
-            <label className={styles.check}>
-              <input type="checkbox" checked={thirteenPlus} onChange={(e) => setThirteenPlus(e.target.checked)} />
-              <span>I am 13 years or older</span>
-            </label>
-            <Button type="submit" disabled={busy}>Send verification code</Button>
-            <p className={styles.muted}>Already have an account? <Link className={styles.pageLink} to="/login">I already have an account</Link></p>
-          </form>
-        )}
+          <div className={s.authCard}>
+            {step < 5 && (
+              <div className={s.authTop}>
+                {step === 1 && <p className={s.authEyebrow}>Open route registration</p>}
+                {step === 2 && <button type="button" className={s.authBack} onClick={() => back(1)} disabled={busy}><ArrowLeft size={18} aria-hidden="true" />Back</button>}
+                {step === 4 && <button type="button" className={s.authBack} onClick={() => back(3)} disabled={busy}><ArrowLeft size={18} aria-hidden="true" />Back</button>}
+                {step === 3 && <span />}
+                <StepIndicator current={step} labels={LABELS} />
+              </div>
+            )}
+            {error && <div style={{ marginBottom: 'var(--sp-4)' }}><StatusMessage type="error" message={error} /></div>}
 
-        {step === 2 && (
-          <form className={styles.stack} onSubmit={(e) => { e.preventDefault(); verify(); }}>
-            <h1 className={styles.h3}>Enter your code</h1>
-            <p className={styles.muted}>We sent a 6-digit code to {identity}.</p>
-            <OtpInput value={code} onChange={setCode} disabled={busy} />
-            <div className={styles.row}>
-              <Button type="submit" disabled={busy}>Verify</Button>
-              <button type="button" className={styles.linkButton} disabled={seconds > 0 || busy} onClick={sendCode}>
-                {seconds > 0 ? `Resend code in ${seconds}s` : 'Resend code'}
-              </button>
-            </div>
-          </form>
-        )}
+            {step === 1 && (
+              <form className={s.authForm} onSubmit={(e) => { e.preventDefault(); sendCode(); }}>
+                <div>
+                  <h1 className={s.authTitle}>Sign In or Register</h1>
+                  <p className={s.authSub}>New here or coming back? Enter your email address or mobile number below either way.</p>
+                </div>
+                <div className={styles.segmented} role="tablist" aria-label="How should we verify you?">
+                  {[['email', 'Email Address', Mail], ['mobile', 'Mobile Number', Smartphone]].map(([c, text, Icon]) => (
+                    <button key={c} type="button" role="tab" aria-selected={channel === c} className={`${styles.segment} ${channel === c ? styles.segmentActive : ''}`} onClick={() => { setChannel(c); setIdentity(''); }}>
+                      <Icon size={20} aria-hidden="true" />{text}
+                    </button>
+                  ))}
+                </div>
+                <Field size="lg" icon={ChannelIcon} label={channel === 'email' ? 'Email address' : 'Mobile number'} type={channel === 'email' ? 'email' : 'tel'} autoComplete={channel === 'email' ? 'email' : 'tel'}
+                  placeholder={channel === 'email' ? 'yourname@example.com' : 'Your mobile number'} value={identity} onChange={(e) => setIdentity(e.target.value)}
+                  hint={channel === 'email' ? 'We’ll send you a verification code to this email address.' : 'We’ll send you a verification code to this mobile number.'} />
+                <label className={styles.check}>
+                  <input type="checkbox" checked={thirteenPlus} onChange={(e) => setThirteenPlus(e.target.checked)} />
+                  <span>I am 13 years or older</span>
+                  <Info size={18} aria-hidden="true" style={{ color: 'var(--c-brand)' }} />
+                </label>
+                <Button type="submit" size="lg" block disabled={busy}>Send Verification Code <ArrowRight size={20} aria-hidden="true" /></Button>
+                <p className={styles.muted} style={{ margin: 0 }}>
+                  Already registered this way before? Enter the same email or mobile number above — we will recognise you
+                  and sign you straight in, no need to register again.
+                </p>
+                <div className={s.orRule} aria-hidden="true">OR</div>
+                <ButtonLink to="/login" variant="secondary" size="lg" icon>I registered through a school or college</ButtonLink>
+                <div className={`${styles.railCard} ${styles.toneSky}`}>
+                  <IconBadge icon={Lock} tone="blue" size="sm" />
+                  <div className={styles.railBody}>
+                    <p className={styles.h4}>Your Privacy Matters</p>
+                    <p>Your information is used only for your assessment and development. We do not share your data without permission.</p>
+                    <Link className={styles.pageLink} to="/support">Learn More</Link>
+                  </div>
+                </div>
+              </form>
+            )}
 
-        {step === 3 && (
-          <form className={styles.stack} onSubmit={(e) => { e.preventDefault(); submitAge(); }}>
-            <h1 className={styles.h3}>How old are you?</h1>
-            <Field label="Age in years" type="number" inputMode="numeric" min="13" max="25" step="1" value={ageText} onChange={(e) => setAgeText(e.target.value)}
-              hint="Enter your age as a whole number." />
-            <RailCard tone="sky" title="If you are under 18">
-              <p>A parent or guardian will also need to give their consent before you can begin.</p>
-            </RailCard>
-            <Button type="submit" disabled={busy}>Continue</Button>
-          </form>
-        )}
+            {step === 2 && (
+              <form className={s.authForm} onSubmit={(e) => { e.preventDefault(); verify(); }}>
+                <div>
+                  <h1 className={s.authTitle}>Enter Verification Code</h1>
+                  <p className={s.authSub}>We&apos;ve sent a 6-digit code to <strong>{identity}</strong></p>
+                </div>
+                <OtpInput value={code} onChange={setCode} disabled={busy} />
+                <p className={s.resendRow}>
+                  Didn&apos;t receive the code?{' '}
+                  <button type="button" className={styles.linkButton} disabled={seconds > 0 || busy} onClick={sendCode}>
+                    {seconds > 0 ? `Resend code in ${seconds}s` : 'Resend code'}
+                  </button>
+                  {seconds > 0 && <span className={s.timer} aria-hidden="true"> {mm}:{ss}</span>}
+                </p>
+                <div className={s.orRule} aria-hidden="true">OR</div>
+                <Button variant="secondary" size="lg" block onClick={() => back(1)} disabled={busy}>{channel === 'email' ? 'Change Email Address' : 'Change Mobile Number'}</Button>
+                <Button type="submit" size="lg" block disabled={busy}>Verify and Continue <ArrowRight size={20} aria-hidden="true" /></Button>
+                <div className={`${styles.railCard} ${styles.toneSky}`}>
+                  <IconBadge icon={ShieldCheck} tone="blue" size="sm" />
+                  <div className={styles.railBody}>
+                    <p className={styles.h4}>Your security matters</p>
+                    <p>The verification code will expire in 10 minutes. Do not share this code with anyone.</p>
+                  </div>
+                </div>
+              </form>
+            )}
 
-        {step === 4 && route && (
-          <div className={styles.stack}>
-            <h1 className={styles.h3}>Consent</h1>
-            <p className={styles.muted}>These are the consent steps that apply to you, based on the age you entered.</p>
-            <div role="radiogroup" aria-label="Which applies to you?" className={styles.stack}>
-              {[['minor', 'I am under 18'], ['adult', 'I am 18 or over']].map(([value, label]) => (
-                <SelectableCard key={value} name="consent-route" value={value} checked={choice === value} onChange={() => setChoice(value)}>{label}</SelectableCard>
-              ))}
-            </div>
-            {contradicts && <StatusMessage type="warning" message="That option does not match the age you entered." />}
-            {!contradicts && route.requiredConsents.map((c) => (
-              <section key={c} className={`${styles.card} ${styles.toneBlue}`}>
-                <span className={styles.pill}>{CONSENT_CARDS[c].tag}</span>
-                <h2 className={styles.h3}>{CONSENT_CARDS[c].title}</h2>
-                <p>{CONSENT_CARDS[c].text}</p>
-              </section>
-            ))}
-            <div className={styles.row}>
-              <Button variant="secondary" onClick={() => setStep(3)} disabled={busy}>Back</Button>
-              <Button onClick={createAccount} disabled={busy || contradicts}>Create my account</Button>
-            </div>
+            {step === 3 && (
+              <form className={s.authForm} onSubmit={(e) => { e.preventDefault(); submitAge(); }}>
+                <div>
+                  <h1 className={s.authTitle}>Tell Us Your Age</h1>
+                  <p className={s.authSub}>Please enter your age in years.</p>
+                </div>
+                <Field size="lg" icon={UserRound} label="Age in years" type="number" inputMode="numeric" min="13" max="25" step="1" value={ageText} onChange={(e) => setAgeText(e.target.value)}
+                  hint="Enter your age as a whole number." />
+                <InfoNote icon={Info}>If you are below 18 years, we will guide you through an additional assent and parent/guardian consent process.</InfoNote>
+                <Button type="submit" size="lg" block disabled={busy}>Continue <ArrowRight size={20} aria-hidden="true" /></Button>
+                <InfoNote icon={Lock} tone="quiet">Your information is secure and used only for participation and support purposes.</InfoNote>
+              </form>
+            )}
+
+            {step === 4 && route && (
+              <div className={s.authForm}>
+                <div>
+                  <h1 className={s.authTitle}>Consent and Participation</h1>
+                  <p className={s.authSub}>Please select the option that applies to you.</p>
+                </div>
+                <div role="radiogroup" aria-label="Which applies to you?" className={styles.stack}>
+                  <ChoiceCard name="consent-route" value="adult" checked={choice === 'adult'} onChange={() => setChoice('adult')} icon={UserRound} tone="blue"
+                    title="I am 18 years or older" description="I can provide my own consent to participate in Santulan." tag="Self-Consent" />
+                  <ChoiceCard name="consent-route" value="minor" checked={choice === 'minor'} onChange={() => setChoice('minor')} icon={Users} tone="green"
+                    title="I am below 18 years" description="I will need assent and my parent/guardian’s consent to participate." tag="Assent + Parent/Guardian Consent" />
+                </div>
+                {contradicts && <StatusMessage type="warning" message="That option does not match the age you entered." />}
+                {!contradicts && route.requiredConsents.map((c) => (
+                  <section key={c} className={`${styles.card} ${styles.toneBlue}`}>
+                    <span className={styles.pill}>{CONSENT_CARDS[c].tag}</span>
+                    <h2 className={styles.h3} style={{ marginTop: 'var(--sp-2)' }}>{CONSENT_CARDS[c].title}</h2>
+                    <p style={{ margin: 0 }}>{CONSENT_CARDS[c].text}</p>
+                  </section>
+                ))}
+                <InfoNote icon={Info}>Honest information helps us ensure the right support and a safe experience for all participants.</InfoNote>
+                <Button size="lg" block onClick={createAccount} disabled={busy || contradicts}>Create my account <ArrowRight size={20} aria-hidden="true" /></Button>
+                <InfoNote icon={Lock} tone="quiet">Your information is secure and used only for participation and support purposes.</InfoNote>
+              </div>
+            )}
+
+            {step === 5 && result && (
+              <div className={s.authForm}>
+                <span className={s.successMark} aria-hidden="true"><Check size={48} strokeWidth={2.5} /></span>
+                <p className={s.successEyebrow}>Registration successful</p>
+                <h1 className={`${s.authTitle} ${s.centerText}`}>Welcome to Santulan!</h1>
+                <p className={`${s.authSub} ${s.centerText}`}>You&apos;re now part of a community that believes in understanding, growth and a brighter tomorrow.</p>
+                <CopyField label="Your Santulan ID" value={result.santulanId} hint="You will need this ID to sign in to your account." />
+                <StatusMessage type="info" message={result.isMinor
+                  ? 'We are waiting for consent to be verified, including your parent or guardian. You can start once that is done.'
+                  : 'Your consent needs to be verified before you can start.'} />
+                <Button size="lg" block disabled aria-describedby="start-reason">Start assessment <ArrowRight size={20} aria-hidden="true" /></Button>
+                <p id="start-reason" className={`${styles.muted} ${s.centerText}`} style={{ margin: 0 }}>The start button turns on when your consent has been verified.</p>
+                <div className={s.orRule} aria-hidden="true">OR</div>
+                <Button variant="secondary" size="lg" block onClick={() => navigate('/student')}>Go to Dashboard <ArrowRight size={20} aria-hidden="true" /></Button>
+              </div>
+            )}
           </div>
-        )}
-
-        {step === 5 && result && (
-          <div className={styles.stack}>
-            <h1 className={styles.h3}>You are registered</h1>
-            <CopyField label="Your Santulan ID (keep it safe)" value={result.santulanId} />
-            <StatusMessage type="info" message={result.isMinor
-              ? 'We are waiting for consent to be verified, including your parent or guardian. You can start once that is done.'
-              : 'Your consent needs to be verified before you can start.'} />
-            <div className={styles.row}>
-              <Button disabled aria-describedby="start-reason">Start assessment</Button>
-              <Button variant="secondary" onClick={() => navigate('/student')}>Go to my dashboard</Button>
-            </div>
-            <p id="start-reason" className={styles.muted}>The start button turns on when your consent has been verified.</p>
-          </div>
-        )}
+        </div>
       </div>
     </PublicLayout>
   );

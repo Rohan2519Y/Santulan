@@ -1,0 +1,24 @@
+/* A picture area is always white (until a picture is supplied), in both themes: it stands in for a photograph. */
+.slot {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+.slot picture { display: block; width: 100%; height: 100%; }
+.img { display: block; width: 100%; height: 100%; }
+/* no path yet: nothing is drawn, the white area keeps its size */
+.img:not([src]) { visibility: hidden; }
+
+/* dev-only label on an empty slot: its number and key, so a picture can be matched to its line in assets/imageSlots.js */
+.badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 2px 6px;
+  font: 600 11px/1.4 monospace;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+}

@@ -24,6 +24,8 @@ const ACTION_COPY = {
   open: { title: 'Open for participation', confirm: 'Open', message: 'Participants of this age group will be given this question set. Only one set can be open per age group.' },
   close: { title: 'Close participation', confirm: 'Close', message: 'New attempts will be refused. Attempts already started keep their answers and this set.' },
 };
+/* Delete reaches DRAFT sets only (CR-006-12): a draft was never frozen, so nothing can already depend on it. Once frozen, a
+ * set is permanent - Delete is never offered for one, and the server refuses it (SET_NOT_DRAFT) even if it were tried. */
 
 /** Friendly text for a few well-known upload codes; anything else shows the server's message as is. */
 const hint = (code) => (code === 'OLD_FORMAT_NOT_SUPPORTED' ? 'Use the template: it has the option columns the new format needs.' : null);
@@ -38,6 +40,7 @@ export default function QuestionSetsPage() {
   const [list, setList] = useState({ status: 'loading', sets: [], error: null });
   const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(null); // { kind: 'open'|'close', set }
+  const [deleteTarget, setDeleteTarget] = useState(null); // the DRAFT set pending delete confirmation
   const [reason, setReason] = useState('');
   const [working, setWorking] = useState(false);
   const [problem, setProblem] = useState(null);
@@ -106,6 +109,10 @@ export default function QuestionSetsPage() {
     const { kind, set } = dialog;
     return act(() => questionSetApi[kind](set.setId, reason.trim()), kind === 'open' ? `${set.versionLabel} is open.` : `${set.versionLabel} is closed.`);
   };
+  const confirmDelete = () => act(
+    () => questionSetApi.delete(deleteTarget.setId).then((r) => { setDeleteTarget(null); if (detail && detail.setId === deleteTarget.setId) setDetail(null); return r; }),
+    `${deleteTarget.versionLabel} deleted.`,
+  );
 
   return (
     <>
@@ -176,7 +183,7 @@ export default function QuestionSetsPage() {
             )}
           </Panel>
 
-          {problem && <StatusMessage type="error" message={problem} />}
+          {problem && !deleteTarget && <StatusMessage type="error" message={problem} />}
 
           <Panel title="Question sets">
             {list.status === 'error' && <StatusMessage type="error" message={list.error} />}
@@ -205,6 +212,7 @@ export default function QuestionSetsPage() {
                           <span className={styles.actions}>
                             <Button type="button" variant="secondary" onClick={() => showDetail(s.setId)} aria-label={`Review ${s.versionLabel} revision ${s.revision}`}>Review</Button>
                             {s.status === 'DRAFT' && <Button type="button" onClick={() => freeze(s)} disabled={working} aria-label={`Freeze ${s.versionLabel} revision ${s.revision}`}>Freeze</Button>}
+                            {s.status === 'DRAFT' && <Button type="button" variant="secondary" tone="error" onClick={() => { setProblem(null); setDeleteTarget(s); }} disabled={working} aria-label={`Delete ${s.versionLabel} revision ${s.revision}`}>Delete</Button>}
                             {s.status === 'FROZEN' && s.participationState !== 'OPEN' && <Button type="button" onClick={() => { setDialog({ kind: 'open', set: s }); setReason(''); }} aria-label={`Open ${s.versionLabel} for participation`}>Open</Button>}
                             {s.status === 'FROZEN' && s.participationState === 'OPEN' && <Button type="button" variant="secondary" onClick={() => { setDialog({ kind: 'close', set: s }); setReason(''); }} aria-label={`Close ${s.versionLabel}`}>Close</Button>}
                           </span>
@@ -249,6 +257,21 @@ export default function QuestionSetsPage() {
         >
           <label className={styles.reasonLabel} htmlFor="qs-reason">Reason (required, 3 to 300 characters)</label>
           <textarea id="qs-reason" className={styles.reason} rows={3} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </ConfirmDialog>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          open
+          title={`Delete ${deleteTarget.versionLabel}?`}
+          message="This draft and its questions are gone for good. It was never frozen, so nothing else on the platform depends on it. A frozen set can never be deleted."
+          confirmLabel="Delete"
+          tone="error"
+          busy={working}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        >
+          {problem && <StatusMessage type="error" message={problem} />}
         </ConfirmDialog>
       )}
     </>

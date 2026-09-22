@@ -27,4 +27,17 @@ The frozen/opened state of the dev database was deliberately **not** changed: fr
 
 Informational load run (`RUN_LOAD=1`): 400 burst saves from 40 participants took 38.5 s and 80 burst submits took 2.6 s on this machine (all writes correct). The slow part is 10 parallel saves *to the same attempt* fighting over its `last_activity_at` update (write conflicts retried by the transaction helper); real participants save one answer at a time. Not a pass/fail threshold (B05-039).
 
-Sections 9-12 are recorded as their phases complete.
+| 9 | Stop/reopen participation | `tests/santulan/contract/adminControl.test.js` ("stopping blocks NEW attempts without touching existing attempts or the frozen set; reopening restores eligibility") | stopping refuses new attempts, leaves existing attempts and the frozen set untouched, one audit row; reopening restores eligibility | 2026-09-22 |
+| 9 | Institution-filtered export, poll, download | `tests/santulan/integration/researchExport.test.js` (institution-A/B fixtures, `claimAndGenerate`, `download`) | a request filtered to one institution polls `REQUESTED → GENERATING → READY`; every participant-derived sheet contains only that institution's rows; downloaded and cross-checked cell by cell against the seeded fixtures | 2026-09-22 |
+| 9 | Synthetic export, 10,000 x 222 (SC-010) | `npm run export:synthetic -- --participants 10000 --items 222` (scratch database, T147) | export READY in 1785.7 s, file 154.4 MB; 3 `ITEM_RESPONSES_nn` sheets (expected >= 3), none over 1,048,576 rows including the header; reconciliation 2,220,000 exported vs 2,220,000 seeded -> MATCH; peak RSS 281 MB; synthetic data removed after the run (evidence in `backend/tests/santulan/evidence/register.json`, id `T147`) | 2026-09-22 |
+| 9 | Kill the worker mid-export | `tests/santulan/integration/researchExport.test.js` (B08-083, B08-034: a simulated write failure mid-generation) | a failure after `GENERATING` ends `FAILED`, leaves no file on disk, and download is refused `422 INVALID_STATE`; a fresh key afterwards still succeeds | 2026-09-22 |
+| 10 | Backup and restore drill | `npm run drill:backup-restore` (T161) | see `backend/release/evidence/` for the operator, timestamps, hashes and the PASS/FAIL of `db:verify`, the store-guarantee suite and a full registration -> consent -> answer -> submit -> report journey on the restored copy | 2026-09-22 |
+| 11 | Convert the existing catalog | `tests/santulan/integration/questionsConvert.test.js` (SC-014); `npm run questions:convert` | two new-format workbooks (175 and 171 questions, five options each) uploaded through `POST /admin/question-sets` with **0 validation errors** | 2026-09-22 |
+| 12 | Clean-up check | `tests/santulan/unit/repoClean.test.js` (FR-002, FR-041, SC-001) | no `pg` dependency, no `DATABASE_URL`/`RUNTIME_DATABASE_URL`/`PLATFORM_DATABASE_URL` under `backend/src`, `backend/scripts`, `backend/tests`, `backend/.env.example`; no `backend/migrations/`; no deleted scripts/seeders/docker files; no `withCanonicalTx` reference; README/SECURITY/FLOWCHART carry no non-historical relational-database instruction | 2026-09-22 |
+
+The whole US1 journey (register -> consent -> open a set -> answer -> submit -> score -> report -> admin export), acceptance
+scenarios 1-6, ran once as a single continuous test over the real HTTP app on 2026-09-22:
+`tests/santulan/integration/e2eJourney.test.js` (T172; full detail in `constitution-sweep.md`).
+
+Every scenario in `quickstart.md` §1-12 has now been executed at least once and is recorded above or in §1-8. Launch status
+remains **NO-GO** pending the staging-only evidence (`launch-gates.md` E1-E11).

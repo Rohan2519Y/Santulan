@@ -5,10 +5,12 @@ export default function Button({
   variant = 'primary',
   tone = 'brand',
   type = 'button',
+  size = 'md',
+  block = false,
   className = '',
   ...rest
 }) {
-  const classes = [styles.button, styles[variant], styles[`tone-${tone}`], className].filter(Boolean).join(' ');
+  const classes = [styles.button, styles[variant], styles[`tone-${tone}`], size === 'lg' ? styles.lg : '', block ? styles.block : '', className].filter(Boolean).join(' ');
   return (
     <button type={type} className={classes} {...rest}>
       {children}

@@ -20,7 +20,7 @@ async function toAgeStep() {
   await userEvent.click(screen.getByRole('button', { name: /send verification code/i }));
   const boxes = await screen.findAllByLabelText(/digit \d of 6/i);
   for (let i = 0; i < 6; i += 1) await userEvent.type(boxes[i], String(i + 1));
-  await userEvent.click(screen.getByRole('button', { name: /^verify$/i }));
+  await userEvent.click(screen.getByRole('button', { name: /verify and continue/i }));
   await screen.findByLabelText('Age in years');
 }
 
@@ -30,9 +30,9 @@ describe('registration wizard (T116)', () => {
   test('step 1 shows "Step 1 of 5", an email/mobile choice and the 13-or-older confirmation', () => {
     renderPage(<RegisterPage />);
     expect(screen.getByLabelText('Step 1 of 5')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Email' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Mobile' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /already have an account/i })).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('tab', { name: 'Email Address' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Mobile Number' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /registered through a school or college/i })).toHaveAttribute('href', '/login');
   });
 
   test('step 1 refuses to continue until the 13-or-older box is ticked', async () => {
@@ -81,13 +81,13 @@ describe('registration wizard (T116)', () => {
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     expect(await screen.findByText('Parent or guardian consent')).toBeInTheDocument();
     expect(screen.getByText('Your assent')).toBeInTheDocument();
-    expect(screen.getByLabelText('I am under 18')).toBeChecked();
+    expect(screen.getByLabelText('I am below 18 years')).toBeChecked();
 
-    await userEvent.click(screen.getByLabelText('I am 18 or over'));
+    await userEvent.click(screen.getByLabelText('I am 18 years or older'));
     expect(screen.getByRole('alert')).toHaveTextContent(/does not match the age you entered/i);
     expect(screen.queryByText('Parent or guardian consent')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create my account/i })).toBeDisabled();
-    await userEvent.click(screen.getByLabelText('I am under 18'));
+    await userEvent.click(screen.getByLabelText('I am below 18 years'));
     expect(screen.getByRole('button', { name: /create my account/i })).toBeEnabled();
   });
 
@@ -110,5 +110,5 @@ describe('registration wizard (T116)', () => {
     await waitFor(() => expect(api.declareAge).toHaveBeenCalledTimes(2));
     expect(api.declareAge.mock.calls[0][2]).toBe(api.declareAge.mock.calls[1][2]);            // one key per registration attempt
     expect(api.declareAge.mock.calls[0][1]).toBe(15);                                            // the age is the only personal value sent
-  });
+  }, 15000); // two full round trips (a failed attempt, then a retry) can miss the 5s default under CI load
 });

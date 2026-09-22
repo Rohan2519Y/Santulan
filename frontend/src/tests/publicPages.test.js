@@ -13,8 +13,8 @@ describe('public pages (T115)', () => {
 
   test('Get started shows the two route cards, each with a working link to an existing page', () => {
     renderPage(<GetStartedPage />);
-    const open = screen.getByRole('heading', { name: /register on your own/i }).closest('section');
-    const institution = screen.getByRole('heading', { name: /school or college registered me/i }).closest('section');
+    const open = screen.getByRole('heading', { name: /register as an individual/i }).closest('section');
+    const institution = screen.getByRole('heading', { name: /join through your institution/i }).closest('section');
     expect(within(open).getByRole('link', { name: /register/i })).toHaveAttribute('href', '/register');
     expect(within(institution).getByRole('link', { name: /sign in with a santulan id/i })).toHaveAttribute('href', '/login');   // no self-join by code (D-02)
   });

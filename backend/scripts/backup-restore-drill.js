@@ -11,7 +11,7 @@
  *   6. the store-guarantee suite and one end-to-end journey (attempt -> answers -> submit -> quality -> score -> report) against the copy
  *   7. write an evidence file: operator, timestamps, archive SHA-256, per-step PASS / FAIL
  *
- *   node scripts/backup-restore-drill.js [--source santulan_qual] [--target santulan_restore_drill] [--out release/evidence] [--allow-source] [--skip-tests]
+ *   node scripts/backup-restore-drill.js [--source santulan_qual] [--target santulan_restore_drill_scratch] [--out release/evidence] [--allow-source] [--skip-tests]
  *
  * A non-scratch SOURCE (for example `santulan`) needs --allow-source. A non-scratch TARGET is always refused. The MongoDB tools
  * (mongodump / mongorestore) must be on PATH or in MONGODB_TOOLS_DIR. Nothing prints a credential.
@@ -31,7 +31,7 @@ const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); r
 const flag = (name) => process.argv.includes(`--${name}`);
 
 const SOURCE = arg('source', process.env.MONGODB_TEST_DB || 'santulan_qual');
-const TARGET = arg('target', 'santulan_restore_drill');
+const TARGET = arg('target', 'santulan_restore_drill_scratch');
 const OUT_DIR = path.resolve(BACKEND, arg('out', 'release/evidence'));
 
 function tool(name) {
@@ -50,6 +50,9 @@ function run(label, command, args, { env = {}, capture = true } = {}) {
 
 const sha256File = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const redact = (text) => String(text).replace(/mongodb(\+srv)?:\/\/[^@\s]+@/g, 'mongodb://[redacted]@');
+// mongodump refuses a URI whose own path names a database when --db also names one, even the same one; --db is how this
+// script picks the actual source, so the URI passed to the CLI tools must carry no database of its own.
+const stripUriDb = (u) => u.replace(/^(mongodb(?:\+srv)?:\/\/[^/]+)\/[^/?]*(\?|$)/, '$1/$2');
 
 async function main() {
   const uri = process.env.MONGODB_URI_ADMIN;
@@ -70,7 +73,7 @@ async function main() {
   let archiveHash = null;
   try {
     // 1. backup
-    if (!record(run('mongodump (source database, gzip archive)', tool('mongodump'), [`--uri=${uri}`, `--db=${SOURCE}`, `--archive=${archive}`, '--gzip']))) throw new Error('backup failed');
+    if (!record(run('mongodump (source database, gzip archive)', tool('mongodump'), [`--uri=${stripUriDb(uri)}`, `--db=${SOURCE}`, `--archive=${archive}`, '--gzip']))) throw new Error('backup failed');
     archiveHash = sha256File(archive);
 
     // 2. clean target
@@ -79,7 +82,7 @@ async function main() {
     record({ label: 'clean restore target (dropDatabase)', ok: true, started: t0.toISOString(), finished: new Date().toISOString(), output: '' });
 
     // 3. restore
-    if (!record(run('mongorestore (into the scratch target)', tool('mongorestore'), [`--uri=${uri}`, `--archive=${archive}`, '--gzip', `--nsFrom=${SOURCE}.*`, `--nsTo=${TARGET}.*`]))) throw new Error('restore failed');
+    if (!record(run('mongorestore (into the scratch target)', tool('mongorestore'), [`--uri=${stripUriDb(uri)}`, `--archive=${archive}`, '--gzip', `--nsFrom=${SOURCE}.*`, `--nsTo=${TARGET}.*`]))) throw new Error('restore failed');
 
     // 4. role for the restored database (roles are not part of a dump)
     const t1 = new Date();

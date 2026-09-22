@@ -46,4 +46,11 @@ function requireApprovedMethod(protocol, method) {
   }
 }
 
-module.exports = { requireApproved, requireApprovedMethod };
+/** The approved protocol version for a consent type (the first entry on file), or throws PROTOCOL_UNAPPROVED if none is configured. */
+function currentApprovedVersion(consentType, path) {
+  const found = load(path).find((e) => e.consentType === consentType);
+  if (!found) throw new HttpError(422, 'PROTOCOL_UNAPPROVED', `No approved protocol is configured for ${consentType}`);
+  return found.protocolVersion;
+}
+
+module.exports = { requireApproved, requireApprovedMethod, currentApprovedVersion };

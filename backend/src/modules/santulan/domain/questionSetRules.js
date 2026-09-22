@@ -64,4 +64,13 @@ function assertClosable(set) {
   if (set.participation_state !== 'OPEN') throw new HttpError(409, 'SET_NOT_FROZEN', 'This question set is not open');
 }
 
-module.exports = { ageRange, decideUpload, assertUploadable, eligibleForGroup, missingDomains, verifyContentHash, assertFreezable, assertOpenable, assertClosable };
+/**
+ * CR-006-12 (owner-approved 2026-09-22): a DRAFT set can be deleted outright - it can never have been frozen, so no attempt,
+ * report or export could ever have used it. Once FROZEN a set is permanent forever (constitution IV, non-negotiable); this
+ * never applies past DRAFT.
+ */
+function assertDeletable(set) {
+  if (set.status !== 'DRAFT') throw new HttpError(409, 'SET_NOT_DRAFT', 'Only a draft question set can be deleted; a frozen set is permanent');
+}
+
+module.exports = { ageRange, decideUpload, assertUploadable, eligibleForGroup, missingDomains, verifyContentHash, assertFreezable, assertOpenable, assertClosable, assertDeletable };

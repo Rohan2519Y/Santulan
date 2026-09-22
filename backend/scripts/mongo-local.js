@@ -127,9 +127,25 @@ async function init(args) {
 
   const root = new MongoClient(uriBase('root_admin', rootPw, 'admin', '?authSource=admin'), direct());
   await root.connect();
+  // A wildcard-db privilege for system.views: migrations, seeding, db-verify and the test harness all target scratch-named
+  // databases the migrator has never seen before (santulan_scratch_setup, santulan_restore_drill, ...), and some of their
+  // operations (countDocuments on a research VIEW, in particular) resolve view definitions via system.views - which neither
+  // the readWriteAnyDatabase/dbAdminAnyDatabase/userAdminAnyDatabase trio NOR the root role extends to an ordinary
+  // database's own system.views (verified: both were tried and both still refused it). The {db:'', collection:'system.views'}
+  // resource pattern is the one that actually matches every database's system.views.
+  await root.db('admin').command({
+    createRole: 'santulan_migrator_system_views',
+    privileges: [{ resource: { db: '', collection: 'system.views' }, actions: ['find', 'listCollections', 'collStats'] }],
+    roles: [],
+  });
   await root.db('santulan').command({
     createUser: 'santulan_migrator', pwd: migPw,
-    roles: DBS.map((db) => ({ role: 'dbOwner', db })),
+    // dbOwner on the two named databases, PLUS root (any-database migrations/seeding/fixtures) PLUS the system.views
+    // privilege above. Each script still enforces its own naming allow-list (assertAllowedDb-style checks) as the actual
+    // guard against touching a wrong database; these grants only let the migrator reach a database whose name is not known
+    // in advance. This credential is never present in the API process (constitution requirement stays on santulan_runtime,
+    // which is unaffected by any of this).
+    roles: [...DBS.map((db) => ({ role: 'dbOwner', db })), { role: 'root', db: 'admin' }, { role: 'santulan_migrator_system_views', db: 'admin' }],
   });
   // Runtime user: no roles until migration 004 creates the least-privilege role and grants it.
   await root.db('santulan').command({ createUser: 'santulan_runtime', pwd: rtPw, roles: [] });

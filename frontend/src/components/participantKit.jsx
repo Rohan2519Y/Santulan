@@ -1,29 +1,63 @@
 /*
  * Small reusable pieces for the participant screens (design-system.md §2.2-§2.4): StepIndicator, OtpInput, CopyField,
- * StageStepper, RailCard/Note cards and the RadarChart. They share one stylesheet; each is small and behaviour-only.
+ * StageStepper, RailCard/InfoNote/Feature/IconBadge/ChoiceCard, the RadarChart and the page furniture. They share one stylesheet.
  */
 import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight, Copy, Info, Lightbulb, ShieldCheck, Users } from 'lucide-react';
 import styles from '../styles/ui.module.css';
 import buttonStyles from './Button/Button.module.css';
 
-/** Five-dot indicator; "Step n of 5" is announced to assistive technology. */
+const BADGE_TONE = { blue: styles.badgeBlue, green: styles.badgeGreen, pink: styles.badgePink, lavender: styles.badgeLavender, cream: styles.badgeCream };
+
+/** A round icon in one of the sample tints. */
+export function IconBadge({ icon: Icon, tone = 'blue', size = 'md' }) {
+  const sizeClass = size === 'sm' ? styles.badgeSm : size === 'lg' ? styles.badgeLg : '';
+  return <span className={`${styles.badge} ${sizeClass} ${BADGE_TONE[tone] || ''}`.trim()} aria-hidden="true">{Icon && <Icon size={size === 'sm' ? 22 : size === 'lg' ? 34 : 28} strokeWidth={1.75} />}</span>;
+}
+
+/** Icon + heading + one line of text (value strips, feature rows). */
+export function Feature({ icon, tone = 'blue', title, children, as: Heading = 'p' }) {
+  return (
+    <div className={styles.feature}>
+      <IconBadge icon={icon} tone={tone} />
+      <div>
+        <Heading className={styles.featureTitle}>{title}</Heading>
+        {children && <p className={styles.featureText}>{children}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** A tinted one-line note with a leading icon ("This assessment...", "Your information is secure..."). */
+export function InfoNote({ icon: Icon = Info, tone, children, className = '' }) {
+  const toneClass = { green: styles.noteGreen, cream: styles.noteCream, quiet: styles.noteQuiet }[tone] || '';
+  return (
+    <p className={`${styles.note} ${toneClass} ${className}`.trim()}>
+      <Icon size={22} aria-hidden="true" />
+      <span>{children}</span>
+    </p>
+  );
+}
+
+/** Connected dots with "Step n of 5" above; the step is announced to assistive technology through the list label. */
 export function StepIndicator({ current, total = 5, labels = [] }) {
   return (
-    <ol className={styles.steps} aria-label={`Step ${current} of ${total}`}>
-      {Array.from({ length: total }, (_, i) => {
-        const n = i + 1;
-        const state = n < current ? styles.stepDone : n === current ? styles.stepCurrent : '';
-        return (
-          <li key={n} aria-current={n === current ? 'step' : undefined}>
-            <span className={`${styles.stepDot} ${state}`} aria-hidden="true">{n < current ? <Check size={16} /> : n}</span>
-            <span className="sr-only">{labels[i] || `Step ${n}`}{n < current ? ' (done)' : ''}</span>
-          </li>
-        );
-      })}
-      <li className={styles.stepLabel} aria-hidden="true">Step {current} of {total}</li>
-    </ol>
+    <div className={styles.stepWrap}>
+      <span className={styles.stepLabel} aria-hidden="true">Step {current} of {total}</span>
+      <ol className={styles.steps} aria-label={`Step ${current} of ${total}`}>
+        {Array.from({ length: total }, (_, i) => {
+          const n = i + 1;
+          const state = n < current ? styles.stepDone : n === current ? styles.stepCurrent : '';
+          return (
+            <li key={n} aria-current={n === current ? 'step' : undefined} className={n < current ? styles.stepLineDone : ''}>
+              <span className={`${styles.stepDot} ${state}`} aria-hidden="true">{n < current ? <Check size={12} strokeWidth={3} /> : null}</span>
+              <span className="sr-only">{labels[i] || `Step ${n}`}{n < current ? ' (done)' : ''}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 
@@ -54,20 +88,21 @@ export function OtpInput({ value, onChange, length = 6, label = 'Verification co
   );
 }
 
-/** Shows a value with a Copy action that announces "Copied". */
-export function CopyField({ label, value }) {
+/** Shows a value with a Copy action that announces "Copied". `hint` is the line under the box. */
+export function CopyField({ label, value, hint }) {
   const [copied, setCopied] = useState(false);
+  const labelId = useId();
   const copy = async () => {
     try { await navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch (err) { setCopied(false); }
   };
   return (
-    <div>
-      <p className={styles.muted} id="copyfield-label">{label}</p>
+    <div className={styles.copyBox}>
+      <p className={styles.copyLabel} id={labelId}>{label}</p>
       <div className={styles.copyRow}>
-        <code className={styles.mono} aria-labelledby="copyfield-label">{value}</code>
-        <button type="button" className={styles.linkButton} onClick={copy}>Copy</button>
-        <span role="status" aria-live="polite" className={styles.muted}>{copied ? 'Copied' : ''}</span>
+        <code className={styles.mono} aria-labelledby={labelId}>{value}</code>
+        <button type="button" className={styles.copyButton} onClick={copy}><Copy size={18} aria-hidden="true" />Copy</button>
       </div>
+      <p className={styles.copyHint} role="status" aria-live="polite">{copied ? 'Copied' : hint || ''}</p>
     </div>
   );
 }
@@ -78,7 +113,7 @@ export function StageStepper({ stages, currentIndex, label = 'Report progress' }
     <ol className={styles.stages} aria-label={label} aria-live="polite">
       {stages.map((s, i) => (
         <li key={s} className={`${styles.stage} ${i < currentIndex ? styles.stageDone : ''} ${i === currentIndex ? styles.stageCurrent : ''}`} aria-current={i === currentIndex ? 'step' : undefined}>
-          <span aria-hidden="true">{i < currentIndex ? '✓' : i === currentIndex ? '•' : '○'}</span>
+          <span className={styles.stageMark} aria-hidden="true">{i < currentIndex ? <Check size={16} strokeWidth={3} /> : null}</span>
           <span>{s}{i < currentIndex ? ' (done)' : i === currentIndex ? ' (in progress)' : ''}</span>
         </li>
       ))}
@@ -86,13 +121,24 @@ export function StageStepper({ stages, currentIndex, label = 'Report progress' }
   );
 }
 
-/** Cream / lavender / sky card used for notes, help and "why this matters". */
-export function RailCard({ tone = 'sky', title, children }) {
-  const toneClass = { sky: styles.toneSky, safe: styles.toneGreen, help: styles.toneLavender, note: styles.toneCream }[tone] || styles.toneSky;
+const RAIL = {
+  sky: { cls: styles.toneSky, badge: 'blue', icon: Lightbulb },
+  safe: { cls: styles.toneGreen, badge: 'green', icon: ShieldCheck },
+  help: { cls: styles.toneLavender, badge: 'lavender', icon: Users },
+  note: { cls: styles.toneCream, badge: 'cream', icon: null },
+};
+
+/** Tinted card with an icon, a serif heading and text: notes, help and "why this matters". `icon={false}` shows no icon. */
+export function RailCard({ tone = 'sky', title, icon, children, as: Heading = 'h2' }) {
+  const t = RAIL[tone] || RAIL.sky;
+  const Icon = icon === false ? null : icon || t.icon;
   return (
-    <section className={`${styles.card} ${toneClass}`}>
-      {title && <h2 className={styles.h3}>{title}</h2>}
-      {children}
+    <section className={`${styles.railCard} ${t.cls}`}>
+      {Icon && <IconBadge icon={Icon} tone={t.badge} size="sm" />}
+      <div className={styles.railBody}>
+        {title && <Heading className={styles.h3}>{title}</Heading>}
+        {children}
+      </div>
     </section>
   );
 }
@@ -116,11 +162,11 @@ export function RadarChart({ axes }) {
         {axes.map((a, i) => (<line key={a.code} x1={c} y1={c} x2={point(i, 5)[0]} y2={point(i, 5)[1]} stroke="var(--c-track)" />))}
         {path && <polygon points={path} fill="var(--c-selected)" stroke="var(--c-brand)" strokeWidth="2" />}
         {drawn.map((p, i) => p && <circle key={axes[i].code} cx={p[0]} cy={p[1]} r="4" fill="var(--c-brand)" />)}
-        {axes.map((a, i) => { const [x, y] = point(i, 5.6); return <text key={a.code} x={x} y={y} textAnchor="middle" fontSize="11" fill="var(--c-ink)">{a.code}</text>; })}
+        {axes.map((a, i) => { const [x, y] = point(i, 5.6); return <text key={a.code} x={x} y={y} textAnchor="middle" fontSize="12" fontWeight="600" fill="var(--c-ink)">{a.code}</text>; })}
       </svg>
-      <ul className={styles.stack} style={{ listStyle: 'none', padding: 0 }}>
+      <ul className={styles.axisList}>
         {axes.map((a) => (
-          <li key={a.code} className={styles.rowBetween}>
+          <li key={a.code} className={styles.axisItem}>
             <span>{a.code} {a.name}</span>
             <strong>{a.score == null ? (a.message || 'Not enough data yet') : a.score.toFixed(2)}</strong>
             {a.score != null && a.note && <span className={styles.muted}>{a.note}</span>}
@@ -134,9 +180,9 @@ export function RadarChart({ axes }) {
 /** Two-column hero: copy on one side, a tinted panel on the other; stacks on narrow screens. */
 export function SplitHero({ children, aside }) {
   return (
-    <section className={styles.hero}>
+    <section className={styles.pageGrid}>
       <div>{children}</div>
-      <div className={styles.heroBand}>{aside}</div>
+      <div className={`${styles.card} ${styles.toneSky}`}>{aside}</div>
     </section>
   );
 }
@@ -151,6 +197,25 @@ export function SelectableCard({ type = 'radio', name, value, checked, onChange,
   );
 }
 
+/**
+ * A large radio card with an icon, a serif title, a description and a tag (sample 07). The radio is named by the title and
+ * described by the description, so the accessible name stays short.
+ */
+export function ChoiceCard({ name, value, checked, onChange, icon, tone = 'green', title, description, tag }) {
+  const id = useId();
+  return (
+    <label className={`${styles.choice} ${tone === 'blue' ? styles.choiceBlue : ''} ${checked ? styles.choiceSelected : ''}`.trim()}>
+      <input type="radio" className={styles.choiceInput} name={name} value={value} checked={checked} onChange={onChange} aria-labelledby={`${id}-t`} aria-describedby={`${id}-d`} />
+      {icon && <IconBadge icon={icon} tone={tone === 'blue' ? 'blue' : 'green'} />}
+      <span className={styles.choiceBody}>
+        <span id={`${id}-t`} className={styles.choiceTitle} style={{ display: 'block' }}>{title}</span>
+        <span id={`${id}-d`} className={styles.choiceText} style={{ display: 'block' }}>{description}</span>
+        {tag && <span className={`${styles.pill} ${tone === 'green' ? styles.pillGreen : ''}`.trim()}>{tag}</span>}
+      </span>
+    </label>
+  );
+}
+
 /** "Home > Page" trail for the participant area; the current page is not a link. */
 export function Breadcrumb({ items }) {
   return (
@@ -159,7 +224,7 @@ export function Breadcrumb({ items }) {
         {items.map((it, i) => (
           <li key={it.label} aria-current={i === items.length - 1 ? 'page' : undefined}>
             {it.to && i < items.length - 1 ? <Link className={styles.pageLink} to={it.to}>{it.label}</Link> : it.label}
-            {i < items.length - 1 && <span aria-hidden="true"> / </span>}
+            {i < items.length - 1 && <ChevronRight className={styles.crumbSep} size={14} aria-hidden="true" />}
           </li>
         ))}
       </ol>
@@ -174,7 +239,7 @@ export function Toggle({ label, checked, onChange, hint }) {
     <div className={styles.toggleRow}>
       <div>
         <span id={`${id}-label`} className={styles.toggleLabel}>{label}</span>
-        {hint && <p className={styles.muted} id={`${id}-hint`}>{hint}</p>}
+        {hint && <p className={styles.muted} id={`${id}-hint`} style={{ margin: '2px 0 0' }}>{hint}</p>}
       </div>
       <button id={id} type="button" role="switch" aria-checked={checked} aria-labelledby={`${id}-label`} aria-describedby={hint ? `${id}-hint` : undefined}
         className={`${styles.switch} ${checked ? styles.switchOn : ''}`} onClick={() => onChange(!checked)}>
@@ -185,9 +250,10 @@ export function Toggle({ label, checked, onChange, hint }) {
 }
 
 /** A link that looks like a Button variant (navigation stays an anchor, so it works with middle-click and screen readers). */
-export function ButtonLink({ to, variant = 'primary', children, icon = false }) {
+export function ButtonLink({ to, variant = 'primary', children, icon = false, size = 'md', block = true, className = '' }) {
+  const cls = [buttonStyles.button, buttonStyles[variant], size === 'lg' ? buttonStyles.lg : '', block ? buttonStyles.block : '', styles.fullWidth, className].filter(Boolean).join(' ');
   return (
-    <Link to={to} className={`${buttonStyles.button} ${buttonStyles[variant]} ${styles.fullWidth}`}>
+    <Link to={to} className={cls}>
       {children}
       {icon && <ArrowRight size={18} aria-hidden="true" />}
     </Link>
@@ -195,10 +261,10 @@ export function ButtonLink({ to, variant = 'primary', children, icon = false }) 
 }
 
 /** A list of ticked benefits/steps (the route cards of screen 03). */
-export function CheckList({ items }) {
+export function CheckList({ items, tone = 'green' }) {
   return (
-    <ul className={styles.checkList}>
-      {items.map((t) => (<li key={t}><Check size={18} aria-hidden="true" className={styles.checkIcon} /><span>{t}</span></li>))}
+    <ul className={`${styles.checkList} ${tone === 'blue' ? styles.checkListBlue : ''}`.trim()}>
+      {items.map((t) => (<li key={t}><span className={styles.tick} aria-hidden="true"><Check size={14} strokeWidth={3} /></span><span>{t}</span></li>))}
     </ul>
   );
 }

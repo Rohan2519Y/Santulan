@@ -41,3 +41,35 @@
   font-size: var(--fs-sm);
   color: var(--c-ink-muted);
 }
+
+/* optional leading icon / trailing control and the large sample size (registration and sign-in) */
+.controlWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.icon {
+  position: absolute;
+  left: var(--sp-4);
+  color: var(--c-ink-muted);
+  pointer-events: none;
+}
+.trailing {
+  position: absolute;
+  right: var(--sp-2);
+  display: inline-flex;
+}
+.withIcon {
+  padding-left: 48px;
+}
+.withTrailing {
+  padding-right: 56px;
+}
+.lg {
+  min-height: 56px;
+  border: 1px solid var(--c-line);
+  font-size: 17px;
+}
+.lg:focus-visible {
+  border-color: var(--c-brand);
+}

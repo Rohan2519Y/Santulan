@@ -15,6 +15,7 @@ The REST surface of feature 005 (registration, consent, delivery, quality/scorin
 | `POST /admin/question-sets/{id}/freeze` | `DRAFT → FROZEN` | body `{}`; prerequisites in upload-format §4; audited |
 | `POST /admin/question-sets/{id}/open` | open for participation | body `{ reason }`; audited; `409 OPEN_SET_EXISTS` |
 | `POST /admin/question-sets/{id}/close` | close participation | body `{ reason }` (required); existing attempts unaffected; audited |
+| `POST /admin/question-sets/{id}/delete` | **CR-006-12**: `DRAFT → RETIRED`, a draft set only | body `{}`; a `POST` action, never the HTTP `DELETE` verb (store guarantee G-22: no HTTP DELETE route exists anywhere in the API); a `FROZEN`/`OPENED` set can never be deleted (`409 SET_NOT_DRAFT` — constitution IV, no amendment); items are Tier A insert-only so nothing is physically removed, the set is simply retired and never offered for freeze/open again; audited as `QUESTION_SET_DELETED` |
 
 ### 1.1 Upload response
 
@@ -41,6 +42,18 @@ The REST surface of feature 005 (registration, consent, delivery, quality/scorin
 |----------|---------|-------|
 | `GET /admin/release-flags` | current value of the four switches | `{ pilotS2, advancedEvidence, developmentRelease, pathwayRelease }`, each `{ value, changedAt, changedBy?, reason? }`; a switch never changed reads `false` |
 | `POST /admin/release-flags/{flag}` | set one switch | body `{ value: boolean, reason }` (reason required, 3–300 chars); audited in the same transaction as the change (`RELEASE_FLAG_CHANGED`); no deployment or restart; unknown flag → `404` |
+
+## 1c. New endpoint — adult self-consent (participant token; CR-006-13)
+
+| Endpoint | Purpose | Notes |
+|----------|---------|-------|
+| `POST /consents/self-consent` | an adult (18+) participant confirms their own `ADULT_SELF_CONSENT` in one call | body `{}`; creates, grants and verifies the consent record in a single call (`verification_method: SELF_ATTESTED`, an owner-approved method added to `CONSENT_PROTOCOLS_PATH`'s `ADULT_SELF_CONSENT` allow-list); calling it again while already `VERIFIED` returns the existing record unchanged (idempotent no-op, not a duplicate); a minor's token → `422 SELF_CONSENT_NOT_AVAILABLE` and they are told to use the existing parent/guardian consent + assent flow instead, which is completely unchanged; no approved `ADULT_SELF_CONSENT` protocol configured → `422 PROTOCOL_UNAPPROVED` (fail closed, same governance pattern as every other consent type) |
+
+## 1d. New endpoint — minor self-service (participant token; CR-006-14)
+
+| Endpoint | Purpose | Notes |
+|----------|---------|-------|
+| `POST /consents/minor-self-service` | a minor confirms **both** required consents themselves, on their own device, in one call | body `{}`; creates, grants and verifies `STUDENT_ASSENT` (`verification_method: SELF_ATTESTED` — a genuine self-attestation) and `PARENT_GUARDIAN_CONSENT` (`verification_method: STUDENT_ATTESTED_FOR_PARENT` — a distinct, owner-approved code so the audit trail is never misread as an actual parent/guardian action) in one call; a temporary stand-in until a real parent/guardian portal exists — the ordinary admin-mediated flow (a real parent verifying their own consent through `POST /consents` + `POST /consents/:id/verify`) is completely unchanged and still available; to switch from the student-attested record to a real one, the participant withdraws it first (`uq_consent_active_type_protocol` allows only one active record per participant/type/protocol version), then the admin-mediated flow proceeds as normal; calling this endpoint again is idempotent per consent type (an already-`VERIFIED` one is left untouched, a still-pending one is completed); an adult's token → `422 PARENT_CONSENT_NOT_APPLICABLE`; no approved protocol for either type → `422 PROTOCOL_UNAPPROVED` for that step only, the other consent's completion (if it already succeeded) is not rolled back |
 
 ## 2. Changed endpoints
 
@@ -70,6 +83,9 @@ The REST surface of feature 005 (registration, consent, delivery, quality/scorin
 | `OPEN_SET_EXISTS` | 409 | another set is open for that age group |
 | `OPTION_OUT_OF_RANGE` | 422 | answer outside the question's options (**replaces** `SCALE_OUT_OF_RANGE`) |
 | `STORE_UNAVAILABLE` | 503 | the data store cannot confirm the operation (fail closed) |
+| `SELF_CONSENT_NOT_AVAILABLE` | 422 | **CR-006-13**: self-consent called by a minor's token; use the parent/guardian consent + assent flow instead |
+| `PARENT_CONSENT_NOT_APPLICABLE` | 422 | **CR-006-14**: minor-self-service called by an adult's token; use self-consent instead |
+| `PROTOCOL_UNAPPROVED` | 422 | existing code (consent governance), reused by self-consent and minor-self-service when the relevant consent type has no approved protocol configured |
 
 All other codes of 005 `api.md` §1 are unchanged. The frontend mapping for `SCALE_OUT_OF_RANGE` is updated to `OPTION_OUT_OF_RANGE` in the same change.
 

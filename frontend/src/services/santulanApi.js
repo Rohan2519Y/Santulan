@@ -93,6 +93,10 @@ export const api = {
   consentGate: () => call('/consents/gate'),
   grantConsent: (id) => call(`/consents/${id}/grant`, { method: 'POST', body: {} }),
   withdrawConsent: (id) => call(`/consents/${id}/withdraw`, { method: 'POST', body: {} }),
+  /** CR-006-13: one checkbox for an adult's own consent - creates, grants and verifies ADULT_SELF_CONSENT in one call. 422 SELF_CONSENT_NOT_AVAILABLE for a minor (unchanged parent/guardian + assent flow applies to them instead). */
+  selfConsent: () => call('/consents/self-consent', { method: 'POST', body: {} }),
+  /** CR-006-14: one checkbox for a minor - confirms their own STUDENT_ASSENT and attests PARENT_GUARDIAN_CONSENT on the parent/guardian's behalf, both in one call. 422 PARENT_CONSENT_NOT_APPLICABLE for an adult. */
+  minorSelfService: () => call('/consents/minor-self-service', { method: 'POST', body: {} }),
 
   // delivery (BUILD 05)
   createAttempt: () => call('/attempts', { method: 'POST', body: {} }),
@@ -135,6 +139,8 @@ export const questionSetApi = {
   freeze: (id) => call(`/admin/question-sets/${id}/freeze`, { method: 'POST', body: {} }),
   open: (id, reason) => call(`/admin/question-sets/${id}/open`, { method: 'POST', body: { reason } }),
   close: (id, reason) => call(`/admin/question-sets/${id}/close`, { method: 'POST', body: { reason } }),
+  /** Only ever refused for a set that has already been frozen (a frozen set is permanent, CR-006-12); a draft has no reason to give. */
+  delete: (id) => call(`/admin/question-sets/${id}/delete`, { method: 'POST', body: {} }),
   /** Downloads the blank template (needs the bearer token, so it is fetched and saved rather than linked). */
   downloadTemplate: async () => {
     let res;

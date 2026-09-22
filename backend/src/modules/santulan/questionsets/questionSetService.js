@@ -166,4 +166,23 @@ async function close(actor, setId, reason, correlationId = null) {
   });
 }
 
-module.exports = { upload, list, get, freeze, open, close, SHOWN_PROBLEMS };
+/**
+ * DRAFT -> RETIRED, as a delete (CR-006-12). Reuses the exact same compare-and-set move the upload path already trusts to
+ * retire a superseded draft; the only difference is who asked and why. Items are Tier A (insert-only) so they are never
+ * physically removed - they simply belong to a RETIRED set from here on, which is never listed as an option to freeze, open
+ * or upload against again. A frozen set is refused by assertDeletable before any of this runs.
+ */
+async function deleteDraft(actor, setId, correlationId = null) {
+  return asAdmin(actor, async (tx) => {
+    const set = await loadSet(tx, setId);
+    rules.assertDeletable(set);
+    if (!(await sets.retireDraft(tx, setId))) throw new HttpError(409, 'SET_NOT_DRAFT', 'The set changed while deleting; try again');
+    await writeAudit(tx, {
+      ...actorOf(actor), actionType: 'QUESTION_SET_DELETED', targetEntity: 'assessment_version', targetId: setId,
+      previousState: { status: 'DRAFT' }, newState: { status: 'RETIRED' }, correlationId,
+    });
+    return summarise(tx, await sets.getSetRaw(tx, setId));
+  });
+}
+
+module.exports = { upload, list, get, freeze, open, close, deleteDraft, SHOWN_PROBLEMS };

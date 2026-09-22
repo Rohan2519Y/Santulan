@@ -30,3 +30,32 @@ Files here are **templates**. Real values need the approvals named below; nothin
 
 Participant-facing controlled copy. The wording is owner-approved content; the values shipped here are neutral
 placeholders marked `TODO(copy)`.
+
+## `consent-protocols.example.json` → `CONSENT_PROTOCOLS_PATH`
+
+```json
+[{ "protocolVersion": "...", "consentType": "PARENT_GUARDIAN_CONSENT" | "STUDENT_ASSENT" | "ADULT_SELF_CONSENT", "contentHash": "<64 hex>", "allowedVerificationMethods": ["CODE", ...] }]
+```
+
+- No file, or an entry missing for a `(protocolVersion, consentType)` pair: that consent is `PROTOCOL_UNAPPROVED` and
+  **cannot even be created** (fail closed). No legal consent/assent wording lives in this repository; `contentHash` is
+  the fingerprint of text the owner approves elsewhere.
+- `allowedVerificationMethods` is a list of **codes**, never a contact detail, OTP or free text (`requireApprovedMethod`
+  rejects anything that looks like one). An empty list means no method is approved yet, so `POST /consents/:id/verify`
+  is refused for that protocol no matter who calls it.
+- **`SELF_ATTESTED`** (CR-006-13, 2026-09-22, temporary until a real verification workflow is defined): the method code
+  `POST /consents/self-consent` uses for `ADULT_SELF_CONSENT`, and (CR-006-14, 2026-09-22) `POST
+  /consents/minor-self-service` also uses it for a minor's own `STUDENT_ASSENT` — that one is a genuine self-attestation
+  either way, adult or minor, so the same code applies to both.
+- **`STUDENT_ATTESTED_FOR_PARENT`** (CR-006-14, 2026-09-22, temporary until a real parent/guardian portal exists): the
+  method `POST /consents/minor-self-service` uses for `PARENT_GUARDIAN_CONSENT` when the minor attests it themselves on
+  their own device, in the absence of a separate parent-facing sign-in. Listing it under `PARENT_GUARDIAN_CONSENT` is
+  what turns that checkbox on. It is a **distinct code from `SELF_ATTESTED`** so the audit trail can never be misread as
+  an actual parent's own action; the admin-mediated flow (a real parent/guardian verifying their own consent through
+  `POST /consents` + `POST /consents/:id/verify`) is completely unchanged and still available alongside it. The template
+  above shows the intended shape; copy it and set real `protocolVersion`/`contentHash` values only once the owner has
+  approved the actual consent/assent text.
+- **Local development**: `backend/.env` points `CONSENT_PROTOCOLS_PATH` at `config/consent-protocols.local.json`
+  (git-ignored, placeholder text/hash — never real approved wording) so the self-consent and minor-self-service
+  checkboxes work when testing against the real dev database. Without this, every consent type is `PROTOCOL_UNAPPROVED`
+  and nothing in `/consents/*` can even be created.

@@ -36,4 +36,10 @@ module.exports = {
   grant: wrap((req) => service.grant(consentId(req), req.actor, req.correlationId)),
   verify: wrap((req) => service.verify(consentId(req), req.body.verificationMethod, req.actor, req.correlationId)),
   withdraw: wrap((req) => service.withdraw(consentId(req), req.actor, req.correlationId)),
+  selfConsent: async (req, res, next) => {
+    try { res.status(201).json(await service.selfConsent(req.actor.participantId, req.actor, req.correlationId)); } catch (err) { next(err); }
+  },
+  minorSelfService: async (req, res, next) => {
+    try { res.status(201).json(await service.minorSelfService(req.actor.participantId, req.actor, req.correlationId)); } catch (err) { next(err); }
+  },
 };

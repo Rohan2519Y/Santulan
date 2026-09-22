@@ -4,3 +4,17 @@ backend/.mongo/
 backend/exports/
 backend/backups/*.archive.gz
 backend/release/evidence/*.local
+
+# Node.js monorepo
+node_modules/
+*.log
+coverage/
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# Secrets: track the .example templates, never the real values
+.env
+.env.*
+!.env.example

@@ -78,9 +78,18 @@ async function main() {
     console.log(`seeding ${PARTICIPANTS} participants x ${ITEMS} answers into ${DB_NAME} ...`); // eslint-disable-line no-console
     const set = F.versionDoc({ version_label: LABEL, status: 'FROZEN', frozen_at: new Date() });
     await db.collection('assessment_versions').insertOne(set);
-    const items = Array.from({ length: ITEMS }, (_, i) => F.item(set._id, {
-      item_code: `SYN-${String(i + 1).padStart(3, '0')}`, domain_code: DOMAINS[i % 7], subdomain_code: `${DOMAINS[i % 7]}.1`, display_order: i + 1,
-    }));
+    // item_code must match the store validator's ^C[1-7]-[0-9]{2}$ (a real domain code, a per-domain sequence number, two
+    // digits) - so it is numbered PER DOMAIN, not with a flat synthetic prefix.
+    const perDomain = {};
+    const items = Array.from({ length: ITEMS }, (_, i) => {
+      const domain = DOMAINS[i % 7];
+      perDomain[domain] = (perDomain[domain] || 0) + 1;
+      return F.item(set._id, {
+        item_code: `${domain}-${String(perDomain[domain]).padStart(2, '0')}`, domain_code: domain,
+        subdomain_code: domain === 'C7' ? 'C7A.1' : `${domain}.1`, // C7's subdomains are C7A./C7B./C7C., never a plain C7.
+        display_order: i + 1,
+      });
+    });
     await db.collection('items').insertMany(items);
 
     const people = [];

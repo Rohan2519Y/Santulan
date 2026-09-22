@@ -95,3 +95,44 @@ describe('US4 acceptance: draft -> frozen -> open -> closed', () => {
     expect((await step('00000000-0000-4000-8000-000000000000', 'freeze')).status).toBe(404);
   });
 });
+
+describe('CR-006-12: deleting a draft question set', () => {
+  test('a draft set is deleted (RETIRED), audited, disappears from the freezable list, and cannot be frozen afterwards', async () => {
+    const set = await upload();
+    const del = await step(set.setId, 'delete');
+    expect(del.status).toBe(200);
+    expect(del.body).toMatchObject({ status: 'RETIRED', setId: set.setId });
+    expect((await audits(set.setId)).map((a) => a.action_type)).toEqual(['QUESTION_SET_UPLOADED', 'QUESTION_SET_DELETED']);
+    expect((await step(set.setId, 'freeze')).status).toBe(409);
+    const row = await (await f.db()).collection('assessment_versions').findOne({ _id: set.setId });
+    expect(row.status).toBe('RETIRED');
+  });
+
+  test('a frozen set can never be deleted (409 SET_NOT_DRAFT) - a frozen set is permanent, constitution IV', async () => {
+    const set = await upload();
+    await step(set.setId, 'freeze');
+    const del = await step(set.setId, 'delete');
+    expect(del.status).toBe(409);
+    expect(del.body.error.code).toBe('SET_NOT_DRAFT');
+    const row = await (await f.db()).collection('assessment_versions').findOne({ _id: set.setId });
+    expect(row.status).toBe('FROZEN'); // unchanged
+  });
+
+  test('an opened set can never be deleted either, and no HTTP DELETE verb route exists for it (G-22 stays true)', async () => {
+    const set = await upload();
+    await step(set.setId, 'freeze');
+    await step(set.setId, 'open', { reason: 'in use' });
+    expect((await step(set.setId, 'delete')).status).toBe(409);
+    const verbDelete = await request(app).delete(`/api/v1/admin/question-sets/${set.setId}`).set(auth());
+    expect(verbDelete.status).toBe(404); // no DELETE-verb route exists; "delete" here is always a POST action, never the HTTP verb
+  });
+
+  test('delete needs an admin token, an empty body, and a real, existing draft', async () => {
+    const set = await upload();
+    const p = await f.participant(16);
+    expect((await step(set.setId, 'delete', {}, {})).status).toBe(401);
+    expect((await step(set.setId, 'delete', {}, auth(p.token))).status).toBe(403);
+    expect((await step(set.setId, 'delete', { reason: 'not accepted here' })).status).toBe(400);
+    expect((await step('00000000-0000-4000-8000-000000000000', 'delete')).status).toBe(404);
+  });
+});

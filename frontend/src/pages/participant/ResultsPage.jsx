@@ -7,8 +7,11 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ShieldCheck, Users } from 'lucide-react';
 import styles from '../../styles/ui.module.css';
-import { RadarChart, RailCard } from '../../components/participantKit';
+import p from '../../styles/portal.module.css';
+import ImageSlot from '../../components/ImageSlot/ImageSlot';
+import { Breadcrumb, RadarChart, RailCard } from '../../components/participantKit';
 import Skeleton from '../../components/Skeleton/Skeleton';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
 import { api } from '../../services/santulanApi';
@@ -40,10 +43,10 @@ function DomainText({ code, sections }) {
   const mine = sections.filter((s) => s.domain === code).sort((a, b) => LAYER_ORDER.indexOf(a.type) - LAYER_ORDER.indexOf(b.type));
   if (!mine.length) return null;
   return (
-    <section className={styles.stack} aria-labelledby={`domain-${code}`}>
+    <section className={`${p.panel} ${p.domainText}`} aria-labelledby={`domain-${code}`}>
       <h2 id={`domain-${code}`} className={styles.h3}>{DOMAIN_NAMES[code]}</h2>
       {mine.map((s) => (
-        <div key={`${s.type}-${s.order}`}>
+        <div key={`${s.type}-${s.order}`} className={p.layer}>
           <h3 className={styles.h4}>{LAYER_LABEL[s.type] || s.type}</h3>
           {s.type === 'ACTION' ? <ul>{actionsOf(s.content).map((t) => <li key={t}>{t}</li>)}</ul> : <p>{s.content}</p>}
         </div>
@@ -81,19 +84,27 @@ export default function ResultsPage() {
 
   const profile = report && report.state === 'REPORT_READY' ? profileOf(report) : null;
   return (
-    <div className={styles.stack}>
-      <h1 className={styles.h2}>Your results</h1>
-      {!profile ? (
-        <RailCard tone="sky" title="Not ready yet">
-          <p>There is nothing to show yet. We will make your report available here when it is ready. <Link className={styles.pageLink} to="/student/generating">See progress</Link></p>
-        </RailCard>
-      ) : (
-        <>
-          <p className={styles.lead}>These are the areas we can show you from what you told us, on a scale from {profile.scale.min.toFixed(2)} to {profile.scale.max.toFixed(2)}.</p>
-          <RadarChart axes={toAxes(profile)} />
-          {Object.keys(DOMAIN_NAMES).map((code) => <DomainText key={code} code={code} sections={report.sections} />)}
-        </>
-      )}
+    <div className={styles.pageGrid}>
+      <div className={p.page}>
+        <Breadcrumb items={[{ label: 'Home', to: '/student' }, { label: 'Your results' }]} />
+        <h1 className={p.pageTitle}>Your results</h1>
+        {!profile ? (
+          <RailCard tone="sky" title="Not ready yet">
+            <p>There is nothing to show yet. We will make your report available here when it is ready. <Link className={styles.pageLink} to="/student/generating">See progress</Link></p>
+          </RailCard>
+        ) : (
+          <>
+            <p className={p.pageLead}>These are the areas we can show you from what you told us, on a scale from {profile.scale.min.toFixed(2)} to {profile.scale.max.toFixed(2)}.</p>
+            <section className={p.panel}><RadarChart axes={toAxes(profile)} /></section>
+            {Object.keys(DOMAIN_NAMES).map((code) => <DomainText key={code} code={code} sections={report.sections} />)}
+          </>
+        )}
+      </div>
+      <div className={styles.rail}>
+        <ImageSlot slot="resultsHero" className={styles.railPicture} />
+        <RailCard tone="safe" title="Your information is safe" icon={ShieldCheck}><p>Only you can see your report. It describes what you told us and does not compare you with anyone else.</p></RailCard>
+        <RailCard tone="help" title="Need Help?" icon={Users}><p>If you would like to talk about your report, our support team is here for you.</p><Link className={styles.pageLink} to="/student/support">Contact Support</Link></RailCard>
+      </div>
     </div>
   );
 }

@@ -55,3 +55,6 @@ catalog_receipt_*.json
 exports/
 backups/*.archive.gz
 release/evidence/*.local
+
+# Local-only consent protocol stand-in (placeholder text/hash, never the real approved wording - config/README.md)
+config/consent-protocols.local.json

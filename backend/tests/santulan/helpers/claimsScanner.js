@@ -14,6 +14,8 @@ const RULES = {
   RELIABLE_CHANGE_OR_IMPROVEMENT: /\b(reliable[- ]change|reliably (?:improved|changed)|improved|improvement of|improved by|increased by \d)\b/i,
   SUBDOMAIN_SCORE: /\bC[1-7]\.\d{1,2}\b/,
   PERSONALITY_TYPING: /\b(personality|MBTI|introvert\w*|extrovert\w*|temperament)\b/i,
+  ATTENTION_OR_INTELLIGENCE_FROM_C7: /\b(attention[- ]?deficit|attention[- ]disorder|ADD\b|inattent\w*|hyperactiv\w*|focus[- ]disorder|executive[- ]function[- ]?disorder)\b/i,
+  TOUGHNESS_OR_SILENT_ENDURANCE: /\b(mental[- ]?toughness|grit\b|stoic\w*|silent[- ]endurance|endur\w* silently|quiet strength)\b/i,
 };
 
 /** @returns {{ rule: string, match: string }[]} every violation found in the value (string or JSON-able). */

@@ -45,6 +45,7 @@ export default function QuestionOptions({ options, value, onChange, name, label 
             onKeyDown={(e) => handleKeyDown(e, o.position)}
             name={name}
           >
+            <span className={styles.indicator} aria-hidden="true" />
             <span className={styles.position}>{o.position}</span>{' '}
             <span className={styles.text}>{o.text}</span>
           </button>

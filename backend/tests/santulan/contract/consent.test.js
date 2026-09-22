@@ -25,6 +25,7 @@ async function participant(age) {
   return { pid, token: f.participantToken(pid) };
 }
 const bearer = (t) => ({ Authorization: `Bearer ${t}` });
+const rows = async (pid) => (await col('consents')).countDocuments({ participant_id: pid });
 const create = (body, headers = INTERNAL) => api().post('/api/v1/consents').set(headers).send({ protocolVersion: PROTO, ...body });
 const gate = (p) => api().get('/api/v1/consents/gate').set(bearer(p.token));
 const verify = (id, verificationMethod = 'TEST_METHOD_A', headers = INTERNAL) => api().post(`/api/v1/consents/${id}/verify`).set(headers).send({ verificationMethod });
@@ -188,6 +189,114 @@ describe('withdrawal (T04-011…017, 021, 033, 034; §11)', () => {
     expect((await api().post(`/api/v1/consents/${c.consentId}/withdraw`).set(bearer(p.token)).send({})).status).toBe(200);   // PENDING -> WITHDRAWN
     const audits = await (await col('audit_logs')).find({ target_id: c.consentId }).sort({ occurred_at: 1, action_type: 1 }).toArray();
     expect(audits.map((a) => a.action_type).sort()).toEqual(['CONSENT_CREATED', 'CONSENT_WITHDRAWAL_WORKFLOW_PENDING', 'CONSENT_WITHDRAWN']);   // last two share one transaction
+  });
+
+  test('CR-006-13: one self-consent call creates, grants and verifies ADULT_SELF_CONSENT for an adult; re-calling is a safe no-op', async () => {
+    const p = await participant(20);
+    const first = await api().post('/api/v1/consents/self-consent').set(bearer(p.token)).send({});
+    expect(first.status).toBe(201);
+    expect(first.body).toMatchObject({ consentType: 'ADULT_SELF_CONSENT', giverRelationship: 'SELF', status: 'VERIFIED' });
+    expect((await gate(p)).body).toEqual({ open: true, missingTypes: [] });
+    expect(await rows(p.pid)).toBe(1); // exactly one record, not one per step
+
+    const again = await api().post('/api/v1/consents/self-consent').set(bearer(p.token)).send({});
+    expect(again.status).toBe(201);
+    expect(again.body.consentId).toBe(first.body.consentId); // the same record, still VERIFIED - not a duplicate
+    expect(await rows(p.pid)).toBe(1);
+
+    const row = await (await col('consents')).findOne({ _id: first.body.consentId });
+    expect(row.verification_method).toBe('SELF_ATTESTED');
+    const audits = (await (await col('audit_logs')).find({ target_id: first.body.consentId }).sort({ occurred_at: 1 }).toArray()).map((a) => a.action_type);
+    expect(audits).toEqual(['CONSENT_CREATED', 'CONSENT_GRANTED', 'CONSENT_VERIFIED']); // the second call added nothing further
+  });
+
+  test('CR-006-13: a minor is refused self-consent outright; their parent/guardian + assent flow is unaffected', async () => {
+    const minor = await participant(15);
+    const res = await api().post('/api/v1/consents/self-consent').set(bearer(minor.token)).send({});
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('SELF_CONSENT_NOT_AVAILABLE');
+    expect(await rows(minor.pid)).toBe(0);
+    expect((await gate(minor)).body).toEqual({ open: false, missingTypes: ['PARENT_GUARDIAN_CONSENT', 'STUDENT_ASSENT'] });
+    // the admin-mediated flow still works exactly as before for this same minor
+    const assent = (await create({ participantId: minor.pid, consentType: 'STUDENT_ASSENT', giverRelationship: 'SELF' })).body;
+    expect(assent.status).toBe('PENDING');
+  });
+
+  test('CR-006-13: no approved protocol configured -> fails closed, nothing created; no token -> 401', async () => {
+    expect((await api().post('/api/v1/consents/self-consent').send({})).status).toBe(401);
+    const p = await participant(21);
+    const saved = config.consentProtocolsPath;
+    try {
+      config.consentProtocolsPath = '';
+      const res = await api().post('/api/v1/consents/self-consent').set(bearer(p.token)).send({});
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('PROTOCOL_UNAPPROVED');
+    } finally { config.consentProtocolsPath = saved; }
+    expect(await rows(p.pid)).toBe(0);
+  });
+
+  test('CR-006-14: one minor-self-service call creates, grants and verifies STUDENT_ASSENT and PARENT_GUARDIAN_CONSENT for a minor; re-calling is a safe no-op', async () => {
+    const minor = await participant(15);
+    const first = await api().post('/api/v1/consents/minor-self-service').set(bearer(minor.token)).send({});
+    expect(first.status).toBe(201);
+    expect(first.body.assent).toMatchObject({ consentType: 'STUDENT_ASSENT', giverRelationship: 'SELF', status: 'VERIFIED' });
+    expect(first.body.parentGuardianConsent).toMatchObject({ consentType: 'PARENT_GUARDIAN_CONSENT', giverRelationship: 'PARENT', status: 'VERIFIED' });
+    expect((await gate(minor)).body).toEqual({ open: true, missingTypes: [] });
+    expect(await rows(minor.pid)).toBe(2); // exactly one record per type, not one per step
+
+    const assentRow = await (await col('consents')).findOne({ _id: first.body.assent.consentId });
+    expect(assentRow.verification_method).toBe('SELF_ATTESTED');
+    const parentRow = await (await col('consents')).findOne({ _id: first.body.parentGuardianConsent.consentId });
+    expect(parentRow.verification_method).toBe('STUDENT_ATTESTED_FOR_PARENT'); // never confused with an actual parent action
+
+    const again = await api().post('/api/v1/consents/minor-self-service').set(bearer(minor.token)).send({});
+    expect(again.status).toBe(201);
+    expect(again.body.assent.consentId).toBe(first.body.assent.consentId);
+    expect(again.body.parentGuardianConsent.consentId).toBe(first.body.parentGuardianConsent.consentId);
+    expect(await rows(minor.pid)).toBe(2);
+  });
+
+  test('CR-006-14: an adult is refused outright; their own self-consent is unaffected', async () => {
+    const adult = await participant(20);
+    const res = await api().post('/api/v1/consents/minor-self-service').set(bearer(adult.token)).send({});
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('PARENT_CONSENT_NOT_APPLICABLE');
+    expect(await rows(adult.pid)).toBe(0);
+    expect((await api().post('/api/v1/consents/self-consent').set(bearer(adult.token)).send({})).status).toBe(201);
+  });
+
+  test('CR-006-14: a real parent/guardian can still take over the ordinary way - withdraw the student-attested record, then the admin-mediated flow verifies a fresh one exactly as before', async () => {
+    const minor = await participant(16);
+    const first = (await api().post('/api/v1/consents/minor-self-service').set(bearer(minor.token)).send({})).body;
+    const parentRow = await (await col('consents')).findOne({ _id: first.parentGuardianConsent.consentId });
+    expect(parentRow.verification_method).toBe('STUDENT_ATTESTED_FOR_PARENT');
+    // uq_consent_active_type_protocol (one active record per participant/type/protocol) means a second live record for the
+    // same protocol version cannot coexist - withdrawing first is the real upgrade path, unchanged by CR-006-14.
+    expect((await api().post(`/api/v1/consents/${first.parentGuardianConsent.consentId}/withdraw`).set(bearer(minor.token)).send({})).status).toBe(200);
+    const realParent = (await create({ participantId: minor.pid, consentType: 'PARENT_GUARDIAN_CONSENT', giverRelationship: 'PARENT' })).body;
+    await api().post(`/api/v1/consents/${realParent.consentId}/grant`).set(INTERNAL).send({});
+    const verified = await verify(realParent.consentId);
+    expect(verified.status).toBe(200);
+    expect(verified.body.status).toBe('VERIFIED');
+    const row = await (await col('consents')).findOne({ _id: realParent.consentId });
+    expect(row.verification_method).toBe('TEST_METHOD_A'); // a genuinely different method from the student-attested one
+  });
+
+  test('CR-006-14: no approved protocol for PARENT_GUARDIAN_CONSENT -> fails closed on that step; the assent already completed stands', async () => {
+    const minor = await participant(17);
+    const saved = config.consentProtocolsPath;
+    const withoutParent = require('path').join(require('os').tmpdir(), `santulan-${f.u()}-no-parent-protocol.json`);
+    const full = JSON.parse(require('fs').readFileSync(saved, 'utf8'));
+    require('fs').writeFileSync(withoutParent, JSON.stringify(full.filter((e) => e.consentType !== 'PARENT_GUARDIAN_CONSENT')));
+    try {
+      config.consentProtocolsPath = withoutParent;
+      const res = await api().post('/api/v1/consents/minor-self-service').set(bearer(minor.token)).send({});
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('PROTOCOL_UNAPPROVED');
+    } finally { config.consentProtocolsPath = saved; require('fs').rmSync(withoutParent, { force: true }); }
+    const assentRow = await (await col('consents')).findOne({ participant_id: minor.pid, consent_type: 'STUDENT_ASSENT' });
+    expect(assentRow.status).toBe('VERIFIED'); // the independent, already-approved step is not rolled back by the later failure
+    expect(await (await col('consents')).countDocuments({ participant_id: minor.pid, consent_type: 'PARENT_GUARDIAN_CONSENT' })).toBe(0);
   });
 
   test('one participant cannot see or change another participant\'s consent', async () => {

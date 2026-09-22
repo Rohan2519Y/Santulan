@@ -1,0 +1,90 @@
+/* Site chrome (public header/footer, participant shell) - samples 01-26. Colours only from tokens.css. */
+
+/* ---------- public page frame ---------- */
+.page { min-height: 100vh; display: flex; flex-direction: column; background: var(--c-bg); color: var(--c-ink); font-family: var(--font-sans); }
+.main { flex: 1; width: 100%; }
+
+/* ---------- header ---------- */
+.header { position: sticky; top: 0; z-index: 40; background: var(--c-bg-white); border-bottom: 1px solid var(--c-line); box-shadow: 0 1px 0 rgba(10, 26, 71, 0.03); }
+.headerInner { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); min-height: var(--header-h); padding: 0 var(--page-gutter); max-width: 1600px; margin: 0 auto; }
+.menuWrap { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: var(--sp-5); }
+.nav { display: flex; align-items: center; gap: clamp(20px, 3vw, 44px); margin: 0 auto; }
+.navLink { position: relative; display: inline-flex; align-items: center; min-height: 44px; color: var(--c-ink-strong); text-decoration: none; font-weight: var(--fw-medium); font-size: var(--fs-base); }
+.navLink:hover { color: var(--c-brand); }
+.navLinkActive { color: var(--c-brand); }
+.navLinkActive::after { content: ''; position: absolute; left: 0; right: 0; bottom: 4px; height: 3px; border-radius: 2px; background: var(--c-brand); }
+.navLink:focus-visible, .signIn:focus-visible, .footerLinks a:focus-visible, .accountLink:focus-visible, .sideLink:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); border-radius: var(--radius-sm); }
+.headerRight { display: flex; align-items: center; gap: var(--sp-4); }
+.signIn { color: var(--c-link); font-weight: var(--fw-medium); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.signIn:hover { text-decoration: underline; }
+.headerRight .headerAction { min-height: 48px; padding-inline: var(--sp-5); border-radius: var(--radius-sm); font-size: var(--fs-base); }
+
+.langWrap { position: relative; display: inline-flex; align-items: center; }
+.langSelect { appearance: none; -webkit-appearance: none; min-height: 46px; border: 1px solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-bg-white); color: var(--c-ink-strong); padding: 0 40px 0 var(--sp-4); font: inherit; cursor: pointer; }
+.langSelect:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.langChevron { position: absolute; right: 14px; pointer-events: none; color: var(--c-ink-muted); }
+
+.menuButton { display: none; align-items: center; justify-content: center; width: 48px; height: 48px; border: 1px solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-bg-white); color: var(--c-ink-strong); cursor: pointer; }
+.menuButton:focus-visible, .appMenu:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+@media (max-width: 1079px) {
+  .menuButton { display: inline-flex; }
+  .menuWrap { display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: var(--sp-4); padding: var(--sp-4) var(--page-gutter) var(--sp-5); background: var(--c-bg-white); border-bottom: 1px solid var(--c-line); box-shadow: var(--shadow-2); }
+  .menuOpen { display: flex; }
+  .nav { flex-direction: column; align-items: stretch; gap: 0; margin: 0; }
+  .navLink { min-height: 52px; border-bottom: 1px solid var(--c-line); font-size: var(--fs-md); }
+  .navLinkActive::after { display: none; }
+  .headerRight { flex-direction: column; align-items: stretch; }
+  .signIn { min-height: 48px; justify-content: center; border: 1px solid var(--c-line); border-radius: var(--radius-sm); }
+  .langWrap, .langSelect { width: 100%; }
+  .headerRight .headerAction { width: 100%; }
+}
+
+/* ---------- footer ---------- */
+.footer { background: var(--c-bg-white); border-top: 1px solid var(--c-line); }
+.footerInner { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); flex-wrap: wrap; max-width: 1600px; margin: 0 auto; padding: var(--sp-5) var(--page-gutter); }
+.footerBrand { flex: none; }
+.footerLinks { display: flex; align-items: center; flex-wrap: wrap; gap: 0; margin-left: auto; }
+.footerLinks a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--sp-4); color: var(--c-ink-strong); text-decoration: none; font-size: var(--fs-sm); }
+.footerLinks a + a { border-left: 1px solid var(--c-track); }
+.footerLinks a:hover { color: var(--c-brand); text-decoration: underline; }
+.copyright { margin: 0; color: var(--c-ink-muted); font-size: var(--fs-sm); }
+@media (max-width: 899px) {
+  .footerInner { flex-direction: column; text-align: center; gap: var(--sp-3); }
+  .footerLinks { margin: 0; justify-content: center; }
+}
+
+/* ---------- participant shell ---------- */
+.app { min-height: 100vh; display: flex; flex-direction: column; background: var(--c-bg); color: var(--c-ink); font-family: var(--font-sans); }
+.appTop { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: var(--sp-3); min-height: var(--header-h); padding: 0 var(--page-gutter); background: var(--c-bg-white); border-bottom: 1px solid var(--c-line); }
+.appMenu { display: none; align-items: center; justify-content: center; width: 48px; height: 48px; border: 1px solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-bg-white); color: var(--c-ink-strong); cursor: pointer; }
+.appAccount { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); }
+.appAccount button { white-space: nowrap; }
+.accountLink { display: inline-flex; align-items: center; gap: var(--sp-3); min-height: 44px; text-decoration: none; color: var(--c-ink-strong); font-weight: var(--fw-medium); }
+.avatar { width: 40px; height: 40px; border-radius: var(--radius-pill); background: var(--c-brand); color: var(--c-bg-white); display: inline-flex; align-items: center; justify-content: center; }
+:root[data-theme='dark'] .avatar { color: #0a1a47; }
+
+.appBody { position: relative; flex: 1; display: grid; grid-template-columns: var(--sidebar-w-participant) minmax(0, 1fr); background: linear-gradient(180deg, var(--c-tint-sky) 0%, var(--c-bg) 60%); }
+.sidebar { display: flex; flex-direction: column; justify-content: space-between; padding: var(--sp-5) var(--sp-4) 0; background: var(--c-bg-white); border-right: 1px solid var(--c-line); min-height: 100%; }
+.sideNav { display: flex; flex-direction: column; gap: var(--sp-2); }
+.sideLink { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 0 18px; border-radius: var(--radius-md); color: var(--c-ink); text-decoration: none; font-size: 17px; font-weight: var(--fw-medium); }
+.sideLink:hover { background: var(--c-tint-blue); }
+.sideLinkActive { background: var(--c-nav-active); color: var(--c-brand); font-weight: var(--fw-semibold); }
+.sideArt { position: relative; padding: var(--sp-6) var(--sp-3) 0; }
+.sideScript { font-family: var(--font-script); font-size: 26px; line-height: 1.15; color: var(--c-brand); margin: 0 0 var(--sp-3); position: relative; z-index: 1; }
+.leaf { height: 150px; margin: 0 calc(var(--sp-4) * -1); }
+.appContent { min-width: 0; padding: var(--sp-6) clamp(16px, 3vw, 48px) var(--sp-7); }
+.scrim { display: none; }
+
+@media (max-width: 1023px) {
+  .appMenu { display: inline-flex; }
+  .appBody { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: fixed; top: var(--header-h); bottom: 0; left: 0; z-index: 60; width: min(320px, 86vw); transform: translateX(-102%); visibility: hidden; transition: transform var(--motion-base) var(--ease), visibility 0s linear var(--motion-base); overflow-y: auto; box-shadow: var(--shadow-2); }
+  .sidebarOpen { transform: none; visibility: visible; transition-delay: 0s; }
+  .scrim { display: block; position: fixed; inset: var(--header-h) 0 0 0; z-index: 50; border: 0; background: rgba(10, 26, 71, 0.4); cursor: pointer; }
+  .accountText { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
+@media (max-width: 639px) {
+  .appContent { padding-top: var(--sp-5); }
+}

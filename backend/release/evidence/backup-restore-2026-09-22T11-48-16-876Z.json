@@ -1,0 +1,30 @@
+{
+  "drill": "backup-restore",
+  "feature": "006",
+  "operator": "Dell",
+  "host": "DellInspiron3505",
+  "startedAt": "2026-09-22T11:48:16.879Z",
+  "finishedAt": "2026-09-22T11:48:17.195Z",
+  "source": "santulan_qual",
+  "restoreTarget": "santulan_restore_drill_scratch",
+  "archiveSha256": null,
+  "result": "FAIL",
+  "steps": [
+    {
+      "label": "mongodump (source database, gzip archive)",
+      "ok": false,
+      "started": "2026-09-22T11:48:17.033Z",
+      "finished": "2026-09-22T11:48:17.186Z",
+      "exitCode": 1,
+      "error": null,
+      "output": "2026-09-22T17:18:17.180+0530\terror parsing command line options: Invalid Options: Cannot specify different database in connection URI and command-line option (\"santulan\" was specified in the URI and \"santulan_qual\" was specified in the --db option)\n2026-09-22T17:18:17.182+0530\ttry 'mongodump --help' for more information\n"
+    },
+    {
+      "label": "drill aborted: backup failed",
+      "ok": false,
+      "started": "2026-09-22T11:48:17.188Z",
+      "finished": "2026-09-22T11:48:17.188Z",
+      "output": ""
+    }
+  ]
+}

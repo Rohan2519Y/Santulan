@@ -1,0 +1,16 @@
+.logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--c-ink-strong); min-height: 44px; }
+.logo:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); border-radius: var(--radius-sm); }
+.mark { width: 58px; height: 48px; flex: none; }
+.word { display: flex; flex-direction: column; line-height: 1; }
+.name { font-family: var(--font-sans); font-weight: var(--fw-semibold); font-size: 30px; letter-spacing: 0.06em; color: var(--c-brand); }
+.tag { margin-top: 4px; font-size: 9.5px; letter-spacing: 0.28em; text-transform: uppercase; font-weight: var(--fw-semibold); color: var(--c-ink-muted); white-space: nowrap; }
+
+.sm .mark { width: 40px; height: 36px; }
+.sm .name { font-size: 22px; }
+.sm .tag { font-size: 8px; }
+
+@media (max-width: 639px) {
+  .mark { width: 40px; height: 38px; }
+  .name { font-size: 24px; }
+  .tag { font-size: 7.5px; letter-spacing: 0.22em; }
+}

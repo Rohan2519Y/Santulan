@@ -110,6 +110,21 @@
 
   --focus-ring: 3px solid var(--c-brand);
   --focus-offset: 2px;
+
+  /* Text that sits on a picture area. A picture area is always white/light (it stands in for a photograph), so these do NOT
+     change in the dark theme: light-theme values are kept on purpose. */
+  --c-photo-bg: #ffffff;
+  --c-photo-ink: #0a1a47;
+  --c-photo-ink-muted: #33415f;
+  --c-photo-brand: #034281;
+  --c-photo-teal: #1f6f7a;
+
+  --page-gutter: clamp(16px, 4vw, 64px);
+  --header-h: 80px;
+}
+
+@media (max-width: 639px) {
+  :root { --header-h: 68px; }
 }
 
 /* Motion rule (research §7): animation/transition only when the user has not

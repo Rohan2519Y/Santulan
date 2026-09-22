@@ -4,9 +4,8 @@ module.exports = {
   port: parseInt(process.env.APP_PORT, 10) || 8000,
   env: process.env.APP_ENV || 'development',
   // MongoDB (feature 006). The API and workers connect as the least-privilege `santulan_runtime` user on the dedicated
-  // instance (port 27018). `mongodbUriAdmin` (the migrator) is read ONLY by scripts and tests, never by src/.
+  // instance (port 27018). The migrator URI is read ONLY by scripts and tests, never by src/ (SEC-30).
   mongodbUriRuntime: process.env.MONGODB_URI_RUNTIME || '',
-  mongodbUriAdmin: process.env.MONGODB_URI_ADMIN || '',
   mongodbDb: process.env.MONGODB_DB || 'santulan',
   mongodbTestDb: process.env.MONGODB_TEST_DB || 'santulan_qual',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-me',

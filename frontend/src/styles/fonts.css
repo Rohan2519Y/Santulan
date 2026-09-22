@@ -3,6 +3,8 @@
  * sit next to the font files in src/styles/fonts). font-display: swap keeps text visible with the system fallbacks from tokens.css while they load.
  * Payload: serif bold ~22 KB + sans 400/600 ~48 KB are needed on every screen; the decorative script (~49 KB) is fetched only
  * on screens that render it (and is hidden below 640 px), so the base payload stays under the ~100 KB budget.
+ * Sample-layout additions (2026-09-21): serif 400 normal/italic (~40 KB, subtitles and quotes) and sans 500 (~24 KB, navigation).
+ * They are fetched only when text using them is on screen.
  */
 @font-face {
   font-family: "Source Serif 4";
@@ -31,4 +33,25 @@
   font-weight: 400;
   font-display: swap;
   src: url("./fonts/caveat-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/source-serif-4-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/source-serif-4-latin-400-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/inter-latin-500-normal.woff2") format("woff2");
 }

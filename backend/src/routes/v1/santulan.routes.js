@@ -63,6 +63,7 @@ router.get('/admin/question-sets/:id', requireActiveSuperAdmin, questionSets.get
 router.post('/admin/question-sets/:id/freeze', requireActiveSuperAdmin, validate(questionSets.schemas.freezeSchema), questionSets.freeze);
 router.post('/admin/question-sets/:id/open', requireActiveSuperAdmin, validate(questionSets.schemas.reasonSchema), questionSets.open);
 router.post('/admin/question-sets/:id/close', requireActiveSuperAdmin, validate(questionSets.schemas.reasonSchema), questionSets.close);
+router.post('/admin/question-sets/:id/delete', requireActiveSuperAdmin, validate(questionSets.schemas.freezeSchema), questionSets.delete);
 
 // --- Release switches (scoring master section 15): four audited switches, all OFF by default. Active SUPER_ADMIN only.
 router.get('/admin/release-flags', requireActiveSuperAdmin, releaseFlags.list);
@@ -72,6 +73,13 @@ router.post('/admin/release-flags/:flag', requireActiveSuperAdmin, validate(rele
 router.get('/consents/requirements', requireParticipantToken, consent.requirements);
 router.get('/consents/gate', requireParticipantToken, consent.gate);
 router.post('/consents', requireInternalOrSuperAdmin, validate(consent.createSchema), consent.create);
+// CR-006-13: an adult participant's own one-checkbox self-consent (create+grant+verify in one call). A minor is refused by
+// the service; the parent/guardian + assent flow below is unchanged for them.
+router.post('/consents/self-consent', requireParticipantToken, validate(consent.emptySchema), consent.selfConsent);
+// CR-006-14: a minor participant confirms both required consents themselves in one call - their own STUDENT_ASSENT, and
+// PARENT_GUARDIAN_CONSENT attested on the parent/guardian's behalf (verification_method STUDENT_ATTESTED_FOR_PARENT), a
+// temporary stand-in until a real parent/guardian portal exists. An adult is refused by the service.
+router.post('/consents/minor-self-service', requireParticipantToken, validate(consent.emptySchema), consent.minorSelfService);
 router.post('/consents/:id/grant', requireParticipantOrPrivileged, validate(consent.emptySchema), consent.grant);
 router.post('/consents/:id/verify', requireInternalOrSuperAdmin, validate(consent.verifySchema), consent.verify);
 router.post('/consents/:id/withdraw', requireParticipantOrPrivileged, validate(consent.emptySchema), consent.withdraw);
