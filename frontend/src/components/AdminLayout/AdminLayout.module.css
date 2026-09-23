@@ -1,8 +1,6 @@
 .shell {
   min-height: 100vh;
   background: var(--c-bg);
-  display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
 }
 
 .skip {
@@ -23,8 +21,10 @@
 
 /* ---- sidebar ---- */
 .sidebar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: var(--sidebar-w);
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -32,7 +32,7 @@
   padding: var(--sp-5) var(--sp-4);
   background: var(--c-nav-bg);
   color: var(--c-nav-ink);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .brandRow {
@@ -180,6 +180,7 @@
 
 /* ---- main ---- */
 .main {
+  margin-left: var(--sidebar-w);
   min-width: 0;
   padding: var(--sp-6) var(--sp-6) var(--sp-7);
   outline: none;
@@ -252,6 +253,7 @@
   }
 
   .main {
+    margin-left: 0;
     padding: var(--sp-4) var(--sp-4) var(--sp-6);
   }
 }

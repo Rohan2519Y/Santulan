@@ -91,6 +91,28 @@ describe('dashboard page (T117)', () => {
     expect(screen.getByText(/good (morning|afternoon|evening)/i)).toBeInTheDocument();
   });
 
+  test('ready: the "Complete Assessment" tile also starts the attempt first, not a bare link straight to /student/assessment', async () => {
+    await mount({ isMinor: false, attempt: null }, OPEN, null);
+    api.createAttempt.mockResolvedValue({ attemptId: 'new-attempt' });
+    const tile = screen.getByRole('button', { name: /complete assessment/i });
+    expect(tile.tagName).toBe('BUTTON'); // not an <a href="/student/assessment"> - that would bounce a fresh participant home
+    tile.click();
+    await Promise.resolve();
+    expect(api.createAttempt).toHaveBeenCalledTimes(1); // the attempt is created before /student/assessment is ever reached
+  });
+
+  test('in progress: the "Complete Assessment" tile links straight through, since an attempt already exists', async () => {
+    await mount({ isMinor: false, attempt: { attemptId: 'a1', status: 'IN_PROGRESS' } }, OPEN, model('IN_PROGRESS', 2, 40));
+    const tile = screen.getByRole('link', { name: /complete assessment/i });
+    expect(tile).toHaveAttribute('href', '/student/assessment');
+  });
+
+  test('consent pending: the tile sends you to complete consent, never straight to /student/assessment (it would bounce back home)', async () => {
+    await mount({ isMinor: true, attempt: null }, CLOSED, null);
+    const tile = screen.getByRole('link', { name: /complete assessment/i });
+    expect(tile).toHaveAttribute('href', '/student/privacy');
+  });
+
   test('a load failure shows a calm retry, not a crash', async () => {
     api.registrationState.mockRejectedValue(new Error('We could not reach the server.'));
     renderPage(<DashboardPage />);

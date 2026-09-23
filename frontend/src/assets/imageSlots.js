@@ -12,14 +12,14 @@
  */
 export const IMAGE_SLOTS = {
   // Brand
-  logoMark: '/logoMark.png',            // the lotus mark shown beside the SANTULAN wordmark (header, footer, sidebar)
-  leafArt: '',             // soft leaf illustration at the bottom-left of the sidebar and behind the route page title
+  logoMark: '/images/logoMark.png',            // the lotus mark shown beside the SANTULAN wordmark (header, footer, sidebar)
+  leafArt: '/images/leafArt.png',             // soft leaf illustration at the bottom-left of the sidebar and behind the route page title
 
   // Public pages
-  homeHero: '',            // screen 01: photo on the right of the home hero (phones: the splash picture)
-  aboutHero: '',           // screen 02: photo of three students on the right of the about hero
-  registerStep1: '',       // screen 04: person on a ledge
-  registerStep2: '',       // screen 05: desk with books and a mug
+  homeHero: '/images/homeHero.png',            // screen 01: photo on the right of the home hero (phones: the splash picture)
+  aboutHero: '/images/aboutHero.png',           // screen 02: photo of three students on the right of the about hero
+  registerStep1: '/images/registerStep1.png',       // screen 04: person on a ledge
+  registerStep2: '/images/registerStep2.png',       // screen 05: desk with books and a mug
   registerStep3: '',       // screen 06: person with a backpack
   registerStep4: '',       // screen 07: person looking at the view
   registerStep5: '',       // screen 08: books and a plant

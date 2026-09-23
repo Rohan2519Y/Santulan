@@ -16,6 +16,7 @@ import Button from '../../components/Button/Button';
 import Field from '../../components/Field/Field';
 import Skeleton from '../../components/Skeleton/Skeleton';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
+import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog';
 import { api } from '../../services/santulanApi';
 import { getReduceMotion, getTheme, setReduceMotion, setTheme } from '../../services/preferences';
 import { SupportPage } from '../public/PublicPages';
@@ -96,6 +97,7 @@ export function PrivacyPage() {
   const [confirming, setConfirming] = useState(null);
   const [agree, setAgree] = useState(false);
   const [working, setWorking] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
   const load = () => api.consentRequirements().then(setData).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
 
@@ -113,7 +115,7 @@ export function PrivacyPage() {
   // minor never sees this - they get the CR-006-14 checkbox below instead.
   const selfConsent = async () => {
     setError(''); setWorking(true);
-    try { await api.selfConsent(); setAgree(false); await load(); } catch (err) { setError(err.message); } finally { setWorking(false); }
+    try { await api.selfConsent(); setAgree(false); setShowConsent(false); await load(); } catch (err) { setError(err.message); } finally { setWorking(false); }
   };
 
   // CR-006-14: a minor confirms their own assent AND attests their parent/guardian's consent with one checkbox, on their own
@@ -121,8 +123,10 @@ export function PrivacyPage() {
   // their own consent) still works unchanged alongside this.
   const minorSelfService = async () => {
     setError(''); setWorking(true);
-    try { await api.minorSelfService(); setAgree(false); await load(); } catch (err) { setError(err.message); } finally { setWorking(false); }
+    try { await api.minorSelfService(); setAgree(false); setShowConsent(false); await load(); } catch (err) { setError(err.message); } finally { setWorking(false); }
   };
+
+  const closeConsent = () => { setShowConsent(false); setAgree(false); };
 
   if (!data && !error) return <div aria-busy="true"><Skeleton /></div>;
   const needsSelfConsent = data && data.isMinor === false
@@ -139,32 +143,48 @@ export function PrivacyPage() {
         </div>
         <ProfileTabs current="/student/privacy" />
         {error && <StatusMessage type="error" message={error} />}
-        {needsSelfConsent && (
+        {(needsSelfConsent || needsMinorService) && (
           <section className={p.panel}>
             <h2 className={p.panelTitle}>Your consent</h2>
-            <p className={styles.muted} style={{ margin: '0 0 var(--sp-3)' }}>Confirm that you agree to take part. As an adult, this is your own consent to give.</p>
-            <label className={styles.check}>
-              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-              <span>I agree to take part in Santulan.</span>
-            </label>
-            <div style={{ marginTop: 'var(--sp-4)' }}>
-              <Button onClick={selfConsent} disabled={!agree || working}>{working ? 'Saving…' : 'Confirm my consent'}</Button>
-            </div>
+            <p className={styles.muted} style={{ margin: '0 0 var(--sp-3)' }}>
+              {needsSelfConsent ? 'Confirm that you agree to take part. As an adult, this is your own consent to give.'
+                : 'Your consent needs to be verified before you can begin - your own assent, and your parent or guardian’s.'}
+            </p>
+            <Button onClick={() => setShowConsent(true)}>Review consent form</Button>
           </section>
         )}
-        {needsMinorService && (
-          <section className={p.panel}>
-            <h2 className={p.panelTitle}>Your consent</h2>
-            <p className={styles.muted} style={{ margin: '0 0 var(--sp-3)' }}>Confirm that you agree to take part, and that your parent or guardian has agreed too. There is no separate parent sign-in yet, so this is how it is recorded for now.</p>
-            <label className={styles.check}>
-              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-              <span>I agree to take part, and my parent or guardian has agreed to this too.</span>
-            </label>
-            <div style={{ marginTop: 'var(--sp-4)' }}>
-              <Button onClick={minorSelfService} disabled={!agree || working}>{working ? 'Saving…' : 'Confirm'}</Button>
-            </div>
-          </section>
-        )}
+        <ConfirmDialog
+          open={showConsent}
+          title={needsSelfConsent ? 'Consent Form' : 'Parent / Guardian Consent'}
+          confirmLabel={working ? 'Saving…' : 'Agree & Confirm'}
+          cancelLabel="Cancel"
+          busy={working}
+          confirmDisabled={!agree}
+          onConfirm={needsSelfConsent ? selfConsent : minorSelfService}
+          onCancel={closeConsent}
+        >
+          <div className={styles.consentText}>
+            {needsSelfConsent ? (
+              <>
+                <p><strong>1. Purpose</strong><br />You are invited to take part in the Santulan self-awareness assessment. It asks about your everyday thoughts, feelings and habits, to help build a picture of your strengths and areas for growth.</p>
+                <p><strong>2. What is involved</strong><br />You will answer a set of questions in your own time, across up to four sessions. There are no right or wrong answers.</p>
+                <p><strong>3. Your privacy</strong><br />Your responses are kept private and used only for your own results and, in an anonymised form, for research to improve Santulan.</p>
+                <p className={styles.muted}><em>Placeholder text - the approved consent wording will replace this once it is provided.</em></p>
+              </>
+            ) : (
+              <>
+                <p><strong>1. Purpose</strong><br />Your child is invited to take part in the Santulan self-awareness assessment, which asks about everyday thoughts, feelings and habits to help build a picture of their strengths and areas for growth.</p>
+                <p><strong>2. What is involved</strong><br />Your child will answer a set of questions in their own time, across up to four sessions. There are no right or wrong answers.</p>
+                <p><strong>3. Privacy</strong><br />Responses are kept private and used only for your child&apos;s own results and, in an anonymised form, for research to improve Santulan.</p>
+                <p className={styles.muted}><em>Placeholder text - the approved consent wording will replace this once it is provided. There is no separate parent/guardian sign-in yet, so this device is used to confirm both your consent and your child&apos;s own assent together.</em></p>
+              </>
+            )}
+          </div>
+          <label className={styles.check}>
+            <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} data-autofocus />
+            <span>{needsSelfConsent ? 'I agree to take part in Santulan.' : 'I agree to take part, and my parent or guardian has agreed to this too.'}</span>
+          </label>
+        </ConfirmDialog>
         {data && data.consents.length === 0 && !needsSelfConsent && !needsMinorService && <RailCard tone="sky" title="No consent records yet"><p>Your consent will appear here once it has been recorded.</p></RailCard>}
         {data && data.consents.length > 0 && (
           <section className={p.panel}>

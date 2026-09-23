@@ -79,14 +79,35 @@ export default function DashboardPage() {
       </section>
 
       <div className={p.tiles}>
-        <Link className={`${p.tile} ${p.tileBlue}`} to="/student/assessment">
-          <IconBadge icon={ChartColumn} tone="blue" />
-          <div>
-            <h2 className={p.tileTitle}>Complete Assessment</h2>
-            <p className={p.tileText}>Discover your strengths and growth areas.</p>
+        {/* Mirrors the journey action above (view.action) rather than a hardcoded link: a fresh participant has no
+            attempt yet, so jumping straight to /student/assessment would bounce them back here immediately. */}
+        {view.action && view.action.kind === 'start' ? (
+          <button type="button" className={`${p.tile} ${p.tileBlue}`} onClick={start} disabled={busy}>
+            <IconBadge icon={ChartColumn} tone="blue" />
+            <div>
+              <h2 className={p.tileTitle}>Complete Assessment</h2>
+              <p className={p.tileText}>Discover your strengths and growth areas.</p>
+            </div>
+            <span className={p.tileGo} aria-hidden="true"><ArrowRight size={20} /></span>
+          </button>
+        ) : view.action && view.action.to ? (
+          <Link className={`${p.tile} ${p.tileBlue}`} to={view.action.to}>
+            <IconBadge icon={ChartColumn} tone="blue" />
+            <div>
+              <h2 className={p.tileTitle}>Complete Assessment</h2>
+              <p className={p.tileText}>Discover your strengths and growth areas.</p>
+            </div>
+            <span className={p.tileGo} aria-hidden="true"><ArrowRight size={20} /></span>
+          </Link>
+        ) : (
+          <div className={`${p.tile} ${p.tileBlue}`} aria-disabled="true">
+            <IconBadge icon={ChartColumn} tone="blue" />
+            <div>
+              <h2 className={p.tileTitle}>Complete Assessment</h2>
+              <p className={p.tileText}>{view.body}</p>
+            </div>
           </div>
-          <span className={p.tileGo} aria-hidden="true"><ArrowRight size={20} /></span>
-        </Link>
+        )}
         <Link className={`${p.tile} ${p.tileLavender}`} to="/student/support">
           <IconBadge icon={Users} tone="lavender" />
           <div>

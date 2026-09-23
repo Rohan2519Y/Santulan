@@ -32,6 +32,16 @@ export default function ParticipantsPage() {
   const chosen = institutions.data && institutions.data.institutions.find((i) => i.institutionId === filters.institutionId);
   const cohorts = chosen ? chosen.cohorts : [];
 
+  /** Resolves a participant's institution/cohort names from the already-loaded institutions list (same data the filters use),
+   * so the table shows who a participant actually belongs to instead of just an opaque id. */
+  const orgOf = (p) => {
+    if (p.participationRoute !== 'INSTITUTIONAL' || !institutions.data) return null;
+    const inst = institutions.data.institutions.find((i) => i.institutionId === p.institutionId);
+    if (!inst) return null;
+    const cohort = inst.cohorts.find((c) => c.cohortId === p.cohortId);
+    return { institutionName: inst.institutionName, cohortName: cohort ? cohort.cohortName : null };
+  };
+
   const confirm = async (reason) => {
     setWorking(true);
     setProblem(null);
@@ -109,6 +119,7 @@ export default function ParticipantsPage() {
                   <tr>
                     <th scope="col">Santulan ID</th>
                     <th scope="col">Route</th>
+                    <th scope="col">Institution / Cohort</th>
                     <th scope="col">Track</th>
                     <th scope="col">Status</th>
                     <th scope="col">Registered</th>
@@ -116,10 +127,25 @@ export default function ParticipantsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.data.participants.map((p) => (
+                  {list.data.participants.map((p) => {
+                    const org = orgOf(p);
+                    return (
                     <tr key={p.participantId}>
                       <td className={tableStyles.mono}>{p.santulanId}</td>
                       <td>{p.participationRoute === 'OPEN' ? 'Open' : 'Institutional'}</td>
+                      <td>
+                        {org ? (
+                          <span className={styles.orgCell}>
+                            <span className={styles.orgInstitution}>{org.institutionName}</span>
+                            {org.cohortName && (
+                              <span className={styles.cohortRowInline}>
+                                <span className={styles.cohortTag}>Cohort</span>
+                                <span className={styles.cohortName}>{org.cohortName}</span>
+                              </span>
+                            )}
+                          </span>
+                        ) : <span className={styles.muted}>&mdash;</span>}
+                      </td>
                       <td>{p.assessmentTrack === 'ADOLESCENT' ? 'Adolescent' : 'Emerging adult'}</td>
                       <td><StatusPill tone={TONE[p.status] || 'neutral'} label={label(p.status)} /></td>
                       <td>{formatDate(p.createdAt)}</td>
@@ -131,7 +157,8 @@ export default function ParticipantsPage() {
                         </span>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
               {list.data.truncated && <p className={styles.muted}>Showing the newest {list.data.participants.length} of {list.data.total}. Use the filters to narrow the list.</p>}

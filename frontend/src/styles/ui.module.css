@@ -40,6 +40,8 @@
 .pageLink { color: var(--c-link); font-weight: var(--fw-medium); }
 .check { display: flex; gap: var(--sp-3); align-items: center; min-height: 44px; font-size: var(--fs-base); color: var(--c-ink); }
 .check input { width: 24px; height: 24px; flex: none; accent-color: var(--c-brand); }
+.consentText { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-4); font-size: var(--fs-sm); line-height: var(--lh-relaxed); }
+.consentText p { margin: 0; }
 .fullWidth { text-decoration: none; }
 .inlineButton { width: auto; }
 

@@ -123,6 +123,19 @@ by this flow; `ensureVerified`, `minorSelfService`), `consent.controller.js`, `s
 `backend/tests/santulan/contract/consent.test.js`, `frontend/src/tests/minorSelfService.test.js` (new file),
 `frontend/src/tests/selfConsent.test.js` (its stale "minor: unchanged" assertions updated to match).
 
+**CR-006-13 / CR-006-14 — presentation update (2026-09-23).** Owner reference: a consent popup from a different product
+(a "relationship" chooser plus consent text in a modal, with "Agree & Approve"). No functional or endpoint change - the
+same two calls (`POST /consents/self-consent`, `POST /consents/minor-self-service`), the same two verification methods,
+and the same gate rules as above. Only the Privacy page's presentation changed: the checkbox that sat directly on the
+page is now inside a popup (the existing `Modal`/`ConfirmDialog` components, already used elsewhere in the admin UI),
+opened from a "Review consent form" button, titled "Consent Form" (adult) or "Parent / Guardian Consent" (minor), and
+showing a short placeholder consent paragraph above the checkbox - explicitly marked as placeholder text pending the
+owner's approved wording, never invented legal copy. The reference's sign-up form (name/email/password) was **not**
+adopted: it directly conflicts with the constitution's ban on storing a participant's name, email or password (OPEN
+registration stays OTP-only, unchanged). Files: `frontend/src/pages/participant/AccountPages.jsx` (`PrivacyPage`),
+`frontend/src/styles/ui.module.css` (`.consentText`). Tests: `frontend/src/tests/selfConsent.test.js`,
+`frontend/src/tests/minorSelfService.test.js` (both rewritten for the popup interaction).
+
 ## Decisions and their outcome
 
 Outcome as of **2026-09-21**: the owner has recorded **no confirmation or change** for any change item (CR-006-1…11) or decision

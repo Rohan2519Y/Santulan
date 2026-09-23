@@ -145,12 +145,8 @@ export function AboutPage() {
 export function GetStartedPage() {
   return (
     <PublicLayout>
-      <div className={s.routeWrap}>
+      <section className={s.routeHero}>
         <div className={s.routeHead}>
-          <div className={s.routeLeft} aria-hidden="true">
-            <ImageSlot slot="leafArt" className={s.routeLeaf} />
-            <p className={s.routeMini}>Understand<br />Grow<br />Thrive</p>
-          </div>
           <div className={s.routeTitleBlock}>
             <p className={s.routeEyebrow}>Get started</p>
             <h1 className={s.routeTitle}>Choose Your Participation Route</h1>
@@ -159,51 +155,53 @@ export function GetStartedPage() {
           <p className={s.routeScript} aria-hidden="true">“Different Journeys.<br />A Brighter<br />Tomorrow.”</p>
         </div>
 
-        <div className={s.routeCards}>
-          <section className={`${s.routeCard} ${s.routeGreen}`} aria-labelledby="route-open">
-            <div className={s.routeCardHead}>
-              <IconBadge icon={UserRound} tone="green" size="lg" />
-              <div>
-                <p className={s.cardEyebrow}>Open route</p>
-                <h2 id="route-open" className={s.routeH2}>Register as an Individual</h2>
-                <p className={s.routeDesc}>For adolescents and emerging adults who are participating independently.</p>
+        <div className={s.routeWrap}>
+          <div className={s.routeCards}>
+            <section className={`${s.routeCard} ${s.routeGreen}`} aria-labelledby="route-open">
+              <div className={s.routeCardHead}>
+                <IconBadge icon={UserRound} tone="green" size="lg" />
+                <div>
+                  <p className={s.cardEyebrow}>Open route</p>
+                  <h2 id="route-open" className={s.routeH2}>Register as an Individual</h2>
+                  <p className={s.routeDesc}>For adolescents and emerging adults who are participating independently.</p>
+                </div>
               </div>
-            </div>
-            <CheckList items={['Self-registration with email or mobile number', 'Complete your age confirmation and consent', 'Get your Santulan ID and start the assessment']} />
-            <ButtonLink to="/register" variant="route-open" size="lg" icon>Register Now</ButtonLink>
-          </section>
-          <section className={`${s.routeCard} ${s.routeBlue}`} aria-labelledby="route-institution">
-            <div className={s.routeCardHead}>
-              <IconBadge icon={Landmark} tone="blue" size="lg" />
-              <div>
-                <p className={`${s.cardEyebrow} ${s.cardEyebrowBlue}`}>Institution route</p>
-                <h2 id="route-institution" className={s.routeH2}>Join Through Your Institution</h2>
-                <p className={s.routeDesc}>For participants from schools, colleges or organisations invited by their institution.</p>
+              <CheckList items={['Self-registration with email or mobile number', 'Complete your age confirmation and consent', 'Get your Santulan ID and start the assessment']} />
+              <ButtonLink to="/register" variant="route-open" size="lg" icon>Register Now</ButtonLink>
+            </section>
+            <section className={`${s.routeCard} ${s.routeBlue}`} aria-labelledby="route-institution">
+              <div className={s.routeCardHead}>
+                <IconBadge icon={Landmark} tone="blue" size="lg" />
+                <div>
+                  <p className={`${s.cardEyebrow} ${s.cardEyebrowBlue}`}>Institution route</p>
+                  <h2 id="route-institution" className={s.routeH2}>Join Through Your Institution</h2>
+                  <p className={s.routeDesc}>For participants from schools, colleges or organisations invited by their institution.</p>
+                </div>
               </div>
-            </div>
-            <CheckList tone="blue" items={['Use the Santulan ID your institution gave you', 'Sign in with your temporary password', 'Set a new password and continue']} />
-            <ButtonLink to="/login" variant="route-institution" size="lg" icon>Sign in with a Santulan ID</ButtonLink>
-          </section>
-        </div>
-
-        <div className={s.helpStrip}>
-          <div className={s.helpItem}>
-            <IconBadge icon={CircleHelp} tone="blue" />
-            <div>
-              <h2 className={s.helpTitle}>Not sure which route to choose?</h2>
-              <p className={s.helpText}>If you have been invited by your school, college or organisation, please use the Institution Route. Otherwise, you can register through the Open Route.</p>
-            </div>
+              <CheckList tone="blue" items={['Use the Santulan ID your institution gave you', 'Sign in with your temporary password', 'Set a new password and continue']} />
+              <ButtonLink to="/login" variant="route-institution" size="lg" icon>Sign in with a Santulan ID</ButtonLink>
+            </section>
           </div>
-          <Link to="/support" className={`${s.helpItem} ${s.helpLink}`}>
-            <IconBadge icon={Headphones} tone="blue" />
-            <div>
-              <h2 className={s.helpTitle}>Need Help?</h2>
-              <p className={s.helpText}>Visit our Support Centre or contact us for assistance.</p>
+
+          <div className={s.helpStrip}>
+            <div className={s.helpItem}>
+              <IconBadge icon={CircleHelp} tone="blue" />
+              <div>
+                <h2 className={s.helpTitle}>Not sure which route to choose?</h2>
+                <p className={s.helpText}>If you have been invited by your school, college or organisation, please use the Institution Route. Otherwise, you can register through the Open Route.</p>
+              </div>
             </div>
-            <ArrowRight size={22} aria-hidden="true" className={s.helpArrow} />
-          </Link>
+            <Link to="/support" className={`${s.helpItem} ${s.helpLink}`}>
+              <IconBadge icon={Headphones} tone="blue" />
+              <div>
+                <h2 className={s.helpTitle}>Need Help?</h2>
+                <p className={s.helpText}>Visit our Support Centre or contact us for assistance.</p>
+              </div>
+              <ArrowRight size={22} aria-hidden="true" className={s.helpArrow} />
+            </Link>
+          </div>
         </div>
-      </div>
+      </section>
     </PublicLayout>
   );
 }

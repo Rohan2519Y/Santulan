@@ -451,9 +451,15 @@
 
 .tree {
   list-style: none;
-  margin: 0;
-  padding-left: var(--sp-5);
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-6);
+  border-left: 2px solid var(--c-line);
   display: grid;
+  gap: var(--sp-2);
+}
+/* A sub-institution's own children (rare, only when institutions are nested) get a little more breathing room than a
+   plain cohort row, since each one is itself a full card. */
+.treeSub {
   gap: var(--sp-3);
 }
 
@@ -465,9 +471,15 @@
   gap: var(--sp-4);
 }
 
+/* Every institution (plus its cohorts and any sub-institutions) is one visually grouped card, so it reads as "one
+   institution with things underneath it" rather than a flat list of same-looking rows. */
 .treeItem {
   display: grid;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+  background: var(--c-panel);
 }
 
 .itemHead {
@@ -477,6 +489,53 @@
   gap: var(--sp-2);
   font-weight: var(--fw-semibold);
   color: var(--c-ink-strong);
+}
+
+/* A cohort row: visibly lighter/smaller than its parent institution's .itemHead, with a small "Cohort" tag, so the
+   hierarchy is obvious even without the indent guide. */
+.cohortRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--c-tint-blue);
+}
+.cohortTag {
+  flex: none;
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-pill);
+  background: var(--c-bg-white);
+  color: var(--c-ink-faint);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cohortName {
+  font-weight: var(--fw-medium);
+  color: var(--c-ink);
+}
+
+/* Same institution/cohort tag treatment as the Institutions page, reused inline in the Participants table cell. */
+.orgCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  align-items: flex-start;
+}
+.orgInstitution {
+  font-weight: var(--fw-medium);
+  color: var(--c-ink-strong);
+}
+.cohortRowInline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: var(--c-tint-blue);
 }
 
 .dl {

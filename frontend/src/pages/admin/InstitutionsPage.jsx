@@ -86,8 +86,9 @@ export default function InstitutionsPage() {
       {i.cohorts.length > 0 && (
         <ul className={styles.tree}>
           {i.cohorts.map((c) => (
-            <li key={c.cohortId} className={styles.itemHead}>
-              <span>{c.cohortName}</span>
+            <li key={c.cohortId} className={styles.cohortRow}>
+              <span className={styles.cohortTag}>Cohort</span>
+              <span className={styles.cohortName}>{c.cohortName}</span>
               <span className={styles.mono}>{c.cohortCode}</span>
               <StatusPill tone={TONE[c.status]} label={c.status.charAt(0) + c.status.slice(1).toLowerCase()} />
               <span className={styles.rowActions}>
@@ -98,7 +99,7 @@ export default function InstitutionsPage() {
           ))}
         </ul>
       )}
-      {children(i.institutionId).length > 0 && <ul className={styles.tree}>{children(i.institutionId).map(renderInstitution)}</ul>}
+      {children(i.institutionId).length > 0 && <ul className={`${styles.tree} ${styles.treeSub}`}>{children(i.institutionId).map(renderInstitution)}</ul>}
     </li>
   );
 
