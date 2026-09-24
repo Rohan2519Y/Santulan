@@ -70,7 +70,7 @@ export default function LoginPage() {
   );
 
   return (
-    <PublicLayout action="register">
+    <PublicLayout action="register" noFooter>
       <div className={s.split}>
         <ImageSlot slot="loginHero" className={s.splitPhoto} />
         <div className={s.splitShade} aria-hidden="true" />

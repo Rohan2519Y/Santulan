@@ -73,7 +73,7 @@
 .sideArt { position: relative; padding: var(--sp-6) var(--sp-3) 0; }
 .sideScript { font-family: var(--font-script); font-size: 26px; line-height: 1.15; color: var(--c-brand); margin: 0 0 var(--sp-3); position: relative; z-index: 1; }
 .leaf { height: 150px; margin: 0 calc(var(--sp-4) * -1); }
-.appContent { min-width: 0; padding: var(--sp-6) clamp(16px, 3vw, 48px) var(--sp-7); }
+.appContent { min-width: 0; padding: var(--sp-5) clamp(16px, 3vw, 48px) var(--sp-6); }
 .scrim { display: none; }
 
 @media (max-width: 1023px) {

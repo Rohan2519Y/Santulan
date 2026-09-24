@@ -20,14 +20,15 @@ import Field from '../../components/Field/Field';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
 import { api, newKey } from '../../services/santulanApi';
 import { useSession } from '../../services/SessionContext';
+import ConsentFormModal from './ConsentFormModal';
 
 const LABELS = ['Contact', 'Verify', 'Age', 'Consent', 'Done'];
 const RESEND_SECONDS = 30;
 
 const CONSENT_CARDS = {
-  PARENT_GUARDIAN_CONSENT: { title: 'Parent or guardian consent', tag: 'Parent / guardian', text: 'A parent or guardian confirms that you may take part. TODO(copy): approved consent text is supplied by the programme owner.' },
-  STUDENT_ASSENT: { title: 'Your assent', tag: 'Self', text: 'You confirm that you are happy to take part. TODO(copy): approved assent text is supplied by the programme owner.' },
-  ADULT_SELF_CONSENT: { title: 'Your consent', tag: 'Self-consent', text: 'You confirm that you are happy to take part. TODO(copy): approved consent text is supplied by the programme owner.' },
+  PARENT_GUARDIAN_CONSENT: { title: 'Parent or guardian consent', tag: 'Parent / guardian', text: 'A parent or guardian reads and approves the consent form on your behalf before you can take part.' },
+  STUDENT_ASSENT: { title: 'Your assent', tag: 'Self', text: 'You confirm that you are happy to take part, alongside your parent or guardian’s consent.' },
+  ADULT_SELF_CONSENT: { title: 'Your consent', tag: 'Self-consent', text: 'You read and approve the consent form yourself before you can take part.' },
 };
 
 const isEligibleAge = (n) => Number.isInteger(n) && n >= 13 && n <= 25;
@@ -107,6 +108,8 @@ export default function RegisterPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [agreedConsents, setAgreedConsents] = useState({});
+  const [consentModalKey, setConsentModalKey] = useState(null);
   const idempotencyKey = useRef(newKey('reg'));         // one key per registration attempt, reused on every retry
 
   useEffect(() => {
@@ -157,7 +160,7 @@ export default function RegisterPage() {
   const ss = String(seconds % 60).padStart(2, '0');
 
   return (
-    <PublicLayout action="register">
+    <PublicLayout action="register" noFooter>
       <div className={s.split}>
         <ImageSlot slot={`registerStep${step}`} className={s.splitPhoto} />
         <div className={s.splitShade} aria-hidden="true" />
@@ -274,10 +277,15 @@ export default function RegisterPage() {
                     <span className={styles.pill}>{CONSENT_CARDS[c].tag}</span>
                     <h2 className={styles.h3} style={{ marginTop: 'var(--sp-2)' }}>{CONSENT_CARDS[c].title}</h2>
                     <p style={{ margin: 0 }}>{CONSENT_CARDS[c].text}</p>
+                    {c !== 'STUDENT_ASSENT' && (
+                      <Button variant="secondary" size="sm" onClick={() => setConsentModalKey(c)} style={{ marginTop: 'var(--sp-3)' }}>
+                        {agreedConsents[c] ? <><Check size={16} aria-hidden="true" />Consent form reviewed</> : 'Read consent form'}
+                      </Button>
+                    )}
                   </section>
                 ))}
                 <InfoNote icon={Info}>Honest information helps us ensure the right support and a safe experience for all participants.</InfoNote>
-                <Button size="lg" block onClick={createAccount} disabled={busy || contradicts}>Create my account <ArrowRight size={20} aria-hidden="true" /></Button>
+                <Button size="lg" block onClick={createAccount} disabled={busy || contradicts || !route.requiredConsents.filter((c) => c !== 'STUDENT_ASSENT').every((c) => agreedConsents[c])}>Create my account <ArrowRight size={20} aria-hidden="true" /></Button>
                 <InfoNote icon={Lock} tone="quiet">Your information is secure and used only for participation and support purposes.</InfoNote>
               </div>
             )}
@@ -301,6 +309,12 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
+      <ConsentFormModal
+        open={!!consentModalKey}
+        role={choice}
+        onClose={() => setConsentModalKey(null)}
+        onAgree={() => { setAgreedConsents((prev) => ({ ...prev, [consentModalKey]: true })); setConsentModalKey(null); }}
+      />
     </PublicLayout>
   );
 }

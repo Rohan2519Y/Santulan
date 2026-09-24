@@ -14,7 +14,7 @@ const stack = [];
  * page scroll is locked, and focus returns to the opener on close.
  * `side` renders a right-hand drawer instead of a centred dialog.
  */
-export default function Modal({ open, onClose, title, description, side = false, children, footer }) {
+export default function Modal({ open, onClose, title, description, side = false, size, children, footer }) {
   const titleId = useId();
   const descId = useId();
   const dialogRef = useRef(null);
@@ -83,7 +83,7 @@ export default function Modal({ open, onClose, title, description, side = false,
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         tabIndex={-1}
-        className={`${styles.dialog} ${side ? styles.side : styles.center}`}
+        className={`${styles.dialog} ${side ? styles.side : styles.center} ${!side && size === 'lg' ? styles.lg : ''}`.trim()}
       >
         <header className={styles.header}>
           <h2 id={titleId} className={styles.title}>

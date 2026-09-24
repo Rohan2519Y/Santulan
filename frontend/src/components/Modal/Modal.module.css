@@ -36,6 +36,11 @@
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
 }
 
+.lg {
+  width: min(880px, 100%);
+  max-height: min(760px, 92vh);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .side {
     animation: slide-in var(--motion-base) var(--ease);

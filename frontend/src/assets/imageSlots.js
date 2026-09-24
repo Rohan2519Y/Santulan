@@ -20,21 +20,21 @@ export const IMAGE_SLOTS = {
   aboutHero: '/images/aboutHero.png',           // screen 02: photo of three students on the right of the about hero
   registerStep1: '/images/registerStep1.png',       // screen 04: person on a ledge
   registerStep2: '/images/registerStep2.png',       // screen 05: desk with books and a mug
-  registerStep3: '',       // screen 06: person with a backpack
-  registerStep4: '',       // screen 07: person looking at the view
-  registerStep5: '',       // screen 08: books and a plant
-  loginHero: '',           // screen 09: building with trees
+  registerStep3: '/images/registerStep3.png',       // screen 06: person with a backpack
+  registerStep4: '/images/registerStep4.png',       // screen 07: person looking at the view
+  registerStep5: '/images/registerStep5.png',       // screen 08: books and a plant
+  loginHero: '/images/loginHero.png',           // screen 09: building with trees
 
   // Signed-in pages
-  dashboardHero: '',       // screen 10: person with a backpack at the top-right of the dashboard
-  assessmentHero: '',      // screen 11: illustration beside the assessment heading
-  completeHero: '',        // screen 16: celebrating illustration
-  generatingPhoto: '',     // screen 17: photo at the top of the right column
-  generatingArt: '',       // screen 17: document and magnifier illustration in the middle
-  thanksBanner: '',        // screen 19: sign-post landscape banner
-  thanksPhoto: '',         // screen 19: photo at the top of the right column
-  profileHero: '',         // screen 20: illustration at the top of the right column
-  preferencesHero: '',     // screen 22
-  privacyHero: '',         // screen 24
-  resultsHero: '',         // results page header picture
+  dashboardHero: '/images/dashboardHero.png',       // screen 10: person with a backpack at the top-right of the dashboard
+  assessmentHero: '/images/assessmentHero.png',      // screen 11: illustration beside the assessment heading
+  completeHero: '/images/completeHero.png',        // screen 16: celebrating illustration
+  generatingPhoto: '/images/generatingPhoto.png',     // screen 17: photo at the top of the right column
+  generatingArt: '/images/generatingArt.png',       // screen 17: document and magnifier illustration in the middle
+  thanksBanner: '/images/thanksBanner.png',        // screen 19: sign-post landscape banner
+  thanksPhoto: '/images/thanksPhoto.png',         // screen 19: photo at the top of the right column
+  profileHero: '/images/profileHero.png',         // screen 20: illustration at the top of the right column
+  preferencesHero: '/images/preferencesHero.png',     // screen 22
+  privacyHero: '/images/privacyHero.png',         // screen 24
+  resultsHero: '/images/resultsHero.png',         // results page header picture
 };

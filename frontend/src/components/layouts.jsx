@@ -85,12 +85,12 @@ export function PublicFooter() {
   );
 }
 
-export function PublicLayout({ children, action }) {
+export function PublicLayout({ children, action, noFooter = false }) {
   return (
     <div className={styles.page}>
       <PublicHeader action={action} />
       <main className={styles.main}>{children}</main>
-      <PublicFooter />
+      {!noFooter && <PublicFooter />}
     </div>
   );
 }

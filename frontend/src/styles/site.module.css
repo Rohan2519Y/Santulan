@@ -139,10 +139,10 @@
 }
 
 /* ---------- split layout: registration (04-08) and sign-in (09) ---------- */
-.split { position: relative; overflow: hidden; background: #f6f7f7; }
+.split { position: relative; overflow: hidden; background: #f6f7f7; min-height: calc(100vh - var(--header-h)); display: flex; }
 .splitPhoto { position: absolute; top: 0; bottom: 0; left: 0; width: 60%; }
-.splitShade { position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none; background: linear-gradient(90deg, rgba(246, 247, 247, 0.92) 0%, rgba(246, 247, 247, 0.6) 48%, rgba(246, 247, 247, 0) 100%); }
-.splitInner { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 640px); gap: clamp(24px, 5vw, 88px); align-items: center; max-width: 1600px; min-height: 760px; margin: 0 auto; padding: clamp(28px, 4vw, 56px) var(--page-gutter); }
+.splitShade { position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none; background: linear-gradient(90deg, rgba(246, 247, 247, 0.72) 0%, rgba(246, 247, 247, 0.38) 48%, rgba(246, 247, 247, 0) 100%); }
+.splitInner { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 640px); gap: clamp(20px, 4vw, 64px); align-items: center; max-width: 1600px; width: 100%; margin: 0 auto; padding: clamp(20px, 3vw, 40px) var(--page-gutter); }
 .splitInnerWide { grid-template-columns: minmax(0, 1fr) minmax(0, 560px); }
 .splitCenter { grid-template-columns: minmax(0, 1fr) minmax(0, 620px) minmax(0, 1fr); }
 .splitCopy { max-width: 540px; color: var(--c-photo-ink); }
@@ -184,7 +184,7 @@
   .splitInner, .splitInnerWide, .splitCenter { grid-template-columns: minmax(0, 1fr); min-height: 0; }
   .splitCopy { max-width: none; }
   .splitPhoto, .splitShade { width: 100%; }
-  .splitShade { background: linear-gradient(180deg, rgba(246, 247, 247, 0.9) 0%, rgba(246, 247, 247, 0.5) 100%); }
+  .splitShade { background: linear-gradient(180deg, rgba(246, 247, 247, 0.72) 0%, rgba(246, 247, 247, 0.35) 100%); }
   .splitFeatures, .splitScript, .splitLead { display: none; }
   .splitTitle { margin-bottom: 0; }
   .authCard { max-width: 640px; width: 100%; margin: 0 auto; }
