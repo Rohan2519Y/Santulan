@@ -1,9 +1,9 @@
 /*
  * Deterministic report renderer (B07-003, B07-026..035, RC-11, AT-19; SC-017, SC-018; BUILD 07 sections 4, 7, 8, 9). Pure functions: no database.
  */
-const { renderSections, profilePayload } = require('../../../src/modules/santulan/reporting/reportRenderer');
-const rulesLib = require('../../../src/modules/santulan/domain/reportRules');
-const { T11_UNDER_REVIEW, T12_NOT_ELIGIBLE } = require('../../../src/modules/santulan/reporting/messages');
+const { renderSections, profilePayload } = require('../../../src/services/reporting/reportRenderer');
+const rulesLib = require('../../../src/services/domain/reportRules');
+const { T11_UNDER_REVIEW, T12_NOT_ELIGIBLE } = require('../../../src/services/reporting/messages');
 const { scanClaims } = require('../helpers/claimsScanner');
 
 const DOMAIN_CODES = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'];

@@ -8,7 +8,7 @@ const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
 const P = require('../helpers/pipeline');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 const api = () => request(app);
 const as = (who, method, p, body) => api()[method](`/api/v1${p}`).set({ Authorization: `Bearer ${who.token}` }).send(body);

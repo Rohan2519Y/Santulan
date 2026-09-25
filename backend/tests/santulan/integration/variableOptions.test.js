@@ -5,11 +5,11 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
-const { optionValue } = require('../../../src/modules/santulan/domain/optionScale');
-const service = require('../../../src/modules/santulan/questionsets/questionSetService');
+const { optionValue } = require('../../../src/services/domain/optionScale');
+const service = require('../../../src/services/questionsets/questionSetService');
 const W = require('../helpers/questionWorkbook');
 
 const bearer = (p) => ({ Authorization: `Bearer ${p.token}` });

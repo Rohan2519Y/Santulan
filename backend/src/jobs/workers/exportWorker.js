@@ -5,7 +5,7 @@
  */
 const { randomUUID } = require('crypto');
 const config = require('../../config');
-const { claimAndGenerate, nextRequested } = require('../../modules/santulan/research/exportService');
+const { claimAndGenerate, nextRequested } = require('../../services/research/exportService');
 
 const BATCH = 10;
 

@@ -2,7 +2,7 @@
  * Growth rules (B07-037, 038, 040, 041, 046, 048..051; PG-01..PG-10): the application half of what the SQL guards used to enforce.
  * Pure rules: no database. The service and HTTP behaviour is covered by contract/growth.test.js.
  */
-const rules = require('../../../src/modules/santulan/domain/growthRules');
+const rules = require('../../../src/services/domain/growthRules');
 
 const score = (state, raw = 3) => ({ rawScore: raw, scoreStatus: state });
 const action = (over = {}) => ({ action_code: 'DAL-001', library_version: 'DRM-v1.1', domain_code: 'C1', subdomain_code: 'C1.1', active: true, evidence_status: 'Foundation ready', control_flags: { control: 'Standard' }, ...over });

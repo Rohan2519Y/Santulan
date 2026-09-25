@@ -7,8 +7,8 @@
  */
 const { randomUUID } = require('crypto');
 const config = require('../../config');
-const store = require('../../modules/santulan/store');
-const { qualityInTx, scoreInTx } = require('../../modules/santulan/scoring/scoreService');
+const store = require('../../models/db');
+const { qualityInTx, scoreInTx } = require('../../services/scoring/scoreService');
 
 const BATCH = 50;
 

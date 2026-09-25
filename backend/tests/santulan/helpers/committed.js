@@ -7,7 +7,7 @@
 const { randomUUID } = require('crypto');
 const H = require('./mongoHarness');
 const F = require('./fixtures');
-const { signToken } = require('../../../src/shared/middleware/auth');
+const { signToken } = require('../../../src/middleware/auth');
 
 const u = () => randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase();
 
@@ -95,7 +95,7 @@ const db = () => H.admin();
  */
 async function openSet({ ageGroup = 'ADOLESCENT', perDomain = 1, optionCounts = [], open = true } = {}) {
   const W = require('./questionWorkbook');
-  const service = require('../../../src/modules/santulan/questionsets/questionSetService');
+  const service = require('../../../src/services/questionsets/questionSetService');
   const a = await admin();
   const actor = { adminUserId: a.adminUserId };
   const label = `fx-set-${u().toLowerCase()}`;

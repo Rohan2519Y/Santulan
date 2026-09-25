@@ -1,8 +1,8 @@
 /* Scoring rules through the store (B06-001..060; SC-015..SC-017): eligibility, statuses, no imputation, evidence, idempotency, atomicity. */
-const store = require('../../../src/modules/santulan/store');
-const scoringRules = require('../../../src/modules/santulan/domain/scoringRules');
-const scoreService = require('../../../src/modules/santulan/scoring/scoreService');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const store = require('../../../src/models/db');
+const scoringRules = require('../../../src/services/domain/scoringRules');
+const scoreService = require('../../../src/services/scoring/scoreService');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const P = require('../helpers/pipeline');
 const H = require('../helpers/mongoHarness');
@@ -131,7 +131,7 @@ describe('checks before scoring (B06-001..010)', () => {
 describe('eligibility uses the age group, never a flat total (B06-020)', () => {
   test('B06-020 only CORE + ACTIVE questions whose band and context fit the group are eligible for a domain', () => {
     const q = (o) => ({ layer: 'CORE', status: 'ACTIVE', age_band: '13–17', context: 'School', ...o });
-    const { eligibleForGroup } = require('../../../src/modules/santulan/domain/questionSetRules');
+    const { eligibleForGroup } = require('../../../src/services/domain/questionSetRules');
     expect(eligibleForGroup(q(), 'ADOLESCENT')).toBe(true);
     expect(eligibleForGroup(q({ age_band: '13–25', context: 'General' }), 'ADOLESCENT')).toBe(true);
     expect(eligibleForGroup(q({ age_band: '18–25' }), 'ADOLESCENT')).toBe(false);

@@ -15,11 +15,11 @@ const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
 const { v4: uuidv4 } = require('uuid');
-const RULES_SHEETS = require('../../../src/modules/santulan/research/workbookWriter').SHEETS;
-const { TRUNCATION_MARKER } = require('../../../src/modules/santulan/domain/exportRules');
-const { FORBIDDEN_COLUMNS } = require('../../../src/modules/santulan/research/researchIdentity');
-const store = require('../../../src/modules/santulan/store');
-const { claimAndGenerate } = require('../../../src/modules/santulan/research/exportService');
+const RULES_SHEETS = require('../../../src/services/research/workbookWriter').SHEETS;
+const { TRUNCATION_MARKER } = require('../../../src/services/domain/exportRules');
+const { FORBIDDEN_COLUMNS } = require('../../../src/services/research/researchIdentity');
+const store = require('../../../src/models/db');
+const { claimAndGenerate } = require('../../../src/services/research/exportService');
 
 const EXPORT_DIR = process.env.EXPORT_DIR;
 const INTERNAL = { 'X-Internal-Api-Key': 'test-internal-key' };

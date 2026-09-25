@@ -1,7 +1,7 @@
 /* Store error mapping (T010; database-contract section 6). Pure: no database needed. */
-const { mapStoreError, isTransient } = require('../../../src/modules/santulan/store/errors');
-const securityLog = require('../../../src/modules/santulan/store/securityLog');
-const { HttpError } = require('../../../src/shared/errors');
+const { mapStoreError, isTransient } = require('../../../src/models/db/errors');
+const securityLog = require('../../../src/models/db/securityLog');
+const { HttpError } = require('../../../src/errors');
 
 const dupErr = (index) => Object.assign(new Error(`E11000 duplicate key error collection: santulan.x index: ${index} dup key: { a: 1 }`), { code: 11000 });
 const validatorErr = () => Object.assign(new Error('Document failed validation'), { code: 121 });

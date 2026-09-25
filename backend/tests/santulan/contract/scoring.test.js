@@ -14,7 +14,7 @@ const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
 const P = require('../helpers/pipeline');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 const INTERNAL = { 'X-Internal-Api-Key': 'test-internal-key' };
 const api = () => request(app);

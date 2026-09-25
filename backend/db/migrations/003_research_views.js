@@ -1,5 +1,5 @@
 /* 003 - the eight v_research_* views and the research-only v_candidate_subdomain_scores (data-model section 8). Idempotent. */
-const { views } = require('../schema');
+const { views } = require('../../src/models/schema');
 
 module.exports = {
   name: '003_research_views',

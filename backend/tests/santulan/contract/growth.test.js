@@ -5,8 +5,8 @@
  */
 const { v4: uuidv4 } = require('uuid');
 const p = require('../helpers/contractPipeline');
-const store = require('../../../src/modules/santulan/store');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const store = require('../../../src/models/db');
+const { closeClient } = require('../../../src/models/db/client');
 
 const { f, H, P, F, api, get, post, internal, scoredAttempt, approveRules, clearRules, activateActions, generate, growthPlanOf, ZERO_ID } = p;
 const plan = (id, who) => get(`/growth-plans/${id}`, who);
@@ -86,7 +86,7 @@ describe('generation and the participant view (PG-01..PG-05)', () => {
 
   test('generation is idempotent: a second run for the same attempt changes nothing', async () => {
     const { a, planId } = await releasedPlan();
-    const { generatePlan } = require('../../../src/modules/santulan/growth/growthService');
+    const { generatePlan } = require('../../../src/services/growth/growthService');
     expect(await generatePlan(a.id)).toMatchObject({ planId, created: false });
     expect(await count('growth_plans', { source_attempt_id: a.id })).toBe(1);
     expect(await count('growth_priorities', { plan_id: planId })).toBe(3);

@@ -1,6 +1,6 @@
 /* Question set validation (contracts/upload-format.md sections 2, 3.2, 3.3; SC-002, SC-003). Pure: no database. */
-const { parseQuestionWorkbook } = require('../../../src/modules/santulan/questionsets/questionSetParser');
-const { validate } = require('../../../src/modules/santulan/questionsets/questionSetValidator');
+const { parseQuestionWorkbook } = require('../../../src/services/questionsets/questionSetParser');
+const { validate } = require('../../../src/services/questionsets/questionSetValidator');
 const W = require('../helpers/questionWorkbook');
 
 const run = (rows, ageGroup = 'ADOLESCENT', opts) => {

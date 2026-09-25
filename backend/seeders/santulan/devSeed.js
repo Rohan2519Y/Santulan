@@ -6,10 +6,10 @@
  */
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
-const store = require('../../src/modules/santulan/store');
-const identity = require('../../src/modules/santulan/store/repositories/identity');
-const devIdentity = require('../../src/modules/santulan/store/repositories/devIdentity');
-const rules = require('../../src/modules/santulan/domain/registrationRules');
+const store = require('../../src/models/db');
+const identity = require('../../src/models/repositories/identity');
+const devIdentity = require('../../src/models/repositories/devIdentity');
+const rules = require('../../src/services/domain/registrationRules');
 
 const PROVIDER = 'santulan-dev';
 

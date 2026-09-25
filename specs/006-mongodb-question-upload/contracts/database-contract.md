@@ -93,7 +93,8 @@ This is the checkable contract for everything the store must provide. Each numbe
 
 ## 5. Scope contract (row-level-security replacement)
 
-The **only** module that imports the driver is `modules/santulan/store/`. It exposes `withScope(scope, fn, { transaction })` and repositories.
+The **only** module that imports the driver is `src/models/db/`. It exposes `withScope(scope, fn, { transaction })`; repositories built on
+it live in `src/models/repositories/`.
 
 | ID | Guarantee | Test family |
 |----|-----------|-------------|

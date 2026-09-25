@@ -7,8 +7,8 @@
  */
 const path = require('path');
 const XLSX = require('xlsx');
-const { parseRoster } = require('../../../src/modules/santulan/admin/roster/rosterParser');
-const { validate } = require('../../../src/modules/santulan/admin/roster/rosterValidator');
+const { parseRoster } = require('../../../src/services/admin/roster/rosterParser');
+const { validate } = require('../../../src/services/admin/roster/rosterValidator');
 
 const SAMPLE = path.join(__dirname, '..', '..', '..', '..', 'docs', 'Creative Minds Global School- required Students Info_014006.xlsx');
 

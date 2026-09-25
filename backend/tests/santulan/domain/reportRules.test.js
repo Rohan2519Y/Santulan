@@ -4,11 +4,11 @@
  * Runs the report service against the SCRATCH database (no HTTP).
  */
 const config = require('../../../src/config');
-const store = require('../../../src/modules/santulan/store');
-const reportService = require('../../../src/modules/santulan/reporting/reportService');
-const rules = require('../../../src/modules/santulan/domain/reportRules');
+const store = require('../../../src/models/db');
+const reportService = require('../../../src/services/reporting/reportService');
+const rules = require('../../../src/services/domain/reportRules');
 const p = require('../helpers/contractPipeline');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 const { f, H, P, scoredAttempt, terminalAttempt, attemptStatus, clearRules } = p;
 const failing = async () => { throw new Error('forced render failure'); };
@@ -54,7 +54,7 @@ describe('the state machine (RC-09..RC-12)', () => {
     const spy = async (tx, attemptId) => {
       seenDuringRender = await store.withScope(store.participantScope(a.p.participantId), async (ptx) => (await ptx.c.reports.find({ attempt_id: attemptId }))[0] || null);
       gate = await reportService.getParticipantReport(a.p.participantId, seenDuringRender._id).catch((e) => e);
-      return require('../../../src/modules/santulan/reporting/reportRenderer').renderAttempt(tx, attemptId);
+      return require('../../../src/services/reporting/reportRenderer').renderAttempt(tx, attemptId);
     };
     const done = await reportService.generateReport(a.id, { renderer: spy });
     expect(done.state).toBe('REPORT_READY');
@@ -119,7 +119,7 @@ describe('sections are snapshots (B07-016, 018, 019, 022)', () => {
     const a = await scoredAttempt({ s2: true });
     const done = await reportService.generateReport(a.id);
     const sections = await count('report_sections', { report_id: done.reportId });
-    const again = await store.withScope(store.systemScope(), (tx) => require('../../../src/modules/santulan/store/repositories/reports').getReport(tx, done.reportId));
+    const again = await store.withScope(store.systemScope(), (tx) => require('../../../src/models/repositories/reports').getReport(tx, done.reportId));
     expect(again.generationStatus).toBe('REPORT_READY');
     await reportService.generateReport(a.id);
     expect(await count('report_sections', { report_id: done.reportId })).toBe(sections);
@@ -144,7 +144,7 @@ describe('sections are snapshots (B07-016, 018, 019, 022)', () => {
     const hash = (await reportOf(a.id)).content_hash;
     const later = await scoredAttempt({ s2: true });
     await reportService.generateReport(later.id);
-    const rendered = await store.withScope(store.systemScope(), (tx) => require('../../../src/modules/santulan/reporting/reportRenderer').renderAttempt(tx, a.id));
+    const rendered = await store.withScope(store.systemScope(), (tx) => require('../../../src/services/reporting/reportRenderer').renderAttempt(tx, a.id));
     expect(rules.fingerprint(rendered)).toBe(hash);
     expect(done.reportId).toBeTruthy();
   });

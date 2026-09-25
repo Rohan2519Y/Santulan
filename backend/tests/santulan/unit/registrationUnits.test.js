@@ -1,8 +1,8 @@
-const { resolveAgeRoute } = require('../../../src/modules/santulan/registration/routing');
-const { generateSantulanId, SANTULAN_ID_PATTERN } = require('../../../src/modules/santulan/registration/santulanId');
-const { createRegistrationThrottle, MemoryThrottleStore } = require('../../../src/modules/santulan/security/throttle');
-const { payloadHash } = require('../../../src/modules/santulan/shared/idempotency');
-const { redact } = require('../../../src/modules/santulan/shared/http');
+const { resolveAgeRoute } = require('../../../src/services/registration/routing');
+const { generateSantulanId, SANTULAN_ID_PATTERN } = require('../../../src/services/registration/santulanId');
+const { createRegistrationThrottle, MemoryThrottleStore } = require('../../../src/middleware/throttle');
+const { payloadHash } = require('../../../src/utils/idempotency');
+const { redact } = require('../../../src/middleware/http');
 
 describe('age routing (T03-001…006, AT-B00-01/02/03)', () => {
   test.each([12, 26, 0, 99, -1])('T03-001/006 age %i is ineligible', (age) => {

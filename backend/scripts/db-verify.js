@@ -16,10 +16,10 @@ const path = require('path');
 
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const { MongoClient } = require('mongodb');
-const schema = require('../db/schema');
+const schema = require('../src/models/schema');
 const framework = require('../seeders/santulan/reference/framework.json');
-const canonical = require('../src/modules/santulan/questionsets/canonical');
-const { fingerprint } = require('../src/modules/santulan/domain/fingerprint');
+const canonical = require('../src/services/questionsets/canonical');
+const { fingerprint } = require('../src/services/domain/fingerprint');
 
 const norm = (v) => JSON.parse(JSON.stringify(v));
 

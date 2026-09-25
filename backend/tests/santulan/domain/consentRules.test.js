@@ -1,8 +1,8 @@
 /* Consent rules (T04-005..026): the machine, type/giver/age compatibility, the gate, and compare-and-set concurrency. */
-const store = require('../../../src/modules/santulan/store');
-const rules = require('../../../src/modules/santulan/domain/consentRules');
-const consents = require('../../../src/modules/santulan/store/repositories/consents');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const store = require('../../../src/models/db');
+const rules = require('../../../src/services/domain/consentRules');
+const consents = require('../../../src/models/repositories/consents');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 

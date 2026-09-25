@@ -4,8 +4,8 @@
  */
 const p = require('../helpers/contractPipeline');
 const { scanClaims } = require('../helpers/claimsScanner');
-const rules = require('../../../src/modules/santulan/domain/reportRules');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const rules = require('../../../src/services/domain/reportRules');
+const { closeClient } = require('../../../src/models/db/client');
 
 const { f, H, P, api, post, get, internal, scoredAttempt, terminalAttempt, approveRules, clearRules, generate, attemptStatus, reportService } = p;
 const failingRenderer = async () => { throw new Error('forced render failure'); };

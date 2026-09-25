@@ -4,11 +4,11 @@
  * plans, audit without trigger content, never consults a release switch). HTTP behaviour: contract/pathways.test.js.
  */
 const { v4: uuidv4 } = require('uuid');
-const rules = require('../../../src/modules/santulan/domain/pathwayRules');
-const store = require('../../../src/modules/santulan/store');
-const { firePathwayP5 } = require('../../../src/modules/santulan/pathways/p5Hook');
+const rules = require('../../../src/services/domain/pathwayRules');
+const store = require('../../../src/models/db');
+const { firePathwayP5 } = require('../../../src/services/pathways/p5Hook');
 const p = require('../helpers/contractPipeline');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 const { f, F, H, P, scoredAttempt } = p;
 const body = (pathwayCode, over = {}) => ({ pathwayCode, triggerCode: 'PARTICIPANT_REQUEST', decisionSource: 'PARTICIPANT', ...over });

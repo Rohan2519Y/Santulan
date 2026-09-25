@@ -1,5 +1,5 @@
 /* Question workbook reader (contracts/upload-format.md section 1, section 3.1). Pure: no database. */
-const { parseQuestionWorkbook, MAX_QUESTION_ROWS } = require('../../../src/modules/santulan/questionsets/questionSetParser');
+const { parseQuestionWorkbook, MAX_QUESTION_ROWS } = require('../../../src/services/questionsets/questionSetParser');
 const W = require('../helpers/questionWorkbook');
 
 const parse = (buf, name = 'q.xlsx') => parseQuestionWorkbook(buf, { fileName: name });

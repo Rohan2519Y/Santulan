@@ -5,9 +5,9 @@
  * A network blip alone never ends a session; only this timeout or an explicit pause/logout does.
  */
 const config = require('../../config');
-const store = require('../../modules/santulan/store');
-const delivery = require('../../modules/santulan/store/repositories/delivery');
-const attemptRules = require('../../modules/santulan/domain/attemptRules');
+const store = require('../../models/db');
+const delivery = require('../../models/repositories/delivery');
+const attemptRules = require('../../services/domain/attemptRules');
 
 const BATCH = 100;
 

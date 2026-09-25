@@ -6,7 +6,7 @@ let client;
 const freshStore = (env) => {
   jest.resetModules();
   Object.assign(process.env, env);
-  return require('../../../src/modules/santulan/store/client');
+  return require('../../../src/models/db/client');
 };
 
 const saved = { ...process.env };

@@ -3,7 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 const SRC = path.resolve(__dirname, '..', '..', '..', 'src');
-const STORE_DIR = path.join(SRC, 'modules', 'santulan', 'store') + path.sep;
+const STORE_DIR = path.join(SRC, 'models', 'db') + path.sep;
+const REPOS_DIR = path.join(SRC, 'models', 'repositories') + path.sep;
+const isStore = (f) => f.startsWith(STORE_DIR) || f.startsWith(REPOS_DIR);
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -22,18 +24,18 @@ const rel = (f) => path.relative(SRC, f).replace(/\\/g, '/');
 const LEGACY_PG = new Set();
 
 describe('G-27 only the store touches the driver', () => {
-  test('G-27 no file outside modules/santulan/store/ requires mongodb', () => {
-    const offenders = files.filter((f) => !f.startsWith(STORE_DIR) && /require\(['"]mongodb['"]\)|from ['"]mongodb['"]/.test(read(f))).map(rel);
+  test('G-27 no file outside models/db/ or models/repositories/ requires mongodb', () => {
+    const offenders = files.filter((f) => !isStore(f) && /require\(['"]mongodb['"]\)|from ['"]mongodb['"]/.test(read(f))).map(rel);
     expect(offenders).toEqual([]);
   });
 
   test('G-27 no file outside the store calls .collection( (a driver call)', () => {
-    const offenders = files.filter((f) => !f.startsWith(STORE_DIR) && /\.collection\(/.test(read(f))).map(rel);
+    const offenders = files.filter((f) => !isStore(f) && /\.collection\(/.test(read(f))).map(rel);
     expect(offenders).toEqual([]);
   });
 
   test('G-27 no file outside the store uses the data-model schema or ObjectId', () => {
-    const offenders = files.filter((f) => !f.startsWith(STORE_DIR) && /ObjectId|MongoClient/.test(read(f))).map(rel);
+    const offenders = files.filter((f) => !isStore(f) && /ObjectId|MongoClient/.test(read(f))).map(rel);
     expect(offenders).toEqual([]);
   });
 });
@@ -52,8 +54,8 @@ describe('no new relational code', () => {
 
 describe('B08-055 responses have a single update path', () => {
   test('B08-055 only repositories/responses.js may update the responses collection, and only retireCurrent does', () => {
-    const responsesRepo = path.join(STORE_DIR, 'repositories', 'responses.js');
-    const offenders = files.filter((f) => f !== responsesRepo && !f.startsWith(path.join(STORE_DIR, 'dal.js')) && /c\.responses\.(updateOne|transition)\(/.test(read(f))).map(rel);
+    const responsesRepo = path.join(REPOS_DIR, 'responses.js');
+    const offenders = files.filter((f) => f !== responsesRepo && f !== path.join(STORE_DIR, 'dal.js') && /c\.responses\.(updateOne|transition)\(/.test(read(f))).map(rel);
     expect(offenders).toEqual([]);
     if (fs.existsSync(responsesRepo)) {
       const src = read(responsesRepo);
@@ -64,7 +66,7 @@ describe('B08-055 responses have a single update path', () => {
   });
 
   test('G-13 no repository exposes a remove or delete', () => {
-    const offenders = files.filter((f) => f.startsWith(STORE_DIR) && /\b(deleteOne|deleteMany|findOneAndDelete|bulkWrite|drop\()\b/.test(read(f)) && !/scripts/.test(f)).map(rel);
+    const offenders = files.filter((f) => isStore(f) && /\b(deleteOne|deleteMany|findOneAndDelete|bulkWrite|drop\()\b/.test(read(f)) && !/scripts/.test(f)).map(rel);
     expect(offenders).toEqual([]);
   });
 });

@@ -18,8 +18,8 @@ question-upload workflow that replaces the old spreadsheet import.
 2. **Question upload** — a Super Admin uploads a question workbook (`docs/Santulan_Sample_Questions.xlsx` shows the format): 13 question
    fields plus `option_1…option_N` (2 to 20 options per question). The upload is validated as a whole, stored as a **draft** set, then
    **frozen** (permanent, content-hashed) and **opened** for an age group. Nothing is seeded.
-3. **A backend API** at `/api/v1` (`backend/src/modules/santulan/`) that reaches the database only through a scoped data-access layer,
-   and never accepts scores, versions, Santulan IDs or participant IDs from a client.
+3. **A backend API** at `/api/v1` (`backend/src/`, in a classic MVC layout — `controllers/`, `services/`, `models/`) that reaches the
+   database only through a scoped data-access layer, and never accepts scores, versions, Santulan IDs or participant IDs from a client.
 4. **Scoring and reports** following the Scoring and Report Generation master: exact completeness statuses, no imputation, research-only
    evidence (`S1`) by default, four audited release switches, and reports that fail closed when approved wording is missing.
 5. **A frontend** (React 19 / CRA) for participants and for the administrator.
@@ -30,23 +30,24 @@ question-upload workflow that replaces the old spreadsheet import.
 
 ```text
 backend/
-├── db/
-│   ├── schema/                      # collection, view, index and role definitions (the data model as code)
-│   └── migrations/                  # 001–004, applied once each, hash-checked
 ├── scripts/                         # mongo-local, db-migrate, db-scratch, db-verify, seed-reference, wording-load,
 │                                    # questions-convert-catalog, pipeline-once, export-synthetic, backup-restore-drill, release-manifest
 ├── seeders/santulan/                # dev seeder + reference framework map
 ├── config/                          # example governed configuration (quality policy, evidence config, ranking, messages)
-├── src/
+├── src/                             # classic layer-based MVC
 │   ├── app.js / server.js           # Express app; start-up guard; gated workers
 │   ├── config/index.js              # environment-driven configuration
 │   ├── routes/v1/santulan.routes.js # the API router
-│   ├── jobs/workers/                # inactivity, pipeline (quality + scoring), report, export workers
-│   └── modules/santulan/
-│       ├── store/                   # the ONLY code that imports the MongoDB driver (scoped access layer, repositories)
-│       ├── domain/                  # pure rules: registration, consent, attempts, scoring, quality, reports, growth, pathways, admin, export
-│       └── …                        # registration, consent, identity, questionsets, delivery, scoring, quality, reporting, growth,
-│                                    # pathways, admin, research
+│   ├── controllers/                 # one *.controller.js per endpoint group (flat)
+│   ├── services/                    # business logic, grouped by feature; services/domain/ holds the pure rule files
+│   │                                # (registration, consent, attempts, scoring, quality, reports, growth, pathways, admin, export)
+│   ├── models/
+│   │   ├── schema/                  # collection, view, index and role definitions (the data model as code)
+│   │   ├── repositories/            # data access built on the scoped store
+│   │   └── db/                      # the ONLY code that imports the MongoDB driver (scoped access layer, client, transactions)
+│   ├── middleware/, utils/, errors/ # cross-cutting concerns
+│   └── jobs/workers/                # inactivity, pipeline (quality + scoring), report, export workers
+├── db/migrations/                   # 001–004, applied once each, hash-checked
 └── tests/santulan/                  # store, domain, contract, integration, unit, helpers, evidence
 
 frontend/src/                        # components, pages (public / participant / admin), services

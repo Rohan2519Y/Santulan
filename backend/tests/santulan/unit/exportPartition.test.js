@@ -1,5 +1,5 @@
 /* Sheet partitioning (B08-042, 043, 047, AT-28): 1,048,575 data rows per sheet (Excel's 1,048,576 including the header). Pure functions. */
-const { MAX_ROWS, sheetCount, partition } = require('../../../src/modules/santulan/research/partition');
+const { MAX_ROWS, sheetCount, partition } = require('../../../src/services/research/partition');
 
 describe('sheet count', () => {
   test('MAX_ROWS is 1,048,575 and the boundary values give 1, 2 and 3 sheets', () => {

@@ -12,8 +12,8 @@ const app = require('../../../src/app');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 const { scanClaims, assertNoClaims, RULES } = require('../helpers/claimsScanner');
-const store = require('../../../src/modules/santulan/store');
-const { claimAndGenerate, getStatus } = require('../../../src/modules/santulan/research/exportService');
+const store = require('../../../src/models/db');
+const { claimAndGenerate, getStatus } = require('../../../src/services/research/exportService');
 
 const EXPORT_DIR = process.env.EXPORT_DIR;
 const INTERNAL = { 'X-Internal-Api-Key': 'test-internal-key' };

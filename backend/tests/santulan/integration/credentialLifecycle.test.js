@@ -10,8 +10,8 @@ const XLSX = require('xlsx');
 const app = require('../../../src/app');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
-const { canonical } = require('../../../db/schema');
+const { closeClient } = require('../../../src/models/db/client');
+const { canonical } = require('../../../src/models/schema');
 
 afterAll(async () => { await closeClient(); await H.closeAll(); });
 const col = async (name) => (await f.db()).collection(name);

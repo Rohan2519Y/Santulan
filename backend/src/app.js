@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const config = require('./config');
-const { errorHandler } = require('./shared/errors');
+const { errorHandler } = require('./errors');
 const santulanRoutes = require('./routes/v1/santulan.routes');
-const store = require('./modules/santulan/store');
+const store = require('./models/db');
 
 const app = express();
 

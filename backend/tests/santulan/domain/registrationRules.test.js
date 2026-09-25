@@ -1,8 +1,8 @@
 /* Registration rules (T03-007..013, T03-009, T03-021): cross-document rules enforced in the registering transaction. */
-const store = require('../../../src/modules/santulan/store');
-const rules = require('../../../src/modules/santulan/domain/registrationRules');
-const identity = require('../../../src/modules/santulan/store/repositories/identity');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const store = require('../../../src/models/db');
+const rules = require('../../../src/services/domain/registrationRules');
+const identity = require('../../../src/models/repositories/identity');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 

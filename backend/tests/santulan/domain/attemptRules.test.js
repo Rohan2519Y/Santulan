@@ -1,8 +1,8 @@
 /* Attempt rules (B05-001..018, 023, 024, 027, 028, 031..035, T03-017..020): the state machine, the create gate, the sessions. */
-const rules = require('../../../src/modules/santulan/domain/attemptRules');
-const delivery = require('../../../src/modules/santulan/store/repositories/delivery');
-const store = require('../../../src/modules/santulan/store');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const rules = require('../../../src/services/domain/attemptRules');
+const delivery = require('../../../src/models/repositories/delivery');
+const store = require('../../../src/models/db');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
@@ -23,7 +23,7 @@ describe('the state machine (B05-006)', () => {
   });
   test('B05-008 the non-terminal set is exactly the one the store index uses', () => {
     expect([...rules.NONTERMINAL].sort()).toEqual(['CREATED', 'IN_PROGRESS', 'PAUSED', 'QUALITY_HOLD', 'SCORED', 'SCORING', 'STARTED', 'SUBMITTED']);
-    expect(require('../../../db/schema').indexes.find((i) => i.name === 'uq_one_nonterminal_attempt_per_participant').partial.status.$in.sort()).toEqual([...rules.NONTERMINAL].sort());
+    expect(require('../../../src/models/schema').indexes.find((i) => i.name === 'uq_one_nonterminal_attempt_per_participant').partial.status.$in.sort()).toEqual([...rules.NONTERMINAL].sort());
   });
 });
 

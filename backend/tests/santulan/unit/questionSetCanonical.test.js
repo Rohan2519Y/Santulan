@@ -1,9 +1,9 @@
 /* Canonical form and hashes (contracts/upload-format.md section 6). Pure. */
 const crypto = require('crypto');
-const canonical = require('../../../src/modules/santulan/questionsets/canonical');
-const { buildTemplate } = require('../../../src/modules/santulan/questionsets/template');
-const { parseQuestionWorkbook } = require('../../../src/modules/santulan/questionsets/questionSetParser');
-const { validate } = require('../../../src/modules/santulan/questionsets/questionSetValidator');
+const canonical = require('../../../src/services/questionsets/canonical');
+const { buildTemplate } = require('../../../src/services/questionsets/template');
+const { parseQuestionWorkbook } = require('../../../src/services/questionsets/questionSetParser');
+const { validate } = require('../../../src/services/questionsets/questionSetValidator');
 const W = require('../helpers/questionWorkbook');
 
 const questions = (rows = W.validRows()) => {

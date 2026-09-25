@@ -1,7 +1,7 @@
 /* Release switches (FR-057, SC-022): all OFF on a new database, the latest audited event decides, unknown => OFF, change + audit atomic. */
-const store = require('../../../src/modules/santulan/store');
-const flags = require('../../../src/modules/santulan/domain/releaseFlags');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const store = require('../../../src/models/db');
+const flags = require('../../../src/services/domain/releaseFlags');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');

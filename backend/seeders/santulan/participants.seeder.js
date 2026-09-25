@@ -12,7 +12,7 @@
  */
 require('dotenv').config({ path: require('path').resolve(__dirname, '..', '..', '.env') });
 const { seedDev, print } = require('./devSeed');
-const store = require('../../src/modules/santulan/store');
+const store = require('../../src/models/db');
 
 const ADMIN_SUBJECT = 'ps-dev-super-admin';
 const PARTICIPANTS = [

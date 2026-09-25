@@ -13,10 +13,10 @@ const app = require('../../../src/app');
 const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
-const store = require('../../../src/modules/santulan/store');
-const { signToken } = require('../../../src/shared/middleware/auth');
-const { credentialVersion } = require('../../../src/modules/santulan/identity/devProvider');
-const { claimAndGenerate } = require('../../../src/modules/santulan/research/exportService');
+const store = require('../../../src/models/db');
+const { signToken } = require('../../../src/middleware/auth');
+const { credentialVersion } = require('../../../src/services/identity/devProvider');
+const { claimAndGenerate } = require('../../../src/services/research/exportService');
 
 const api = () => request(app);
 const auth = (who) => ({ Authorization: `Bearer ${who.token}` });
@@ -164,7 +164,7 @@ describe('every privileged operation is audited in the same action (SEC-30)', ()
     // 3. question-set upload + freeze + open through the service
     since = await db.collection('audit_logs').findOne({ actor_id: admin.adminUserId }, { sort: { occurred_at: -1, _id: -1 } }).then((r) => (r ? r.occurred_at : new Date(0)));
     const W = require('../helpers/questionWorkbook'); // eslint-disable-line global-require
-    const service = require('../../../src/modules/santulan/questionsets/questionSetService'); // eslint-disable-line global-require
+    const service = require('../../../src/services/questionsets/questionSetService'); // eslint-disable-line global-require
     const actor = { adminUserId: admin.adminUserId };
     const rows = W.validRows({ label: `fx-155-${u().toLowerCase()}`, perDomain: 1, ageGroup: 'EMERGING_ADULT' });
     const up = await service.upload({ buffer: W.workbook(rows), fileName: 'q.xlsx', ageGroup: 'EMERGING_ADULT', actor });

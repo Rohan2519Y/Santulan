@@ -2,9 +2,9 @@
 const H = require('../helpers/mongoHarness');
 const F = require('../helpers/fixtures');
 const { verify } = require('../../../scripts/db-verify');
-const canonical = require('../../../src/modules/santulan/questionsets/canonical');
-const { fingerprint } = require('../../../src/modules/santulan/domain/fingerprint');
-const { collections } = require('../../../db/schema');
+const canonical = require('../../../src/services/questionsets/canonical');
+const { fingerprint } = require('../../../src/services/domain/fingerprint');
+const { collections } = require('../../../src/models/schema');
 
 const fx = H.withFixtures('verify');
 afterAll(async () => { await fx.cleanup(); await H.closeAll(); });

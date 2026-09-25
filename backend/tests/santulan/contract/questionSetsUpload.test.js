@@ -1,11 +1,11 @@
 /* Question-set upload over HTTP (US2 acceptance 1-6; B08 analogue). Scratch database, real app, runtime credential. */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 const W = require('../helpers/questionWorkbook');
-const canonical = require('../../../src/modules/santulan/questionsets/canonical');
+const canonical = require('../../../src/services/questionsets/canonical');
 
 let admin;
 beforeAll(async () => { admin = await f.admin(); });

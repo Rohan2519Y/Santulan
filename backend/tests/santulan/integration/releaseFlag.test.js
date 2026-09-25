@@ -5,8 +5,8 @@
  * snapshot, its released flag and the report fingerprint stay byte-identical.
  */
 const p = require('../helpers/contractPipeline');
-const rules = require('../../../src/modules/santulan/domain/reportRules');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const rules = require('../../../src/services/domain/reportRules');
+const { closeClient } = require('../../../src/models/db/client');
 
 const { f, H, P, get, post, internal, scoredAttempt, approveRules, clearRules, activateActions, generate, growthPlanOf, flipViaApi, ZERO_ID } = p;
 

@@ -1,10 +1,10 @@
 /* Store guarantees observed through the identity flows (G-18, G-19, G-21, G-22). */
 const request = require('supertest');
 const app = require('../../../src/app');
-const store = require('../../../src/modules/santulan/store');
-const consents = require('../../../src/modules/santulan/store/repositories/consents');
-const { writeAudit } = require('../../../src/modules/santulan/audit/auditService');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const store = require('../../../src/models/db');
+const consents = require('../../../src/models/repositories/consents');
+const { writeAudit } = require('../../../src/services/audit/auditService');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 

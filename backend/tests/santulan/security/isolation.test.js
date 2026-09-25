@@ -11,8 +11,8 @@ const app = require('../../../src/app');
 const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
-const store = require('../../../src/modules/santulan/store');
-const { collections, DEV_COLLECTIONS, views } = require('../../../db/schema');
+const store = require('../../../src/models/db');
+const { collections, DEV_COLLECTIONS, views } = require('../../../src/models/schema');
 
 const INTERNAL = { 'X-Internal-Api-Key': 'test-internal-key' };
 const api = () => request(app);

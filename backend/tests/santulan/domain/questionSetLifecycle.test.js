@@ -1,9 +1,9 @@
 /* Freeze / open / close rules (FR-018; upload-format section 4). Through the service on the scratch database. */
-const rules = require('../../../src/modules/santulan/domain/questionSetRules');
-const service = require('../../../src/modules/santulan/questionsets/questionSetService');
-const verifyFrozen = require('../../../src/modules/santulan/questionsets/verifyFrozenSets');
-const store = require('../../../src/modules/santulan/store');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const rules = require('../../../src/services/domain/questionSetRules');
+const service = require('../../../src/services/questionsets/questionSetService');
+const verifyFrozen = require('../../../src/services/questionsets/verifyFrozenSets');
+const store = require('../../../src/models/db');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 const W = require('../helpers/questionWorkbook');

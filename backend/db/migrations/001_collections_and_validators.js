@@ -1,5 +1,5 @@
 /* 001 - the 27 canonical collections + the dev credential collection, each with its $jsonSchema/$expr validator (data-model section 4). Idempotent. */
-const { collections } = require('../schema');
+const { collections } = require('../../src/models/schema');
 
 module.exports = {
   name: '001_collections_and_validators',

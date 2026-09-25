@@ -1,7 +1,7 @@
 const app = require('./app');
 const config = require('./config');
-const store = require('./modules/santulan/store');
-const { verifyOpenSets } = require('./modules/santulan/questionsets/verifyFrozenSets');
+const store = require('./models/db');
+const { verifyOpenSets } = require('./services/questionsets/verifyFrozenSets');
 const inactivityWorker = require('./jobs/workers/inactivityWorker');
 const pipelineWorker = require('./jobs/workers/pipelineWorker');
 const reportWorker = require('./jobs/workers/reportWorker');

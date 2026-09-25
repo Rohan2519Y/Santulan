@@ -4,16 +4,16 @@
  * (A suspended admin being denied on the next request is asserted over HTTP in contract/adminControl.test.js.)
  */
 const { v4: uuidv4 } = require('uuid');
-const rules = require('../../../src/modules/santulan/domain/adminRules');
-const controlService = require('../../../src/modules/santulan/admin/controlService');
-const institutionService = require('../../../src/modules/santulan/admin/institutionService');
-const store = require('../../../src/modules/santulan/store');
-const collections = require('../../../db/schema/collections');
-const { views } = require('../../../db/schema/views');
+const rules = require('../../../src/services/domain/adminRules');
+const controlService = require('../../../src/services/admin/controlService');
+const institutionService = require('../../../src/services/admin/institutionService');
+const store = require('../../../src/models/db');
+const collections = require('../../../src/models/schema/collections');
+const { views } = require('../../../src/models/schema/views');
 const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 let admin;
 beforeAll(async () => { admin = await f.admin(); });

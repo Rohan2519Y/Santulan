@@ -2,7 +2,7 @@
  * 004 - role `santulan_runtime` (least privilege, database-contract section 2.1), granted to the user `santulan_runtime`
  * that `scripts/mongo-local.js init` created in the `santulan` database with no roles. Records the data-model version marker.
  */
-const { ROLE_NAME, runtimePrivileges, DATA_MODEL_VERSION } = require('../schema');
+const { ROLE_NAME, runtimePrivileges, DATA_MODEL_VERSION } = require('../../src/models/schema');
 
 const USER_HOME_DB = 'santulan';
 

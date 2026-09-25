@@ -13,8 +13,8 @@ const request = require('supertest');
 const app = require('../../../src/app');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
-const store = require('../../../src/modules/santulan/store');
-const { getProvider } = require('../../../src/modules/santulan/identity');
+const store = require('../../../src/models/db');
+const { getProvider } = require('../../../src/services/identity');
 
 const provider = getProvider();
 const api = () => request(app);
@@ -102,7 +102,7 @@ describe('the per-device registration throttle, configured independently (SEC-16
     // eslint-disable-next-line global-require
     app2 = require('../../../src/app');
     // eslint-disable-next-line global-require
-    store2 = require('../../../src/modules/santulan/store');
+    store2 = require('../../../src/models/db');
   });
 
   afterAll(() => {

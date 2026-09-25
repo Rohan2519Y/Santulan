@@ -5,7 +5,7 @@
  */
 const p = require('../helpers/contractPipeline');
 const worker = require('../../../src/jobs/workers/reportWorker');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 const { f, H, P, scoredAttempt, terminalAttempt, attemptStatus, clearRules } = p;
 const reportOf = async (attemptId) => (await H.admin()).collection('reports').findOne({ attempt_id: attemptId });

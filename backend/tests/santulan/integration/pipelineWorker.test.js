@@ -12,7 +12,7 @@ const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
 const P = require('../helpers/pipeline');
 const worker = require('../../../src/jobs/workers/pipelineWorker');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 const tmp = [];
 let S;

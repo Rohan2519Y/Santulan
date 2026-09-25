@@ -1,7 +1,7 @@
 /* Question-set lifecycle over HTTP (US4 acceptance 1-5). */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 const W = require('../helpers/questionWorkbook');

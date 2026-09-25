@@ -10,7 +10,7 @@ const H = require('../helpers/mongoHarness');
 const P = require('../helpers/pipeline');
 const { scanClaims } = require('../helpers/claimsScanner');
 const { loadWording } = require('../../../scripts/wording-load');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 const INTERNAL = { 'X-Internal-Api-Key': 'test-internal-key' };
 const DOMAINS = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'];

@@ -5,7 +5,7 @@
 const { loadWording, validateWordingFile, ruleCode, WordingFileError } = require('../../../scripts/wording-load');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 let S;
 let client;

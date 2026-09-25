@@ -5,7 +5,7 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 const messages = require('../../../config/messages.json');

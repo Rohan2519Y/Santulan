@@ -1,8 +1,8 @@
 /* Response rules (B05-005..018, 033..035, 041, 044): versions, idempotency, option range, submit. Through the delivery services. */
 const request = require('supertest');
 const app = require('../../../src/app');
-const rules = require('../../../src/modules/santulan/domain/responseRules');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const rules = require('../../../src/services/domain/responseRules');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 
@@ -145,7 +145,7 @@ describe('the question and the option range (B05-009..018, spec FR-014)', () => 
     const row = await (await col('responses')).findOne({ attempt_id: a.id });
     const runtime = await H.runtime();
     await runtimeRefusesDelete(runtime, row._id);
-    const store = require('../../../src/modules/santulan/store');
+    const store = require('../../../src/models/db');
     await store.withScope(store.participantScope(a.p.participantId), async (tx) => {
       await expect(tx.c.responses.updateOne({ _id: row._id, attempt_id: a.id }, { $set: { response_value: '5' } })).rejects.toMatchObject({ status: 403 });
       await expect(tx.c.responses.updateOne({ _id: row._id, attempt_id: a.id }, { $set: { attempt_id: 'x' } })).rejects.toMatchObject({ status: 403 });

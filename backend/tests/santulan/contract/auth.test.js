@@ -4,12 +4,12 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 const H = require('../helpers/mongoHarness');
-const { canonical } = require('../../../db/schema');
+const { canonical } = require('../../../src/models/schema');
 const f = require('../helpers/committed');
-const { getProvider } = require('../../../src/modules/santulan/identity');
-const { createDevProvider } = require('../../../src/modules/santulan/identity/devProvider');
+const { getProvider } = require('../../../src/services/identity');
+const { createDevProvider } = require('../../../src/services/identity/devProvider');
 
 const api = () => request(app);
 const key = () => `idem-${f.u()}-${f.u()}`;

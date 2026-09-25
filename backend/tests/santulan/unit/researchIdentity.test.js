@@ -3,8 +3,8 @@
  * excluded by the default hook; the hook interface accepts an approved pseudonymisation policy later without changing the exporter.
  * The research views themselves are checked in store/views.test.js; the count reaching EXPORT_METADATA in integration/researchExport.test.js.
  */
-const identity = require('../../../src/modules/santulan/research/researchIdentity');
-const { SHEETS } = require('../../../src/modules/santulan/research/workbookWriter');
+const identity = require('../../../src/services/research/researchIdentity');
+const { SHEETS } = require('../../../src/services/research/workbookWriter');
 
 afterEach(() => identity.resetPolicy());
 

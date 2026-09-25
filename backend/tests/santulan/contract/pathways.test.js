@@ -8,9 +8,9 @@ const os = require('os');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const p = require('../helpers/contractPipeline');
-const { effectiveRoute, PRECEDENCE } = require('../../../src/modules/santulan/pathways/pathwayService');
+const { effectiveRoute, PRECEDENCE } = require('../../../src/services/pathways/pathwayService');
 const config = require('../../../src/config');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 
 const { f, F, H, P, api, post, get, internal, scoredAttempt, terminalAttempt, generate, growthPlanOf, ZERO_ID } = p;
 const decide = (attemptId, body) => internal('post', `/internal/attempts/${attemptId}/pathways`, body);

@@ -1,8 +1,8 @@
 /* Scoped data-access layer (G-21..G-26; SEC-01..SEC-11). */
 const H = require('../helpers/mongoHarness');
 const F = require('../helpers/fixtures');
-const store = require('../../../src/modules/santulan/store');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const store = require('../../../src/models/db');
+const { closeClient } = require('../../../src/models/db/client');
 
 const fx = H.withFixtures('scope');
 afterAll(async () => { await fx.cleanup(); await closeClient(); await H.closeAll(); });

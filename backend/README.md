@@ -1,7 +1,8 @@
 # Santulan backend
 
-Node.js / Express API on MongoDB. Everything about the data model is code in `db/schema/`; everything that touches the database at run
-time goes through `src/modules/santulan/store/`.
+Node.js / Express API on MongoDB, laid out as classic MVC (`src/controllers/`, `src/services/`, `src/models/`). Everything about the data
+model is code in `src/models/schema/`; everything that touches the database at run time goes through `src/models/db/` (client, access,
+transactions) and `src/models/repositories/`.
 
 ## Data layout
 
@@ -30,9 +31,10 @@ The migrator credential must **never** be present in the API's environment. The 
 
 `store.withScope(scope, async (tx) => …, { transaction })` is the only way to read or write. A scope is one of `PARTICIPANT`,
 `INSTITUTION_ADMIN`, `SUPER_ADMIN`, `SYSTEM` or `NONE`; it comes from the verified token, never from a request. `tx.c.<collection>`
-ANDs the scope into every read, checks every write, limits updates to the fields named in `store/access.js`, and has no remove.
-Repositories (`store/repositories/`) are built on it. `tests/santulan/store/repoScan.test.js` fails the build if any file outside `store/`
-imports the driver. Transactions use snapshot reads and majority writes with retry; a transient failure is a `503 STORE_UNAVAILABLE`.
+ANDs the scope into every read, checks every write, limits updates to the fields named in `models/db/access.js`, and has no remove.
+Repositories (`models/repositories/`) are built on it. `tests/santulan/store/repoScan.test.js` fails the build if any file outside
+`models/db/` or `models/repositories/` imports the driver. Transactions use snapshot reads and majority writes with retry; a transient
+failure is a `503 STORE_UNAVAILABLE`.
 
 ## Data-model migrations
 
@@ -79,7 +81,7 @@ They are read and changed only through `GET /admin/release-flags` and `POST /adm
 
 ## Registration throttle
 
-`src/modules/santulan/security/throttle.js` is an in-memory sliding window keyed by IP and by a signed device cookie. It is applied only to
+`src/middleware/throttle.js` is an in-memory sliding window keyed by IP and by a signed device cookie. It is applied only to
 the OTP flow and OPEN registration (`POST /registrations/open`, `POST /auth/request-otp`, `POST /auth/verify-otp`,
 `POST /participants/age-declaration`) — never to `/auth/login`, `/cohorts/import` or admin routes. **A shared store is a deployment
 prerequisite** when more than one API instance runs; the in-memory version only protects a single process.

@@ -7,11 +7,11 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 const H = require('../helpers/mongoHarness');
 const f = require('../helpers/committed');
 const { participantToken, adminToken } = require('../helpers/tokens');
-const { redact } = require('../../../src/modules/santulan/shared/http');
+const { redact } = require('../../../src/middleware/http');
 
 afterAll(async () => { await closeClient(); await H.closeAll(); });
 

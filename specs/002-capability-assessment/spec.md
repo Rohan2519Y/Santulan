@@ -1,3 +1,6 @@
+> SUPERSEDED FOR STORAGE by feature 006 (PostgreSQL removed 2026-09-20, replaced by MongoDB) and for backend code layout by the
+> subsequent MVC restructure (`backend/src/{controllers,services,models}/`); the domain/behavioural requirements below still apply.
+
 # Feature Specification: Capability Assessment
 
 **Feature Branch**: `002-capability-assessment`

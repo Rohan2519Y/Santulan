@@ -8,7 +8,7 @@
  */
 const { randomUUID } = require('crypto');
 const config = require('../../config');
-const { generateReport, findAttemptsNeedingReport } = require('../../modules/santulan/reporting/reportService');
+const { generateReport, findAttemptsNeedingReport } = require('../../services/reporting/reportService');
 
 const BATCH = 50;
 

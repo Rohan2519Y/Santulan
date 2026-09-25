@@ -1,6 +1,6 @@
 /* Scoring arithmetic (B06; SC-015, SC-016): the scoring master's worked examples, the boundary table, and the option-position rule. Pure. */
-const { scoreDomain, completenessStatus, decideEvidence, round2 } = require('../../../src/modules/santulan/domain/scoringRules');
-const { optionValue } = require('../../../src/modules/santulan/domain/optionScale');
+const { scoreDomain, completenessStatus, decideEvidence, round2 } = require('../../../src/services/domain/scoringRules');
+const { optionValue } = require('../../../src/services/domain/optionScale');
 
 const five = (positions) => positions.map((position) => ({ position, optionCount: 5 }));
 

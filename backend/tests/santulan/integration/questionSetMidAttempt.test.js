@@ -3,9 +3,9 @@
  * Store-level part: the attempt's set id is immutable and unaffected by a newer set being frozen and opened. The end-to-end part
  * (POST /attempts then the delivery API) is exercised in integration/variableOptions.test.js.
  */
-const service = require('../../../src/modules/santulan/questionsets/questionSetService');
-const store = require('../../../src/modules/santulan/store');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const service = require('../../../src/services/questionsets/questionSetService');
+const store = require('../../../src/models/db');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');

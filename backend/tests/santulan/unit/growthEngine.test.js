@@ -5,8 +5,8 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { rankCandidates, loadRanking } = require('../../../src/modules/santulan/growth/rankingConfig');
-const { assertObservableGoal } = require('../../../src/modules/santulan/growth/growthService');
+const { rankCandidates, loadRanking } = require('../../../src/services/growth/rankingConfig');
+const { assertObservableGoal } = require('../../../src/services/growth/growthService');
 
 const cand = (domain, score, extra = {}) => ({ domain, score, completeness: 1, state: 'S2', ...extra });
 const tmp = [];

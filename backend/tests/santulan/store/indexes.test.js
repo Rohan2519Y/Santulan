@@ -1,7 +1,7 @@
 /* The 50 named indexes exist by name and definition, and the uniqueness guarantees behave (G-08..G-12, G-28; B05-001, T03, T04). */
 const H = require('../helpers/mongoHarness');
 const F = require('../helpers/fixtures');
-const { indexes, devIndexes } = require('../../../db/schema');
+const { indexes, devIndexes } = require('../../../src/models/schema');
 
 const fx = H.withFixtures('indexes');
 afterAll(async () => { await fx.cleanup(); await H.closeAll(); });

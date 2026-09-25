@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { MongoClient } = require('mongodb');
-const { DATA_MODEL_VERSION } = require('../db/schema');
+const { DATA_MODEL_VERSION } = require('../src/models/schema');
 
 const MIGRATIONS_DIR = path.resolve(__dirname, '..', 'db', 'migrations');
 

@@ -1,9 +1,9 @@
 /* Atomicity and concurrency (G-18, G-19, G-20; B05-025/026, B07-076). Through the store, with the runtime credential. */
 const H = require('../helpers/mongoHarness');
 const F = require('../helpers/fixtures');
-const store = require('../../../src/modules/santulan/store');
-const { withTransaction, transition } = require('../../../src/modules/santulan/store/transactions');
-const { getDb, closeClient } = require('../../../src/modules/santulan/store/client');
+const store = require('../../../src/models/db');
+const { withTransaction, transition } = require('../../../src/models/db/transactions');
+const { getDb, closeClient } = require('../../../src/models/db/client');
 
 const fx = H.withFixtures('atomicity');
 afterAll(async () => { await fx.cleanup(); await closeClient(); await H.closeAll(); });
@@ -47,7 +47,7 @@ describe('G-18 a multi-step action commits fully or leaves no trace', () => {
   });
 
   test('B07-076 when the audit insert fails the whole action aborts', async () => {
-    const { writeAudit } = require('../../../src/modules/santulan/store/repositories/audit');
+    const { writeAudit } = require('../../../src/models/repositories/audit');
     const inst = F.institution();
     fx.track('institutions', inst._id);
     await expect(store.withScope(sys, async (tx) => {

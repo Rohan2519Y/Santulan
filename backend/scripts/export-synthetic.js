@@ -31,7 +31,7 @@ process.env.EXPORT_DIR = process.env.EXPORT_DIR || path.resolve(__dirname, '..',
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const F = require('../tests/santulan/helpers/fixtures'); // valid-by-construction document factories (synthetic markers only)
-const { sheetCount } = require('../src/modules/santulan/research/partition');
+const { sheetCount } = require('../src/services/research/partition');
 
 const DOMAINS = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'];
 const LABEL = `fx-synth-${Date.now()}`;
@@ -116,7 +116,7 @@ async function main() {
     const exportRow = F.researchExport(uuidv4(), set._id, { anonymisation_version: 'synthetic-v1', filters: { includeAllVersions: false } });
     await db.collection('research_exports').insertOne(exportRow);
 
-    const service = require('../src/modules/santulan/research/exportService'); // eslint-disable-line global-require
+    const service = require('../src/services/research/exportService'); // eslint-disable-line global-require
     const started = Date.now();
     const result = await service.claimAndGenerate(exportRow._id, { correlationId: 'export-synthetic', onProgress: (p) => { sample(); if (p.rows % 250000 === 0) console.log(`  ${p.sheet}: ${p.rows} rows`); } }); // eslint-disable-line no-console
     if (result.status !== 'READY') throw result.error || new Error('export failed');
@@ -138,7 +138,7 @@ async function main() {
   } finally {
     clearInterval(timer);
     await client.close();
-    await require('../src/modules/santulan/store/client').closeClient(); // eslint-disable-line global-require
+    await require('../src/models/db/client').closeClient(); // eslint-disable-line global-require
   }
 }
 

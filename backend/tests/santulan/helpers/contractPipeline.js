@@ -14,7 +14,7 @@ const f = require('./committed');
 const F = require('./fixtures');
 const H = require('./mongoHarness');
 const P = require('./pipeline');
-const reportService = require('../../../src/modules/santulan/reporting/reportService');
+const reportService = require('../../../src/services/reporting/reportService');
 
 const DOMAINS = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'];
 const INTERNAL = { 'X-Internal-Api-Key': 'test-internal-key' };

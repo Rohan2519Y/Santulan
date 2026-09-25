@@ -1,5 +1,5 @@
 /* Option scale (spec FR-014, SC-016; B06 arithmetic): value(position, n) = 1 + (position - 1) * 4 / (n - 1). Pure. */
-const { optionValue, isValidPosition } = require('../../../src/modules/santulan/domain/optionScale');
+const { optionValue, isValidPosition } = require('../../../src/services/domain/optionScale');
 
 describe('B06-070 position -> value on the common 1-5 scale', () => {
   test('a 5-option question reproduces 1, 2, 3, 4, 5 exactly (identical to today)', () => {

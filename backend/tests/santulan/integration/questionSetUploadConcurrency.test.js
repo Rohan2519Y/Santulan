@@ -1,6 +1,6 @@
 /* Concurrent question-set uploads (G-19, G-18). */
-const service = require('../../../src/modules/santulan/questionsets/questionSetService');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const service = require('../../../src/services/questionsets/questionSetService');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 const W = require('../helpers/questionWorkbook');

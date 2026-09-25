@@ -1,6 +1,6 @@
 /* Evidence decision (B06-039..041, FR-049): S1 default; S2 only with the pilot-S2 switch; S3-S5 need the advanced switch AND configuration. */
-const { decideEvidence } = require('../../../src/modules/santulan/domain/scoringRules');
-const { statesFor, EvidenceConfigError } = require('../../../src/modules/santulan/scoring/evidenceConfig');
+const { decideEvidence } = require('../../../src/services/domain/scoringRules');
+const { statesFor, EvidenceConfigError } = require('../../../src/services/scoring/evidenceConfig');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

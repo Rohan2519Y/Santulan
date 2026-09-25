@@ -1,7 +1,7 @@
 /* Question-set upload rules (FR-016/017): what an upload does for a label, and the write is one transaction. */
-const rules = require('../../../src/modules/santulan/domain/questionSetRules');
-const service = require('../../../src/modules/santulan/questionsets/questionSetService');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const rules = require('../../../src/services/domain/questionSetRules');
+const service = require('../../../src/services/questionsets/questionSetService');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 const W = require('../helpers/questionWorkbook');
@@ -95,7 +95,7 @@ describe('the upload transaction (FR-016/017)', () => {
     await expect(service.upload({ buffer: W.workbook(rows), fileName: 'q.xlsx', ageGroup: 'ADOLESCENT', actor: { adminUserId: 'not-a-uuid' } })).rejects.toBeTruthy();
     const db = await f.db();
     expect(await db.collection('assessment_versions').countDocuments({ version_label: lbl })).toBe(0);
-    expect(await db.collection('items').countDocuments({ assessment_version_id: require('../../../src/modules/santulan/questionsets/canonical').setId(lbl, 1) })).toBe(0);
+    expect(await db.collection('items').countDocuments({ assessment_version_id: require('../../../src/services/questionsets/canonical').setId(lbl, 1) })).toBe(0);
   });
 
   test('T-B02-030 the audit row carries the file hash, counts and revision - and no participant data', async () => {

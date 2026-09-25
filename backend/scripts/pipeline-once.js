@@ -6,7 +6,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
 const pipeline = require('../src/jobs/workers/pipelineWorker');
 const reports = require('../src/jobs/workers/reportWorker');
-const store = require('../src/modules/santulan/store');
+const store = require('../src/models/db');
 
 async function main() {
   const scored = await pipeline.runOnce();

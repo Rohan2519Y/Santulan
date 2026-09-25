@@ -11,8 +11,8 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
-const { claimAndGenerate } = require('../../../src/modules/santulan/research/exportService');
+const { closeClient } = require('../../../src/models/db/client');
+const { claimAndGenerate } = require('../../../src/services/research/exportService');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
 const W = require('../helpers/questionWorkbook');

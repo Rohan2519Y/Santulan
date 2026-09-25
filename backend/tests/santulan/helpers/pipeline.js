@@ -5,9 +5,9 @@
 const f = require('./committed');
 const F = require('./fixtures');
 const H = require('./mongoHarness');
-const scoreService = require('../../../src/modules/santulan/scoring/scoreService');
-const reportService = require('../../../src/modules/santulan/reporting/reportService');
-const store = require('../../../src/modules/santulan/store');
+const scoreService = require('../../../src/services/scoring/scoreService');
+const reportService = require('../../../src/services/reporting/reportService');
+const store = require('../../../src/models/db');
 
 /**
  * A participant with an attempt that is SUBMITTED on `set`, answered by value({ itemId, itemCode, domainCode, order, optionCount }) -> position | null.
@@ -44,7 +44,7 @@ const attemptOf = async (attemptId) => (await H.admin()).collection('assessment_
 
 /** Sets a release switch through the audited domain function (as a Super Admin would through the API). */
 async function setSwitch(flag, value, adminUserId) {
-  const flags = require('../../../src/modules/santulan/domain/releaseFlags');
+  const flags = require('../../../src/services/domain/releaseFlags');
   return store.withScope(store.superAdminScope(adminUserId), (tx) => flags.setFlag(tx, flag, value, 'test switch change', { adminUserId }), { transaction: true });
 }
 

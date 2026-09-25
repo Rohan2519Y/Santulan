@@ -4,7 +4,7 @@
  * are never accepted as sessions (backend/src/shared/middleware/auth.js).
  */
 const config = require('../../../src/config');
-const { signToken, verifyPurposeToken } = require('../../../src/shared/middleware/auth');
+const { signToken, verifyPurposeToken } = require('../../../src/middleware/auth');
 
 const participantToken = (participantId, extra = {}) => signToken({ sub: participantId, role: 'participant', participantId, ...extra });
 

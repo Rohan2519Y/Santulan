@@ -1,5 +1,5 @@
 /* 002 - the 50 named canonical indexes (+ the dev-only one), data-model section 5. Idempotent by name; a same-name index with a different definition fails. */
-const { indexes, devIndexes } = require('../schema');
+const { indexes, devIndexes } = require('../../src/models/schema');
 
 module.exports = {
   name: '002_indexes',

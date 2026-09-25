@@ -4,11 +4,11 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 const H = require('../helpers/mongoHarness');
 const config = require('../../../src/config');
 const f = require('../helpers/committed');
-const { setWithdrawalHook, defaultHook } = require('../../../src/modules/santulan/consent/withdrawalHook');
+const { setWithdrawalHook, defaultHook } = require('../../../src/services/consent/withdrawalHook');
 
 const api = () => request(app);
 const PROTO = 'TEST-PROTOCOL-1';

@@ -4,10 +4,10 @@
  */
 const request = require('supertest');
 const app = require('../../../src/app');
-const { closeClient } = require('../../../src/modules/santulan/store/client');
+const { closeClient } = require('../../../src/models/db/client');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
-const { SANTULAN_ID_PATTERN } = require('../../../src/modules/santulan/registration/santulanId');
+const { SANTULAN_ID_PATTERN } = require('../../../src/services/registration/santulanId');
 
 const key = () => `idem-${f.u()}-${f.u()}`;
 const open = (body, k = key()) => request(app).post('/api/v1/registrations/open').set('Idempotency-Key', k).send(body);

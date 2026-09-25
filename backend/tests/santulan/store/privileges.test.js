@@ -1,7 +1,7 @@
 /* Runtime credential privileges (G-13, G-14, G-15; B08-006, B08-054/055, SEC-12). */
 const H = require('../helpers/mongoHarness');
 const F = require('../helpers/fixtures');
-const { COLLECTIONS_BY_TIER, collections, views } = require('../../../db/schema');
+const { COLLECTIONS_BY_TIER, collections, views } = require('../../../src/models/schema');
 
 const fx = H.withFixtures('privileges');
 afterAll(async () => { await fx.cleanup(); await H.closeAll(); });

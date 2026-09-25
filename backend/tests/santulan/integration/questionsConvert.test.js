@@ -11,11 +11,11 @@ const XLSX = require('xlsx');
 const app = require('../../../src/app');
 const f = require('../helpers/committed');
 const H = require('../helpers/mongoHarness');
-const store = require('../../../src/modules/santulan/store');
+const store = require('../../../src/models/db');
 
 const { convert, toWorkbook, readSheet, HEADER, OPTIONS, FORMS, CATALOG } = require('../../../scripts/questions-convert-catalog');
-const { parseQuestionWorkbook } = require('../../../src/modules/santulan/questionsets/questionSetParser');
-const { validate } = require('../../../src/modules/santulan/questionsets/questionSetValidator');
+const { parseQuestionWorkbook } = require('../../../src/services/questionsets/questionSetParser');
+const { validate } = require('../../../src/services/questionsets/questionSetValidator');
 
 const SCRIPT = path.resolve(__dirname, '..', '..', '..', 'scripts', 'questions-convert-catalog.js');
 const OUT_DIR = path.join(__dirname, '..', '..', '..', 'exports', 'converted');
