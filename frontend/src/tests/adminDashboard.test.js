@@ -3,9 +3,10 @@
  * drawer, Quality review, Reports, Question sets, Assessment control, Research exports, Audit log) plus Release switches.
  * Every page reads its own data from the server (GET /admin/...); nothing is counted, filtered or exported in the browser.
  * Covers: empty states, error states, that a pause/stop/archive/suspend/switch action requires a reason (3-300 characters)
- * while reopen does not, and that Submissions carries no client-side CSV download (research data leaves only through the
- * governed export). The old feature-002/005 dashboard this file used to test (assessmentApi, computeMetrics, submissionsToCsv)
- * was replaced by these pages; that dashboard and its client-side CSV export no longer exist.
+ * while reopen does not, and that the submissions list itself carries no CSV download - only the drawer's per-submission
+ * "Download CSV" does, and that button calls the governed server-side export endpoint (audited, backend-generated),
+ * never a client-side computation. The old feature-002/005 dashboard this file used to test (assessmentApi, computeMetrics,
+ * submissionsToCsv) was replaced by these pages; that dashboard and its client-side CSV export no longer exist.
  */
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -187,7 +188,7 @@ describe('SubmissionsPage', () => {
     expect(await screen.findByText('offline')).toBeInTheDocument();
   });
 
-  test('opening a row shows the drawer with domain results and quality flags, no CSV control inside it either', async () => {
+  test('opening a row shows the drawer with domain results and quality flags, and its "Download CSV" calls the governed export - not a client-side computation', async () => {
     adminApi.submissions.mockResolvedValue({ submissions: [{ attemptId: 'a1', santulanId: 'STN-BBB', versionLabel: 'santulan-adolescent-v1', revision: 1, status: 'REPORT_READY', sessionCount: 2, qualityFlagCount: 1, submittedAt: '2026-09-10T09:00:00Z' }] });
     adminApi.institutions.mockResolvedValue({ institutions: [] });
     adminApi.submission.mockResolvedValue({
@@ -196,12 +197,14 @@ describe('SubmissionsPage', () => {
       domainResults: [{ domainCode: 'C1', score: 4.2, completeness: 1, validItems: 10, eligibleItems: 10, completenessStatus: 'COMPLETE', evidenceState: 'S1' }],
       flags: [{ flagId: 'f1', flagCode: 'Q07', domainCode: 'C1', disposition: 'UNREVIEWED' }],
     });
+    adminApi.downloadSubmissionResponses.mockResolvedValue();
     renderAdmin(<SubmissionsPage />);
     await userEvent.click(await screen.findByRole('button', { name: 'View submission STN-BBB' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText(/Body & Self-Regulation/)).toBeInTheDocument();
     expect(within(dialog).getByText(/Q07/)).toBeInTheDocument();
-    expect(within(dialog).queryByText(/download csv|export csv/i)).not.toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Download CSV' }));
+    expect(adminApi.downloadSubmissionResponses).toHaveBeenCalledWith('a1'); // the server builds the file; nothing is computed here
   });
 });
 

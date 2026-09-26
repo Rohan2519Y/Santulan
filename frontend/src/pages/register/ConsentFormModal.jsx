@@ -3,6 +3,7 @@ import { Check, UserRound, Users } from 'lucide-react';
 import Modal from '../../components/Modal/Modal';
 import Button from '../../components/Button/Button';
 import { CONSENT_TEXT } from './consentText';
+import ConsentSections from './ConsentSections';
 import cs from './ConsentFormModal.module.css';
 
 /**
@@ -43,19 +44,7 @@ export default function ConsentFormModal({ open, onClose, role, onAgree }) {
         </div>
       </div>
 
-      <h3 className={cs.heading}>{copy.heading}</h3>
-      {copy.sections.map((sec) => (
-        <section key={sec.title} className={cs.section}>
-          <h4 className={cs.sectionTitle}>{sec.title}</h4>
-          {sec.paragraphs.map((p) => <p key={p} className={cs.paragraph}>{p}</p>)}
-          {sec.bullets && (
-            <ul className={cs.bullets}>
-              {sec.bullets.map((b) => <li key={b}>{b}</li>)}
-            </ul>
-          )}
-          {sec.after && sec.after.map((p) => <p key={p} className={cs.paragraph}>{p}</p>)}
-        </section>
-      ))}
+      <ConsentSections copy={copy} />
 
       <div className={cs.statement}>
         <p className={cs.statementTitle}>Consent Statement:</p>

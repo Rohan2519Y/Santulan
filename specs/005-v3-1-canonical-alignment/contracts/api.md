@@ -103,7 +103,7 @@ Registration never creates an attempt and never states or implies consent/eligib
 |---------------|---------|-------|
 | `GET/POST /admin/institutions`, `PATCH /admin/institutions/{id}` | list/create/update/archive (status only) | yes |
 | `GET/POST /admin/cohorts` | cohorts under an institution | yes |
-| `GET /admin/participants` | filters: route, institution, cohort, status (**unknown keys ⇒ 422**) | read-logged where policy requires |
+| `GET /admin/participants` | filters: route, institution, cohort, status, `search` (**unknown keys ⇒ 422**) | read-logged where policy requires |
 | `POST /admin/participants/{id}/status` | suspend/reactivate (reason required) | yes |
 | `POST /cohorts/import` | body/multipart roster + `institutionId`, `cohortId`, `mode: validate\|commit` | validate returns row errors; commit is all-or-nothing after a clean validate; audit |
 | `GET /admin/credentials/export/{importId}` | one-time controlled credential file | yes; not re-downloadable after expiry |
@@ -120,6 +120,14 @@ Registration never creates an attempt and never states or implies consent/eligib
 
 Admin-only, ACTIVE `SUPER_ADMIN` context; a suspended admin gets 403; participants and other roles get 403 (B08-022/023).
 
+**The `search` filter** (participant and submission listings) matches the **Santulan ID only** — never a name, email or
+phone number, because the platform never stores any of those (an admin listing carries the opaque id and operational
+fields alone). It is an anchored prefix match: the whole id or any leading part of it, with or without the `STN-`
+prefix, in any case. Only the characters a Santulan ID can contain are accepted (`0-9 A-Z`, never `I`, `L`, `O`, `U`);
+anything else is a `422 VALIDATION_ERROR` rather than being escaped and run, so no input can reach the query engine as a
+pattern. `search` combines with the other filters by intersection (search **and** institution must hold on the same
+participant), and an empty value is simply no search, not an error.
+
 ### Additions beyond this contract (ASSUMED, read-only)
 
 Built after this contract was written, because the admin pages needed a view it never specified (D-M19). Same admin-only/audit
@@ -127,7 +135,7 @@ rules as the table above.
 
 | Method & path | Purpose | Audit |
 |---------------|---------|-------|
-| `GET /admin/submissions` | attempt roster: status, session count, quality-flag count (Q09 excluded), report state | — |
+| `GET /admin/submissions` | attempt roster: status, session count, quality-flag count (Q09 excluded), report state. Filters: institutionId, cohortId, status, reportState, `search`, limit | — |
 | `GET /admin/submissions/{id}` | one attempt's domain results (score, completeness, evidence state) and non-Q09 flags | — |
 | `GET /admin/submissions/{id}/responses` | the participant's saved answers for that attempt — question text, chosen option, timestamp, resolved from `responses` + `items` | yes — more sensitive than the aggregate results above, so the read itself is audit-logged (`SUBMISSION_RESPONSES_VIEWED`) |
 | `GET /admin/submissions/{id}/responses/export` | same answers as a downloadable CSV (`santulan_id,attempt_id,item_code,domain_code,question,answer,answered_at` — every row carries the Santulan ID so the file identifies its participant on its own once downloaded; filename is `santulan-answers-{santulanId}.csv`; formula-injection-safe like the credential export) | yes — audited separately from viewing (`SUBMISSION_RESPONSES_EXPORTED`), because a file leaves the system |

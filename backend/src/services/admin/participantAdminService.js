@@ -17,7 +17,7 @@ const shape = (p) => ({
   institutionId: p.institution_id, cohortId: p.cohort_id, status: p.status, createdAt: p.created_at,
 });
 
-/** query: route, institutionId, cohortId, status, limit. Omitting every filter is documented global behaviour (all participants, newest first). */
+/** query: route, institutionId, cohortId, status, search (Santulan ID prefix), limit. Omitting every filter is documented global behaviour (all participants, newest first). */
 async function list(actor, query = {}) {
   rules.assertKnownListingKeys(query);
   const filter = {};
@@ -25,6 +25,8 @@ async function list(actor, query = {}) {
   if (query.institutionId) filter.institution_id = query.institutionId;
   if (query.cohortId) filter.cohort_id = query.cohortId;
   if (query.status) filter.status = query.status;
+  const search = rules.santulanIdPrefix(query.search);
+  if (search) filter.santulan_id = search;
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number.parseInt(query.limit, 10) || DEFAULT_LIMIT));
   return store.withScope(sa(actor), async (tx) => {
     const total = await tx.c.participants.count(filter);

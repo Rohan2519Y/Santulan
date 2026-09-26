@@ -16,7 +16,7 @@ import styles from './adminPages.module.css';
 
 /** Submissions: attempts by Santulan ID with institution / cohort / status filters and a detail drawer. There is no client-side data download here - research data leaves only through the governed export. */
 export default function SubmissionsPage() {
-  const [filters, setFilters] = useState({ status: '', institutionId: '', cohortId: '' });
+  const [filters, setFilters] = useState({ search: '', status: '', institutionId: '', cohortId: '' });
   const [applied, setApplied] = useState({});
   const [selected, setSelected] = useState(null);
   const list = useAdminData(() => adminApi.submissions(applied), [applied]);
@@ -34,6 +34,10 @@ export default function SubmissionsPage() {
       <div className={styles.stack}>
         <Panel title="Filters">
           <form className={styles.filters} onSubmit={(e) => { e.preventDefault(); setApplied(Object.fromEntries(Object.entries(filters).filter(([, v]) => v))); }}>
+            <label className={styles.filterField}>
+              Santulan ID
+              <input type="search" value={filters.search} onChange={change('search')} placeholder="STN-…" autoComplete="off" spellCheck="false" />
+            </label>
             <label className={styles.filterField}>
               Status
               <select value={filters.status} onChange={change('status')}>

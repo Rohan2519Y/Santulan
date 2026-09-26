@@ -2,7 +2,8 @@
  * Submissions overview (ASSUMED read-only addition D-M19, found while reworking the admin pages: the Submissions page needs a list of
  * attempts and the detail drawer needs domain results, and no endpoint of the contract provided them). Rows carry the opaque Santulan ID
  * and operational facts only. Domain results show the evidence state and completeness status. Safeguarding (Q09) flags are NOT shown
- * here - their detail exists only in the restricted quality-review view. Filters: institutionId, cohortId, status, limit; an unknown key is 422.
+ * here - their detail exists only in the restricted quality-review view. Filters: institutionId, cohortId, status, reportState,
+ * search (Santulan ID prefix), limit; an unknown key is 422.
  */
 const { HttpError } = require('../../errors');
 const store = require('../../models/db');
@@ -11,13 +12,14 @@ const responsesRepo = require('../../models/repositories/responses');
 const { questionsOf } = require('../../models/repositories/questionSets');
 const { writeAudit } = require('../audit/auditService');
 
-const KEYS = ['institutionId', 'cohortId', 'status', 'reportState', 'limit'];
+const KEYS = ['institutionId', 'cohortId', 'status', 'reportState', 'search', 'limit'];
 const sa = (actor) => store.superAdminScope(actor.adminUserId);
 
 async function list(actor, query = {}) {
   const unknown = Object.keys(query).filter((k) => !KEYS.includes(k));
   if (unknown.length) throw rules.unknownFilter(unknown);
   const limit = Math.min(500, Math.max(1, Number.parseInt(query.limit, 10) || 100));
+  const search = rules.santulanIdPrefix(query.search); // validated before any store work, like the key whitelist above
   return store.withScope(sa(actor), async (tx) => {
     const attemptFilter = {};
     if (query.status) attemptFilter.status = query.status;
@@ -25,10 +27,13 @@ async function list(actor, query = {}) {
       const withState = await tx.c.reports.find({ generation_status: query.reportState }, { projection: { attempt_id: 1 } });
       attemptFilter._id = { $in: withState.map((r) => r.attempt_id) };
     }
-    if (query.institutionId || query.cohortId) {
+    // One participant lookup for every participant-side narrowing (institution, cohort, Santulan ID search). Folding them
+    // into a single filter is what makes them intersect: a search plus an institution must hold on the SAME participant.
+    if (query.institutionId || query.cohortId || search) {
       const person = {};
       if (query.institutionId) person.institution_id = query.institutionId;
       if (query.cohortId) person.cohort_id = query.cohortId;
+      if (search) person.santulan_id = search;
       const ids = (await tx.c.participants.find(person, { projection: { _id: 1 } })).map((p) => p._id);
       attemptFilter.participant_id = { $in: ids };
     }

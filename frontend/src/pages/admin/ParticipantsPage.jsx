@@ -19,7 +19,7 @@ const label = (s) => s.charAt(0) + s.slice(1).toLowerCase();
 /** Participants: filtered list (opaque Santulan ID only), suspend / reactivate with a required reason, temporary-credential reset. */
 export default function ParticipantsPage() {
   const toast = useToast();
-  const [filters, setFilters] = useState({ route: '', status: '', institutionId: '', cohortId: '' });
+  const [filters, setFilters] = useState({ search: '', route: '', status: '', institutionId: '', cohortId: '' });
   const [applied, setApplied] = useState({});
   const [dialog, setDialog] = useState(null); // { participant, next }
   const [working, setWorking] = useState(false);
@@ -67,6 +67,10 @@ export default function ParticipantsPage() {
         <Panel title="Filters">
           <form className={styles.filters} onSubmit={(e) => { e.preventDefault(); setApplied(Object.fromEntries(Object.entries(filters).filter(([, v]) => v))); }}>
             <label className={styles.filterField}>
+              Santulan ID
+              <input type="search" value={filters.search} onChange={change('search')} placeholder="STN-…" autoComplete="off" spellCheck="false" />
+            </label>
+            <label className={styles.filterField}>
               Route
               <select value={filters.route} onChange={change('route')}>
                 <option value="">Any</option>
@@ -99,7 +103,7 @@ export default function ParticipantsPage() {
             </label>
             <Button type="submit" variant="primary">Apply filters</Button>
           </form>
-          <p className={styles.muted}>With no filter the list covers every participant.</p>
+          <p className={styles.muted}>With no filter the list covers every participant. A partial Santulan ID matches from the start of the id, with or without the STN- prefix.</p>
         </Panel>
 
         {temp && (

@@ -14,9 +14,11 @@ const ACTIVE_ROLES = new Set(['SUPER_ADMIN']);
 const CONTROL_STATES = ['OPEN', 'PAUSED', 'STOPPED'];
 const INSTITUTION_TYPES = ['SCHOOL', 'COLLEGE', 'UNIVERSITY'];
 const ENTITY_STATUSES = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
-const PARTICIPANT_LISTING_KEYS = ['route', 'institutionId', 'cohortId', 'status', 'limit'];
+const PARTICIPANT_LISTING_KEYS = ['route', 'institutionId', 'cohortId', 'status', 'search', 'limit'];
 const REASON_MIN = 3;
 const REASON_MAX = 300;
+// A Santulan ID is STN- plus 20 characters of this alphabet (I, L, O and U are never used, so they cannot be misread).
+const SANTULAN_ID_BODY = /^[0-9A-HJKMNP-TV-Z]{1,20}$/;
 
 const unknownFilter = (keys) => new HttpError(422, 'EXPORT_FILTER_UNKNOWN', `Unknown filter: ${keys.join(', ')}`);
 const invalid = (message) => new HttpError(422, 'INVALID_STATE', message);
@@ -58,6 +60,25 @@ function assertParticipantStatusMove(from, to) {
   if (from === to) throw invalid(`The participant is already ${from}`);
 }
 
+/**
+ * Turns an admin's Santulan ID search box into a safe prefix match.
+ *
+ * Only the characters a Santulan ID can legally hold are accepted, so nothing typed here ever reaches the regex engine
+ * as a metacharacter - that rules out both regex injection and catastrophic backtracking, rather than escaping after
+ * the fact. The match is anchored and upper-cased (ids are stored upper-case) so it uses `uq_participants_santulan_id`
+ * instead of scanning; a case-insensitive regex would not. The `STN-` prefix is optional, so pasting either the whole
+ * id or just its body works. Returns null for an empty box - "no search" is not an error.
+ */
+function santulanIdPrefix(value) {
+  const text = String(value === undefined || value === null ? '' : value).trim().toUpperCase();
+  if (!text) return null;
+  const body = text.startsWith('STN-') ? text.slice(4) : text;
+  if (!SANTULAN_ID_BODY.test(body)) {
+    throw new HttpError(422, 'VALIDATION_ERROR', 'Search by Santulan ID: up to 20 characters of 0-9 and A-Z (never I, L, O or U), with or without the STN- prefix');
+  }
+  return { $regex: `^STN-${body}` };
+}
+
 /** Whitelist for the participant listing: an unknown key is a 422 (never silently ignored). */
 function assertKnownListingKeys(query) {
   const unknown = Object.keys(query || {}).filter((k) => !PARTICIPANT_LISTING_KEYS.includes(k));
@@ -79,5 +100,5 @@ async function assertNoParentCycle(id, parentId, lookup) {
 
 module.exports = {
   ADMIN_ROLES, CONTROL_STATES, INSTITUTION_TYPES, ENTITY_STATUSES, PARTICIPANT_LISTING_KEYS, REASON_MIN, REASON_MAX,
-  assertRoleCanBeActive, cleanReason, assertControlChange, assertStatusMove, assertParticipantStatusMove, assertKnownListingKeys, assertNoParentCycle, unknownFilter,
+  assertRoleCanBeActive, cleanReason, assertControlChange, assertStatusMove, assertParticipantStatusMove, assertKnownListingKeys, assertNoParentCycle, unknownFilter, santulanIdPrefix,
 };

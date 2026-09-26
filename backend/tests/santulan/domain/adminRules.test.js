@@ -139,10 +139,35 @@ describe('institutions have no delete path (B08-079)', () => {
     expect(() => rules.assertParticipantStatusMove('ACTIVE', 'WITHDRAWN')).toThrow(expect.objectContaining({ status: 400 }));
   });
 
-  test('the participant listing whitelist: route, institutionId, cohortId, status and limit; any other key is EXPORT_FILTER_UNKNOWN (422)', () => {
+  test('the participant listing whitelist: route, institutionId, cohortId, status, search and limit; any other key is EXPORT_FILTER_UNKNOWN (422)', () => {
     expect(() => rules.assertKnownListingKeys({ route: 'OPEN', status: 'ACTIVE', limit: '10' })).not.toThrow();
+    expect(() => rules.assertKnownListingKeys({ search: 'STN-ABC' })).not.toThrow();
     expect(() => rules.assertKnownListingKeys({})).not.toThrow();
     expect(() => rules.assertKnownListingKeys({ institution: 'x' })).toThrow(expect.objectContaining({ status: 422, code: 'EXPORT_FILTER_UNKNOWN' }));
+  });
+});
+
+describe('the Santulan ID search box (admin listings)', () => {
+  test('an empty box is not a search and not an error', () => {
+    for (const empty of [undefined, null, '', '   ']) expect(rules.santulanIdPrefix(empty)).toBeNull();
+  });
+
+  test('a partial id becomes an anchored prefix, with or without the STN- prefix, in any case', () => {
+    expect(rules.santulanIdPrefix('STN-ABC')).toEqual({ $regex: '^STN-ABC' });
+    expect(rules.santulanIdPrefix('abc')).toEqual({ $regex: '^STN-ABC' });
+    expect(rules.santulanIdPrefix('  stn-abc23  ')).toEqual({ $regex: '^STN-ABC23' });
+  });
+
+  test('a regex metacharacter can never reach the regex engine (no injection, no backtracking)', () => {
+    for (const hostile of ['.*', 'A|B', '(a+)+$', 'STN-.*', 'a[bc]', '^', 'STN-']) {
+      expect(() => rules.santulanIdPrefix(hostile)).toThrow(expect.objectContaining({ status: 422, code: 'VALIDATION_ERROR' }));
+    }
+  });
+
+  test('characters a Santulan ID never uses (I, L, O, U) and over-long input are refused', () => {
+    for (const bad of ['STN-I', 'STN-L', 'STN-O', 'STN-U', 'A'.repeat(21)]) {
+      expect(() => rules.santulanIdPrefix(bad)).toThrow(expect.objectContaining({ status: 422 }));
+    }
   });
 });
 

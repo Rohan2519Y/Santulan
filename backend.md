@@ -759,7 +759,7 @@ There is also a basic process health route at `GET /health` without the `/api/v1
 
 - assessment control;
 - institutions and cohorts;
-- participants and credential resets;
+- participants and credential resets (the participant and submission listings both take a `search` filter: an anchored, prefix match on the Santulan ID — the only identifier the platform stores, so there is nothing else to search by);
 - roster import and one-time credential export;
 - monitoring summary;
 - submissions, including a submission's raw answers and a CSV export of them (both audit-logged separately — viewing and exporting are different risk levels, since exporting lets a file leave the system);

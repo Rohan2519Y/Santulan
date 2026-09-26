@@ -178,6 +178,24 @@ describe('participant listing and status (AT-29; B08-061..064)', () => {
     }
   });
 
+  test('the Santulan ID search finds one participant by whole or partial id, and narrows with the other filters', async () => {
+    const body = pA1.santulanId.slice(4); // the id without its STN- prefix
+    const whole = (await get(`/admin/participants?search=${pA1.santulanId}`, admin)).body;
+    expect(whole.participants.map((p) => p.santulanId)).toEqual([pA1.santulanId]);
+    // a prefix, the bare body, and lower case all reach the same participant
+    for (const q of [pA1.santulanId.slice(0, 12), body, pA1.santulanId.toLowerCase()]) {
+      expect((await get(`/admin/participants?search=${encodeURIComponent(q)}`, admin)).body.participants.map((p) => p.santulanId)).toContain(pA1.santulanId);
+    }
+    // search AND institution must hold on the same participant: pA1 is in instA, so instB returns nothing
+    expect((await get(`/admin/participants?search=${pA1.santulanId}&institutionId=${instB}`, admin)).body.participants).toEqual([]);
+    // a regex metacharacter is refused rather than reaching the query
+    for (const hostile of ['.*', 'STN-.*', '(a%2B)%2B$']) {
+      const res = await get(`/admin/participants?search=${hostile}`, admin);
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    }
+  });
+
   test('suspend and reactivate need a reason; the suspended participant is refused on their very next request; both changes are audited', async () => {
     const who = await f.participant(16);
     for (const body of [{ status: 'SUSPENDED' }, { status: 'SUSPENDED', reason: 'ab' }, { status: 'WITHDRAWN', reason: 'not allowed' }, { status: 'SUSPENDED', reason: 'ok reason', extra: 1 }]) {

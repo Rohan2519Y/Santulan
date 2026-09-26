@@ -20,6 +20,9 @@ import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog';
 import { api } from '../../services/santulanApi';
 import { getReduceMotion, getTheme, setReduceMotion, setTheme } from '../../services/preferences';
 import { SupportPage } from '../public/PublicPages';
+import { CONSENT_TEXT } from '../register/consentText';
+import ConsentSections from '../register/ConsentSections';
+import cs from '../register/ConsentFormModal.module.css';
 
 const TRACK = { ADOLESCENT: 'Ages 13 to 17', EMERGING_ADULT: 'Ages 18 to 25' };
 const ROUTE = { OPEN: 'Registered on my own', INSTITUTIONAL: 'Registered by my school or college' };
@@ -165,18 +168,13 @@ export function PrivacyPage() {
         >
           <div className={styles.consentText}>
             {needsSelfConsent ? (
-              <>
-                <p><strong>1. Purpose</strong><br />You are invited to take part in the Santulan self-awareness assessment. It asks about your everyday thoughts, feelings and habits, to help build a picture of your strengths and areas for growth.</p>
-                <p><strong>2. What is involved</strong><br />You will answer a set of questions in your own time, across up to four sessions. There are no right or wrong answers.</p>
-                <p><strong>3. Your privacy</strong><br />Your responses are kept private and used only for your own results and, in an anonymised form, for research to improve Santulan.</p>
-                <p className={styles.muted}><em>Placeholder text - the approved consent wording will replace this once it is provided.</em></p>
-              </>
+              <ConsentSections copy={CONSENT_TEXT.adult} />
             ) : (
               <>
-                <p><strong>1. Purpose</strong><br />Your child is invited to take part in the Santulan self-awareness assessment, which asks about everyday thoughts, feelings and habits to help build a picture of their strengths and areas for growth.</p>
-                <p><strong>2. What is involved</strong><br />Your child will answer a set of questions in their own time, across up to four sessions. There are no right or wrong answers.</p>
-                <p><strong>3. Privacy</strong><br />Responses are kept private and used only for your child&apos;s own results and, in an anonymised form, for research to improve Santulan.</p>
-                <p className={styles.muted}><em>Placeholder text - the approved consent wording will replace this once it is provided. There is no separate parent/guardian sign-in yet, so this device is used to confirm both your consent and your child&apos;s own assent together.</em></p>
+                <p className={cs.paragraph}>
+                  <em>There is no separate parent/guardian sign-in yet, so this device is used to confirm both your assent and your parent or guardian&apos;s consent together. This is the same consent form a parent or guardian would read — please go through it with them before confirming below.</em>
+                </p>
+                <ConsentSections copy={CONSENT_TEXT.parent} />
               </>
             )}
           </div>
