@@ -5,6 +5,7 @@
  * A network blip alone never ends a session; only this timeout or an explicit pause/logout does.
  */
 const config = require('../../config');
+const logger = require('../../utils/logger');
 const store = require('../../models/db');
 const delivery = require('../../models/repositories/delivery');
 const attemptRules = require('../../services/domain/attemptRules');
@@ -32,7 +33,7 @@ async function runOnce({ minutes = config.sessionInactivityMinutes } = {}) {
       }, { transaction: true });
       if (done) paused += 1;
     } catch (err) {
-      console.error(`inactivity worker: attempt ${attemptId} not paused (${err.code || err.message})`); // eslint-disable-line no-console
+      logger.error({ attemptId, code: err.code, err }, 'inactivity worker: attempt not paused');
     }
   }
   return paused;
@@ -42,7 +43,7 @@ async function runOnce({ minutes = config.sessionInactivityMinutes } = {}) {
 function start({ minutes = config.sessionInactivityMinutes, intervalMs } = {}) {
   if (!Number.isFinite(minutes) || minutes <= 0) return null;
   const every = intervalMs || Math.max(15000, Math.min(60000, (minutes * 60000) / 2));
-  const timer = setInterval(() => { runOnce({ minutes }).catch((err) => console.error('inactivity worker failed', err.message)); }, every); // eslint-disable-line no-console
+  const timer = setInterval(() => { runOnce({ minutes }).catch((err) => logger.error({ err }, 'inactivity worker failed')); }, every);
   timer.unref();
   return timer;
 }

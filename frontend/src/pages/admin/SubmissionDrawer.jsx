@@ -19,6 +19,9 @@ const DISPOSITION = { UNREVIEWED: 'Not reviewed', DISMISSED: 'Dismissed', CONFIR
  */
 export default function SubmissionDrawer({ submission, onClose }) {
   const [state, setState] = useState({ status: 'loading', detail: null, error: null });
+  const [answers, setAnswers] = useState({ status: 'idle', data: null, error: null });
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
   useEffect(() => {
     let cancelled = false;
     adminApi.submission(submission.attemptId)
@@ -26,6 +29,19 @@ export default function SubmissionDrawer({ submission, onClose }) {
       .catch((err) => { if (!cancelled) setState({ status: 'error', detail: null, error: err.message }); });
     return () => { cancelled = true; };
   }, [submission.attemptId]);
+
+  const loadAnswers = () => {
+    setAnswers({ status: 'loading', data: null, error: null });
+    adminApi.submissionResponses(submission.attemptId)
+      .then((data) => setAnswers({ status: 'ready', data, error: null }))
+      .catch((err) => setAnswers({ status: 'error', data: null, error: err.message }));
+  };
+
+  const downloadAnswers = async () => {
+    setExporting(true);
+    setExportError(null);
+    try { await adminApi.downloadSubmissionResponses(submission.attemptId); } catch (err) { setExportError(err.message); } finally { setExporting(false); }
+  };
 
   const d = state.detail;
   return (
@@ -74,6 +90,43 @@ export default function SubmissionDrawer({ submission, onClose }) {
               </ul>
             )}
             <Link to="/admin/quality-review" className={styles.linkButton} onClick={onClose}>Open the review queue</Link>
+          </section>
+
+          <section aria-labelledby="sub-answers">
+            <h3 id="sub-answers" className={styles.itemHead}>Answers</h3>
+            <div className={styles.stack}>
+              {answers.status === 'idle' && (
+                <button type="button" className={styles.linkButton} onClick={loadAnswers}>Show answers</button>
+              )}
+              <button type="button" className={styles.linkButton} onClick={downloadAnswers} disabled={exporting}>
+                {exporting ? 'Exporting…' : 'Download CSV'}
+              </button>
+            </div>
+            {exportError && <StatusMessage type="error" message={exportError} />}
+            {answers.status === 'loading' && <div aria-busy="true"><Skeleton height={140} /></div>}
+            {answers.status === 'error' && <StatusMessage type="error" message={answers.error} />}
+            {answers.status === 'ready' && (
+              answers.data.responses.length === 0 ? <EmptyState message="No answers saved yet." /> : (
+                <div className={tableStyles.scroll}>
+                  <table className={tableStyles.table}>
+                    <caption className="sr-only">Answers</caption>
+                    <thead>
+                      <tr><th scope="col">Item</th><th scope="col">Question</th><th scope="col">Answer</th><th scope="col">Answered</th></tr>
+                    </thead>
+                    <tbody>
+                      {answers.data.responses.map((r) => (
+                        <tr key={r.itemId}>
+                          <td>{r.itemCode || r.itemId}</td>
+                          <td>{r.questionText || '—'}</td>
+                          <td>{r.selectedText || r.selectedPosition}</td>
+                          <td>{formatDateTime(r.answeredAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
           </section>
         </div>
       )}

@@ -52,6 +52,8 @@ async function runQuality(tx, attemptId, policy) {
     await delivery.moveAttempt(tx, attemptId, attempt.status, { status: 'INVALID' });
     raised.push('Q06');
   } else if (outcome === 'HOLD' && attempt.status === 'SUBMITTED') {
+    // guarded by attempt.status: an attempt already in QUALITY_HOLD stays there on a re-run (e.g. a replayed check after
+    // a new Q09 flag), so this never double-transitions or clobbers a state a human reviewer may have since moved on from
     await delivery.moveAttempt(tx, attemptId, 'SUBMITTED', { status: 'QUALITY_HOLD' });
   }
   return { outcome, policyVersion: policy.version, flags: raised, replay: false };

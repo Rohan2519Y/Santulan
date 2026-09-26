@@ -33,7 +33,7 @@ jest.mock('../services/santulanApi', () => ({
     institutions: jest.fn(), createInstitution: jest.fn(), updateInstitution: jest.fn(), createCohort: jest.fn(), updateCohort: jest.fn(),
     participants: jest.fn(), setParticipantStatus: jest.fn(), resetCredential: jest.fn(),
     importRoster: jest.fn(), downloadCredentials: jest.fn(),
-    submissions: jest.fn(), submission: jest.fn(), qualityFlags: jest.fn(), reviewFlag: jest.fn(), retryReport: jest.fn(), auditLogs: jest.fn(),
+    submissions: jest.fn(), submission: jest.fn(), submissionResponses: jest.fn(), downloadSubmissionResponses: jest.fn(), qualityFlags: jest.fn(), reviewFlag: jest.fn(), retryReport: jest.fn(), auditLogs: jest.fn(),
     exports: jest.fn(), requestExport: jest.fn(), downloadExport: jest.fn(),
   },
   questionSetApi: {

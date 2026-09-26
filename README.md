@@ -62,10 +62,10 @@ specs/                               # feature specs; 006-mongodb-question-uploa
 
 | Layer | Choice |
 |---|---|
-| Backend | Node.js, Express 4, the official `mongodb` driver (no ODM), `zod`, `jsonwebtoken`, `bcryptjs`, `multer`, `xlsx`, `exceljs` |
+| Backend | Node.js, Express 4, the official `mongodb` driver (no ODM), `zod`, `jsonwebtoken`, `bcryptjs`, `multer`, `xlsx`, `exceljs`, `pino` (structured logging), `nodemon` (dev only) |
 | Database | MongoDB 8.0 replica set (transactions), `$jsonSchema` validators, partial unique indexes, read-only views, least-privilege role |
 | Frontend | React 19, `react-router-dom` 6, `lucide-react`, CSS Modules; RTL + `jest-axe`, `wcag-contrast` |
-| Testing | Jest 29 + supertest (`--runInBand`, `--experimental-vm-modules`) against a **scratch** database |
+| Testing | Jest 29 + supertest (`--runInBand`, `--experimental-vm-modules`) against a **scratch** database, run in CI on every push (`.github/workflows/backend-tests.yml`) |
 
 MongoDB runs **locally, not in Docker**: `backend/scripts/mongo-local.js` starts a dedicated instance on port **27018** (never the
 `MongoDB` Windows service on 27017, which may hold other databases).

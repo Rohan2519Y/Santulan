@@ -7,6 +7,7 @@
  */
 const { randomUUID } = require('crypto');
 const config = require('../../config');
+const logger = require('../../utils/logger');
 const store = require('../../models/db');
 const { qualityInTx, scoreInTx } = require('../../services/scoring/scoreService');
 
@@ -34,7 +35,7 @@ async function runOnce({ scoringVersion = config.scoringVersion, limit = BATCH }
     } catch (err) {
       tally.failed += 1;
       if (current) skip.push(current);
-      console.error(`pipeline worker: attempt ${current || '?'} not processed (${err.code || err.message})`); // eslint-disable-line no-console
+      logger.error({ attemptId: current, code: err.code, err }, 'pipeline worker: attempt not processed');
       if (!current) break;
     }
   }
@@ -44,7 +45,7 @@ async function runOnce({ scoringVersion = config.scoringVersion, limit = BATCH }
 /** Starts the periodic worker; returns the timer, or null unless SCORING_PIPELINE=on. */
 function start({ enabled = config.scoringPipeline, intervalMs = 15000 } = {}) {
   if (!enabled) return null;
-  const timer = setInterval(() => { runOnce().catch((err) => console.error('pipeline worker failed', err.message)); }, intervalMs); // eslint-disable-line no-console
+  const timer = setInterval(() => { runOnce().catch((err) => logger.error({ err }, 'pipeline worker failed')); }, intervalMs);
   timer.unref();
   return timer;
 }

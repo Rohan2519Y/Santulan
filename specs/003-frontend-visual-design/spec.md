@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-18
 
-**Status**: Draft — **revised 2026-09-19** against the Santulan 2.0 UI reference screens (requirements and contracts updated; `plan.md`, `research.md`, `data-model.md`, `quickstart.md` and `tasks.md` predate the revision and must be regenerated)
+**Status**: Draft — **revised 2026-09-19** against the Santulan 2.0 UI reference screens (requirements and contracts updated; `plan.md`, `research.md`, `data-model.md`, `quickstart.md` and `tasks.md` predated the revision and were removed rather than regenerated — they described the earlier calm/warm restyle, not this revision, and nothing since has needed them)
 
 **Input**: User description: "i want to add the good visuals for the frontend". *Revision (2026-09-19)*: "read the specs and update it according to docs/santulan … there is the frontend design also … only edit or make the specs."
 

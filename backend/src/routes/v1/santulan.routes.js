@@ -118,6 +118,8 @@ router.patch('/admin/quality-flags/:id', requireActiveSuperAdmin, validate(admin
 router.get('/admin/audit-logs', requireActiveSuperAdmin, admin.listAuditLogs);
 router.get('/admin/submissions', requireActiveSuperAdmin, admin.listSubmissions);
 router.get('/admin/submissions/:id', requireActiveSuperAdmin, admin.submissionDetail);
+router.get('/admin/submissions/:id/responses', requireActiveSuperAdmin, admin.submissionResponses);
+router.get('/admin/submissions/:id/responses/export', requireActiveSuperAdmin, admin.exportSubmissionResponses);
 
 // --- Research export (BUILD 08 section 10)
 router.post('/research-exports', requireActiveSuperAdmin, validate(researchExports.requestSchema), researchExports.request);

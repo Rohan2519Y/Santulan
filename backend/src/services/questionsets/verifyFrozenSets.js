@@ -8,6 +8,7 @@ const { HttpError } = require('../../errors');
 const store = require('../../models/db');
 const sets = require('../../models/repositories/questionSets');
 const rules = require('../domain/questionSetRules');
+const logger = require('../../utils/logger');
 
 const quarantined = new Set();
 
@@ -17,7 +18,7 @@ async function assertIntact(tx, set) {
   const items = await sets.questionsOf(tx, set._id);
   if (!rules.verifyContentHash(set, items)) {
     quarantined.add(set._id);
-    console.error(`[question-sets] fingerprint mismatch: ${set.version_label} r${set.revision} (${set._id}) is quarantined`); // eslint-disable-line no-console
+    logger.error({ versionLabel: set.version_label, revision: set.revision, setId: set._id }, 'fingerprint mismatch: question set quarantined');
     throw new HttpError(503, 'CATALOG_DRIFT', 'This question set is unavailable while it is being checked');
   }
 }

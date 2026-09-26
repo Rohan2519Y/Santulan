@@ -79,7 +79,9 @@ It is intentionally strict because it processes assessment, consent, and partici
 | Spreadsheet reading | `xlsx` |
 | Spreadsheet writing | `exceljs` |
 | IDs | UUID v4 |
-| Tests | Jest and Supertest |
+| Tests | Jest and Supertest, run automatically in CI on every push (`.github/workflows/backend-tests.yml`) |
+| Logging | `pino` (structured JSON in production, pretty-printed in development, silent during tests) |
+| Dev auto-restart | `nodemon` (`npm run dev` only; production `npm start` is unaffected) |
 
 There is no ODM such as Mongoose. The project implements its own repositories and protected data-access layer around the MongoDB driver.
 
@@ -100,6 +102,7 @@ Start with these files when learning the backend:
 | `backend/src/models/db/` | Owns the MongoDB connection, security scopes, transactions, and low-level access. |
 | `backend/src/models/schema/` | Defines collections, validators, indexes, roles, and views as code. |
 | `backend/src/jobs/workers/` | Contains periodic background work. |
+| `backend/src/utils/logger.js` | The process logger (pino). Everywhere the code used to call `console.*` now calls this instead, under the same conditions as before. |
 
 ## 5. What happens when the server starts
 
@@ -118,7 +121,7 @@ Startup happens in this order:
 
 The server refuses to start when the database is unsafe or incomplete. This is called **failing closed**.
 
-Important detail: `npm run dev` currently runs plain `node src/server.js`. It does not use Nodemon, so code changes require a manual restart.
+`npm run dev` runs the server under Nodemon, which restarts automatically on a code change (watching only `src/` and `config/`, per `nodemon.json`, so the local database's own data files never trigger a restart). `npm start` (production) still runs plain `node src/server.js`.
 
 ## 6. The request layers
 
@@ -557,6 +560,8 @@ cd backend
 npm run pipeline:once
 ```
 
+Two things here are fine at pilot scale but are known ceilings if this ever runs as more than one process: the registration throttle (`middleware/throttle.js`) keeps its counters in one process's memory, and `audit_logs` has no retention policy (append-only, grows forever). Both are already documented in `backend/README.md`, including the extension point for a shared throttle store — neither needs solving to keep developing locally.
+
 ## 15. Database model
 
 The database has 27 canonical collections plus one development-only credential collection.
@@ -643,7 +648,8 @@ Examples include:
 - release-switch changes;
 - quality and scoring completion;
 - report generation and retry;
-- credential reset.
+- credential reset;
+- a Super Admin viewing or exporting a participant's raw answers (`SUBMISSION_RESPONSES_VIEWED` / `SUBMISSION_RESPONSES_EXPORTED`).
 
 Audit records are append-only. Sensitive values such as passwords, OTPs, and authorization tokens should never be placed in audit data or logs.
 
@@ -756,7 +762,7 @@ There is also a basic process health route at `GET /health` without the `/api/v1
 - participants and credential resets;
 - roster import and one-time credential export;
 - monitoring summary;
-- submissions;
+- submissions, including a submission's raw answers and a CSV export of them (both audit-logged separately — viewing and exporting are different risk levels, since exporting lets a file leave the system);
 - quality-flag review;
 - audit-log search.
 
@@ -808,6 +814,7 @@ Copy values from `backend/.env.example` into the git-ignored `backend/.env`.
 | `SCORING_PIPELINE` | Set to `on` to run quality/scoring worker |
 | `REPORT_WORKER` | Set to `on` to run report worker |
 | `EXPORT_WORKER` | Set to `on` to run export worker |
+| `LOG_LEVEL` | Logger verbosity, default `info` (silent during tests regardless of this value) |
 
 Do not commit real secrets or the local `.env` file.
 

@@ -5,6 +5,7 @@
  */
 const { randomUUID } = require('crypto');
 const config = require('../../config');
+const logger = require('../../utils/logger');
 const { claimAndGenerate, nextRequested } = require('../../services/research/exportService');
 
 const BATCH = 10;
@@ -28,7 +29,7 @@ async function runOnce({ limit = BATCH } = {}) {
 /** Starts the periodic worker; returns the timer, or null unless EXPORT_WORKER=on. */
 function start({ enabled = config.exportWorker, intervalMs = 15000 } = {}) {
   if (!enabled) return null;
-  const timer = setInterval(() => { runOnce().catch((err) => console.error('export worker failed', err.message)); }, intervalMs); // eslint-disable-line no-console
+  const timer = setInterval(() => { runOnce().catch((err) => logger.error({ err }, 'export worker failed')); }, intervalMs);
   timer.unref();
   return timer;
 }

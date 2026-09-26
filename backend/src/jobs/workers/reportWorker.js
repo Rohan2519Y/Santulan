@@ -8,6 +8,7 @@
  */
 const { randomUUID } = require('crypto');
 const config = require('../../config');
+const logger = require('../../utils/logger');
 const { generateReport, findAttemptsNeedingReport } = require('../../services/reporting/reportService');
 
 const BATCH = 50;
@@ -31,7 +32,7 @@ async function runOnce({ limit = BATCH, renderer } = {}) {
       else tally.terminal += 1;
     } catch (err) {
       tally.errors += 1;
-      console.error(`report worker: attempt ${current || '?'} not processed (${err.code || err.message})`); // eslint-disable-line no-console
+      logger.error({ attemptId: current, code: err.code, err }, 'report worker: attempt not processed');
       if (!current) break;
     }
   }
@@ -41,7 +42,7 @@ async function runOnce({ limit = BATCH, renderer } = {}) {
 /** Starts the periodic worker; returns the timer, or null unless REPORT_WORKER=on. */
 function start({ enabled = config.reportWorker, intervalMs = 15000 } = {}) {
   if (!enabled) return null;
-  const timer = setInterval(() => { runOnce().catch((err) => console.error('report worker failed', err.message)); }, intervalMs); // eslint-disable-line no-console
+  const timer = setInterval(() => { runOnce().catch((err) => logger.error({ err }, 'report worker failed')); }, intervalMs);
   timer.unref();
   return timer;
 }

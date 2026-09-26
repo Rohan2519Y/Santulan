@@ -1,5 +1,6 @@
 const HttpError = require('./HttpError');
 const CODES = require('./codes');
+const logger = require('../utils/logger');
 
 function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
   if (err instanceof HttpError) {
@@ -25,7 +26,7 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
     });
   }
 
-  console.error(err); // eslint-disable-line no-console
+  logger.error({ err }, 'Unhandled error');
   return res.status(500).json({
     error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred', details: {} },
   });

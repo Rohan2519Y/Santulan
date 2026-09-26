@@ -217,6 +217,8 @@ export const adminApi = {
 
   submissions: (filters) => call(`/admin/submissions${qs(filters)}`),
   submission: (attemptId) => call(`/admin/submissions/${attemptId}`),
+  submissionResponses: (attemptId) => call(`/admin/submissions/${attemptId}/responses`),
+  downloadSubmissionResponses: (attemptId) => saveFile(`/admin/submissions/${attemptId}/responses/export`, `santulan-answers-${attemptId}.csv`, 'The answers could not be exported.'),
   qualityFlags: (filters) => call(`/admin/quality-flags${qs(filters)}`),
   reviewFlag: (flagId, disposition, note) => call(`/admin/quality-flags/${flagId}`, { method: 'PATCH', body: { disposition, ...(note ? { note } : {}) } }),
   retryReport: (reportId) => call(`/internal/reports/${reportId}/retry`, { method: 'POST', body: {} }),

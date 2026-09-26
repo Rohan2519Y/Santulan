@@ -3,6 +3,7 @@ require('dotenv').config();
 module.exports = {
   port: parseInt(process.env.APP_PORT, 10) || 8000,
   env: process.env.APP_ENV || 'development',
+  logLevel: process.env.LOG_LEVEL || 'info',
   // MongoDB (feature 006). The API and workers connect as the least-privilege `santulan_runtime` user on the dedicated
   // instance (port 27018). The migrator URI is read ONLY by scripts and tests, never by src/ (SEC-30).
   mongodbUriRuntime: process.env.MONGODB_URI_RUNTIME || '',

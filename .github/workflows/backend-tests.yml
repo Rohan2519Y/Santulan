@@ -1,0 +1,47 @@
+name: Backend tests
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install MongoDB 8.0
+        run: |
+          curl -fsSL https://pgp.mongodb.com/server-8.0.asc | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
+          echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-org-server mongodb-org-shell
+
+      - run: npm ci
+
+      # Same steps a developer runs locally (README: "Local, not Docker"): a dedicated single-node replica-set instance
+      # on port 27018, then rebuild the scratch database tests run against. Nothing here is CI-specific behaviour.
+      - name: Start the dedicated local MongoDB instance
+        run: node scripts/mongo-local.js init --write-env
+
+      - name: Build the scratch database (migrations + reference seed)
+        run: npm run db:scratch
+
+      - name: Run tests
+        run: npm test

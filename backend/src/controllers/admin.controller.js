@@ -62,4 +62,15 @@ module.exports = {
   listAuditLogs: wrap((req) => auditLog.list(actor(req), req.query)),
   listSubmissions: wrap((req) => submissions.list(actor(req), req.query)),
   submissionDetail: wrap((req) => submissions.detail(actor(req), idParam(req, 'Submission'))),
+  submissionResponses: wrap((req) => submissions.responses(actor(req), idParam(req, 'Submission'), req.correlationId)),
+  exportSubmissionResponses: async (req, res, next) => {
+    try {
+      const attemptId = idParam(req, 'Submission');
+      const { santulanId, csv } = await submissions.exportResponsesCsv(actor(req), attemptId, req.correlationId);
+      const fileTag = (santulanId || attemptId).replace(/[^A-Za-z0-9_-]/g, '');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="santulan-answers-${fileTag}.csv"`);
+      res.send(csv);
+    } catch (err) { next(err); }
+  },
 };

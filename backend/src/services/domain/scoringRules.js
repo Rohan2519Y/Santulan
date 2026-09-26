@@ -44,14 +44,17 @@ function scoreDomain({ eligible, answers }) {
  * never promotes. Configuration can hold (SH) or pin (S1) but never promote past what the switches allow.
  */
 function decideEvidence(domainCode, status, config = {}, switches = {}) {
-  if (status === 'INSUFFICIENT') return 'S0';
+  // Order is the rule, not an optimisation: each check below can only LOWER or PIN the state a later check would have
+  // granted, never raise it - so a hold/pin/incompleteness check must run before the switches that promote evidence,
+  // or a governed hold could be silently overridden by a release switch.
+  if (status === 'INSUFFICIENT') return 'S0'; // too few answers to say anything, regardless of any switch or config
   const cfg = config[domainCode];
-  if (HELD_STATES.has(cfg)) return 'SH';
-  if (cfg === 'S1') return 'S1';
-  if (status === 'INCOMPLETE') return 'S1';
-  if (switches.advancedEvidence && ['S3', 'S4', 'S5'].includes(cfg)) return cfg;
+  if (HELD_STATES.has(cfg)) return 'SH'; // governance can hold a domain back even if the switches would otherwise promote it
+  if (cfg === 'S1') return 'S1'; // governance can also pin a domain at research-only, same override rule
+  if (status === 'INCOMPLETE') return 'S1'; // missing answers cap evidence at research-only no matter which switches are on
+  if (switches.advancedEvidence && ['S3', 'S4', 'S5'].includes(cfg)) return cfg; // only a fully COMPLETE/COMPLETE_WITH_MISSING domain reaches here
   if (switches.pilotS2 && (status === 'COMPLETE' || status === 'COMPLETE_WITH_MISSING')) return 'S2';
-  return 'S1';
+  return 'S1'; // the safe default: research-only unless every gate above explicitly allowed more
 }
 
 /** The latest recorded quality outcome of an attempt, or null. */

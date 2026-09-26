@@ -3,6 +3,7 @@
  * provider (spec 005 D-17 / BUILD 00 §7).
  */
 const config = require('../../config');
+const logger = require('../../utils/logger');
 const { createDevProvider } = require('./devProvider');
 
 let provider = null;
@@ -12,7 +13,9 @@ function getProvider() {
   if (config.identityProvider === 'dev') {
     if (config.env === 'production') throw new Error('The dev identity provider must not be used in production');
     provider = createDevProvider({
-      log: (channel, code) => { if (config.env === 'development') console.log(`[dev identity] OTP for ${channel}: ${code}`); }, // eslint-disable-line no-console
+      // logger.info (not debug): this must stay visible under the default log level, exactly as the console.log it replaces
+      // was always visible - a local developer needs to see the OTP to log in without a real email/SMS provider.
+      log: (channel, code) => { if (config.env === 'development') logger.info({ channel, code }, '[dev identity] OTP'); },
     });
     return provider;
   }

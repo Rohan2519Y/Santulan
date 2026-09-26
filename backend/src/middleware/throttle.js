@@ -7,6 +7,13 @@
 const crypto = require('crypto');
 const { HttpError } = require('../errors');
 
+/*
+ * ThrottleStore interface (the extension point mentioned above): any object with a same-signature `hit(key, windowMs,
+ * now?)` method works here - `createRegistrationThrottle(limits, store)` takes one as its second argument. To scale past
+ * one process, write a store backed by Redis (INCR + PEXPIRE, or a sorted set for a true sliding window) implementing
+ * this same method and pass it in; nothing else in this file or its callers needs to change. `MemoryThrottleStore` below
+ * is the default and remains correct for a single process.
+ */
 class MemoryThrottleStore {
   constructor() { this.hits = new Map(); }
 

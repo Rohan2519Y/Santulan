@@ -120,6 +120,18 @@ Registration never creates an attempt and never states or implies consent/eligib
 
 Admin-only, ACTIVE `SUPER_ADMIN` context; a suspended admin gets 403; participants and other roles get 403 (B08-022/023).
 
+### Additions beyond this contract (ASSUMED, read-only)
+
+Built after this contract was written, because the admin pages needed a view it never specified (D-M19). Same admin-only/audit
+rules as the table above.
+
+| Method & path | Purpose | Audit |
+|---------------|---------|-------|
+| `GET /admin/submissions` | attempt roster: status, session count, quality-flag count (Q09 excluded), report state | — |
+| `GET /admin/submissions/{id}` | one attempt's domain results (score, completeness, evidence state) and non-Q09 flags | — |
+| `GET /admin/submissions/{id}/responses` | the participant's saved answers for that attempt — question text, chosen option, timestamp, resolved from `responses` + `items` | yes — more sensitive than the aggregate results above, so the read itself is audit-logged (`SUBMISSION_RESPONSES_VIEWED`) |
+| `GET /admin/submissions/{id}/responses/export` | same answers as a downloadable CSV (`santulan_id,attempt_id,item_code,domain_code,question,answer,answered_at` — every row carries the Santulan ID so the file identifies its participant on its own once downloaded; filename is `santulan-answers-{santulanId}.csv`; formula-injection-safe like the credential export) | yes — audited separately from viewing (`SUBMISSION_RESPONSES_EXPORTED`), because a file leaves the system |
+
 ## 7. Response shapes that matter
 
 - **Registration** `{ santulanId, participationRoute, assessmentTrack, isMinor, requiredConsents: ["PARENT_GUARDIAN_CONSENT","STUDENT_ASSENT"] }` — never an attempt, never "eligible".
