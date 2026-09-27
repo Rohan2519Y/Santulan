@@ -164,7 +164,7 @@ erDiagram
         string layer
         string pilot_status
         int display_order
-        string status
+        string status "the only mutable field - ACTIVE/RETIRED, shown/hidden"
         string item_content_hash
         date created_at
         array options "[{position, text}], 2-20 options"
@@ -439,7 +439,7 @@ present in production).
 | Collection | Tier | Used for |
 |---|---|---|
 | `assessment_versions` | B | A frozen/open question set for one age configuration (ADOLESCENT or EMERGING_ADULT). Lifecycle: DRAFT → FROZEN → OPEN → CLOSED. Carries the `content_hash` that gets re-verified on open and at server start-up. |
-| `items` | A | The actual questions, each with 2-20 embedded answer `options` (`{position, text}`). Never updated once inserted — a content fix is a new version, not an edit. |
+| `items` | A | The actual questions, each with 2-20 embedded answer `options` (`{position, text}`). One narrow exception to "Tier A never updates" (migration 005): a Super Admin may toggle `status` (`ACTIVE`/`RETIRED`) to show or hide a question from participants — the question text and options still never change; a content fix is a new version, not an edit. |
 | `interpretation_rules` | B | Approved wording templates used to interpret a domain's evidence state into report text. |
 | `development_actions` | B | The library of suggested growth actions per domain/subdomain, offered when building a growth plan. |
 | `reflection_prompts` | B | Prompt text shown alongside growth reviews. |

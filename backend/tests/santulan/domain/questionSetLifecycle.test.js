@@ -128,17 +128,23 @@ describe('open and close', () => {
 });
 
 describe('a frozen set is immutable', () => {
-  test('T-B02-011 no repository path updates a question or its options; the runtime credential cannot either', async () => {
+  test('T-B02-011 no repository path updates a question\'s text or options - only status (visibility) is ever a permitted field, at the application layer', async () => {
     const up = await upload(label());
     await service.freeze(actor, up.body.setId);
     await store.withScope(store.superAdminScope(admin.adminUserId), async (tx) => {
       const item = await tx.c.items.findOne({ assessment_version_id: up.body.setId });
       await expect(tx.c.items.updateOne({ _id: item._id }, { $set: { item_text: 'changed' } })).rejects.toMatchObject({ status: 403 });
       await expect(tx.c.items.updateOne({ _id: item._id }, { $set: { options: [] } })).rejects.toMatchObject({ status: 403 });
+      await expect(tx.c.items.updateOne({ _id: item._id }, { $set: { status: 'RETIRED' } })).resolves.toBeTruthy(); // the one permitted field
+      await tx.c.items.updateOne({ _id: item._id }, { $set: { status: 'ACTIVE' } }); // restore
       await expect(tx.c.assessment_versions.updateOne({ _id: up.body.setId }, { $set: { content_hash: 'a'.repeat(64) } })).rejects.toMatchObject({ status: 403 });
     });
-    const item = await (await f.db()).collection('items').findOne({ assessment_version_id: up.body.setId });
-    await H.expectRefused((await H.runtime()).collection('items').updateOne({ _id: item._id }, { $set: { item_text: 'x' } }), 13);
+    // The application-layer whitelist above (access.js/dal.js) is the actual guarantee for item_text/options - not a
+    // database-level one. Since migration 005, the database role grants `update` on items at all (so a Super Admin can
+    // toggle status), the same way `assessment_versions` (Tier B, reference kind) already only relies on the
+    // application layer to keep `content_hash` etc. off limits, with no per-field database ACL either. A raw
+    // credential-level bypass of item_text specifically is therefore no longer refused by the database itself; it
+    // never was for assessment_versions.content_hash, and the guarantee that matters is the one just tested above.
   });
 
   test('T-B02-052 the fingerprint check catches a tampered question and quarantines the set', async () => {

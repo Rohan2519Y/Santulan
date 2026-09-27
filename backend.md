@@ -413,7 +413,9 @@ Main rules:
 - only a frozen set can be opened;
 - only one set can be open for an age group;
 - the content hash is rechecked when opening and during server startup;
-- a mismatching open set is quarantined and cannot be used for a new attempt.
+- a mismatching open set is quarantined and cannot be used for a new attempt;
+- on a frozen set, a Super Admin may show or hide one question from participants (never its text or options) - refused
+  if it would leave the question's domain with none showing.
 
 Question-set administration is implemented in `services/questionsets/`.
 
@@ -649,7 +651,8 @@ Examples include:
 - quality and scoring completion;
 - report generation and retry;
 - credential reset;
-- a Super Admin viewing or exporting a participant's raw answers (`SUBMISSION_RESPONSES_VIEWED` / `SUBMISSION_RESPONSES_EXPORTED`).
+- a Super Admin viewing or exporting a participant's raw answers (`SUBMISSION_RESPONSES_VIEWED` / `SUBMISSION_RESPONSES_EXPORTED`);
+- a Super Admin showing or hiding a question from participants (`QUESTION_ITEM_SHOWN` / `QUESTION_ITEM_HIDDEN`).
 
 Audit records are append-only. Sensitive values such as passwords, OTPs, and authorization tokens should never be placed in audit data or logs.
 
@@ -752,6 +755,7 @@ There is also a basic process health route at `GET /health` without the `/api/v1
 - `POST /admin/question-sets/:id/open`
 - `POST /admin/question-sets/:id/close`
 - `POST /admin/question-sets/:id/delete`
+- `POST /admin/question-sets/:id/items/:itemId/status` — shows or hides one question from participants (never its text or options)
 - `GET /admin/release-flags`
 - `POST /admin/release-flags/:flag`
 
@@ -913,9 +917,11 @@ They create:
 1. collections and validators;
 2. indexes;
 3. research views;
-4. the runtime database role.
+4. the runtime database role;
+5. the runtime role again, re-granted with `update` on `items` (the one Tier A exception, so a Super Admin can show/hide
+   a question - see "Question-set flow" above).
 
-Applied migrations are recorded with a SHA-256 hash. Do not edit an already applied migration. Add a new numbered migration and update the data-model version when the schema changes.
+Applied migrations are recorded with a SHA-256 hash. Do not edit an already applied migration. Add a new numbered migration and update the data-model version when the schema changes. Migration 005 is a real example of this: it doesn't change a collection's shape, just re-runs the same drop-and-recreate-role approach as 004 with an updated privilege set, and bumps the version marker.
 
 The API reads only `MONGODB_URI_RUNTIME`. Scripts and tests may read `MONGODB_URI_ADMIN`.
 

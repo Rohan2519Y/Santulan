@@ -64,6 +64,7 @@ router.post('/admin/question-sets/:id/freeze', requireActiveSuperAdmin, validate
 router.post('/admin/question-sets/:id/open', requireActiveSuperAdmin, validate(questionSets.schemas.reasonSchema), questionSets.open);
 router.post('/admin/question-sets/:id/close', requireActiveSuperAdmin, validate(questionSets.schemas.reasonSchema), questionSets.close);
 router.post('/admin/question-sets/:id/delete', requireActiveSuperAdmin, validate(questionSets.schemas.freezeSchema), questionSets.delete);
+router.post('/admin/question-sets/:id/items/:itemId/status', requireActiveSuperAdmin, validate(questionSets.schemas.itemStatusSchema), questionSets.setItemStatus);
 
 // --- Release switches (scoring master section 15): four audited switches, all OFF by default. Active SUPER_ADMIN only.
 router.get('/admin/release-flags', requireActiveSuperAdmin, releaseFlags.list);

@@ -8,7 +8,7 @@ import { renderPage } from './testUtils';
 
 jest.mock('../services/santulanApi', () => ({
   ...jest.requireActual('../services/santulanApi'),
-  questionSetApi: { upload: jest.fn(), list: jest.fn(), get: jest.fn(), freeze: jest.fn(), open: jest.fn(), close: jest.fn(), downloadTemplate: jest.fn() },
+  questionSetApi: { upload: jest.fn(), list: jest.fn(), get: jest.fn(), freeze: jest.fn(), open: jest.fn(), close: jest.fn(), delete: jest.fn(), setItemStatus: jest.fn(), downloadTemplate: jest.fn() },
 }));
 
 const SET = (over = {}) => ({
@@ -101,6 +101,57 @@ describe('question sets page (T082/T083)', () => {
     await userEvent.click(screen.getByRole('button', { name: /review adolescent-pilot-v3\.1 revision 1/i }));
     const opts = await screen.findByRole('list', { name: /options for c1-01/i });
     expect(within(opts).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Never', 'Sometimes', 'Always']);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close review of adolescent-pilot-v3.1 revision 1' }));
+    expect(screen.queryByRole('list', { name: /options for c1-01/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Nothing selected. Read every question and its options before freezing.')).toBeInTheDocument();
+  });
+
+  test('a question can be hidden from or shown to participants, but only once the set is frozen', async () => {
+    questionSetApi.list.mockResolvedValue({ sets: [SET({ status: 'FROZEN' })] });
+    const active = { itemId: 'i1', itemCode: 'C1-01', order: 1, domainCode: 'C1', subdomainCode: 'C1.1', subdomainName: 'Interoceptive Awareness', text: 'I notice how I feel.', keying: 'POSITIVE', ageBand: '13–25', context: 'General', layer: 'CORE', status: 'ACTIVE', options: [{ position: 1, text: 'Never' }, { position: 2, text: 'Always' }] };
+    const hidden = { ...active, itemId: 'i2', itemCode: 'C1-02', status: 'RETIRED' };
+    questionSetApi.get.mockResolvedValue({ ...SET({ status: 'FROZEN' }), questions: [active, hidden] });
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: /review adolescent-pilot-v3\.1 revision 1/i }));
+
+    expect(await screen.findByRole('button', { name: 'Hide C1-01 from participants' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show C1-02 to participants' })).toBeInTheDocument();
+    expect(screen.getByText('Hidden from participants')).toBeInTheDocument(); // C1-02's status pill only
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide C1-01 from participants' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Hide C1-01 from participants?' });
+    expect(within(dialog).getByRole('button', { name: 'Hide' })).toBeDisabled(); // no reason yet
+    await userEvent.type(within(dialog).getByRole('textbox'), 'flagged as ambiguous wording');
+    questionSetApi.setItemStatus.mockResolvedValue({ itemId: 'i1', status: 'RETIRED' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hide' }));
+
+    expect(questionSetApi.setItemStatus).toHaveBeenCalledWith('s1', 'i1', 'RETIRED', 'flagged as ambiguous wording');
+    await waitFor(() => expect(questionSetApi.get).toHaveBeenCalledTimes(2)); // reloaded after the change
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  test('a refused hide (e.g. the last question showing in its domain) keeps the dialog open and shows the server\'s reason', async () => {
+    questionSetApi.list.mockResolvedValue({ sets: [SET({ status: 'FROZEN' })] });
+    const only = { itemId: 'i1', itemCode: 'C1-01', order: 1, domainCode: 'C1', subdomainCode: 'C1.1', subdomainName: 'x', text: 'x', keying: 'POSITIVE', ageBand: '13–25', context: 'General', layer: 'CORE', status: 'ACTIVE', options: [{ position: 1, text: 'A' }, { position: 2, text: 'B' }] };
+    questionSetApi.get.mockResolvedValue({ ...SET({ status: 'FROZEN' }), questions: [only] });
+    questionSetApi.setItemStatus.mockRejectedValue(new ApiError('Domain C1 would have no question left showing for ADOLESCENT - every domain needs at least one', { status: 409, code: 'SET_INCOMPLETE' }));
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: /review adolescent-pilot-v3\.1 revision 1/i }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Hide C1-01 from participants' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Hide C1-01 from participants?' });
+    await userEvent.type(within(dialog).getByRole('textbox'), 'trying to hide the only one');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hide' }));
+    expect(await within(dialog).findByText(/no question left showing for ADOLESCENT/)).toBeInTheDocument();
+  });
+
+  test('the show/hide button is not offered on a draft set - there is nothing to show or hide before freezing', async () => {
+    questionSetApi.list.mockResolvedValue({ sets: [SET()] }); // DRAFT
+    questionSetApi.get.mockResolvedValue({ ...SET(), questions: [{ itemId: 'i1', itemCode: 'C1-01', order: 1, domainCode: 'C1', subdomainCode: 'C1.1', subdomainName: 'x', text: 'x', keying: 'POSITIVE', ageBand: '13–25', context: 'General', layer: 'CORE', status: 'ACTIVE', options: [{ position: 1, text: 'A' }, { position: 2, text: 'B' }] }] });
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: /review adolescent-pilot-v3\.1 revision 1/i }));
+    await screen.findByText('C1-01');
+    expect(screen.queryByRole('button', { name: /hide c1-01|show c1-01/i })).not.toBeInTheDocument();
   });
 
   test('freeze is offered on drafts, open on frozen closed sets, close on open sets (US4)', async () => {

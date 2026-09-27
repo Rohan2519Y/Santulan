@@ -65,6 +65,24 @@ function assertClosable(set) {
 }
 
 /**
+ * Whether one question is shown to participants (status ACTIVE) or hidden (RETIRED) - only a CORE question has this
+ * choice, since a non-CORE layer is never delivered to a participant regardless of status (attemptService.getItems and
+ * scoring both filter to layer CORE + status ACTIVE). Hiding is refused if it would leave the question's own domain
+ * with zero eligible questions for the set's age group - the same coverage rule assertFreezable already enforces at
+ * freeze time, reused here so hiding a question can never silently break scoring for everyone on this set. Showing a
+ * question back has no such restriction.
+ */
+function assertItemStatusChange(item, allItems, ageGroup, nextStatus) {
+  if (!['ACTIVE', 'RETIRED'].includes(nextStatus)) throw new HttpError(400, 'VALIDATION_ERROR', 'status must be ACTIVE or RETIRED');
+  if (item.layer !== 'CORE') throw new HttpError(422, 'INVALID_STATE', 'Only a core question is ever shown to a participant; a non-core question has no visibility to change');
+  if (item.status === nextStatus) throw new HttpError(422, 'INVALID_STATE', `This question is already ${nextStatus === 'RETIRED' ? 'hidden' : 'shown'}`);
+  if (nextStatus === 'RETIRED') {
+    const stillEligible = allItems.some((i) => i._id !== item._id && i.domain_code === item.domain_code && eligibleForGroup(i, ageGroup));
+    if (!stillEligible) throw new HttpError(409, 'SET_INCOMPLETE', `Domain ${item.domain_code} would have no question left showing for ${ageGroup} - every domain needs at least one`);
+  }
+}
+
+/**
  * CR-006-12 (owner-approved 2026-09-22): a DRAFT set can be deleted outright - it can never have been frozen, so no attempt,
  * report or export could ever have used it. Once FROZEN a set is permanent forever (constitution IV, non-negotiable); this
  * never applies past DRAFT.
@@ -73,4 +91,4 @@ function assertDeletable(set) {
   if (set.status !== 'DRAFT') throw new HttpError(409, 'SET_NOT_DRAFT', 'Only a draft question set can be deleted; a frozen set is permanent');
 }
 
-module.exports = { ageRange, decideUpload, assertUploadable, eligibleForGroup, missingDomains, verifyContentHash, assertFreezable, assertOpenable, assertClosable, assertDeletable };
+module.exports = { ageRange, decideUpload, assertUploadable, eligibleForGroup, missingDomains, verifyContentHash, assertFreezable, assertOpenable, assertClosable, assertDeletable, assertItemStatusChange };

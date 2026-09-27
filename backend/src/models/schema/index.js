@@ -5,7 +5,7 @@ const { views } = require('./views');
 const { ROLE_NAME, runtimePrivileges } = require('./roles');
 
 // Bump when a new numbered data-model migration changes the shape; the API refuses to start on a mismatch (G-17).
-const DATA_MODEL_VERSION = '006.1';
+const DATA_MODEL_VERSION = '006.2';
 
 const COLLECTIONS_BY_TIER = {
   A: collections.filter((c) => c.tier === 'A').map((c) => c.name),

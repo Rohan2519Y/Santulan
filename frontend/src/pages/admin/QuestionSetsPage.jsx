@@ -41,6 +41,7 @@ export default function QuestionSetsPage() {
   const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(null); // { kind: 'open'|'close', set }
   const [deleteTarget, setDeleteTarget] = useState(null); // the DRAFT set pending delete confirmation
+  const [itemDialog, setItemDialog] = useState(null); // { item, nextStatus } - showing/hiding one question
   const [reason, setReason] = useState('');
   const [working, setWorking] = useState(false);
   const [problem, setProblem] = useState(null);
@@ -113,6 +114,23 @@ export default function QuestionSetsPage() {
     () => questionSetApi.delete(deleteTarget.setId).then((r) => { setDeleteTarget(null); if (detail && detail.setId === deleteTarget.setId) setDetail(null); return r; }),
     `${deleteTarget.versionLabel} deleted.`,
   );
+
+  const confirmItemStatus = async () => {
+    const { item, nextStatus } = itemDialog;
+    setWorking(true);
+    setProblem(null);
+    try {
+      await questionSetApi.setItemStatus(detail.setId, item.itemId, nextStatus, reason.trim());
+      toast.push({ type: 'success', message: nextStatus === 'RETIRED' ? `${item.itemCode} is now hidden from participants.` : `${item.itemCode} is now shown to participants.` });
+      setItemDialog(null);
+      setReason('');
+      await showDetail(detail.setId);
+    } catch (err) {
+      setProblem(err.message); // e.g. SET_INCOMPLETE names the domain that would be left with nothing showing
+    } finally {
+      setWorking(false);
+    }
+  };
 
   return (
     <>
@@ -226,17 +244,34 @@ export default function QuestionSetsPage() {
           </Panel>
         </div>
 
-        <Panel title={detail ? `${detail.versionLabel} · revision ${detail.revision}` : 'Review'} subtitle={detail ? `${detail.questionCount} questions, ${detail.optionCount} options` : 'Choose "Review" on a set to read its questions and options.'}>
+        <Panel
+          title={detail ? `${detail.versionLabel} · revision ${detail.revision}` : 'Review'}
+          subtitle={detail ? `${detail.questionCount} questions, ${detail.optionCount} options` : 'Choose "Review" on a set to read its questions and options.'}
+          actions={detail && <Button type="button" variant="secondary" onClick={() => setDetail(null)} aria-label={`Close review of ${detail.versionLabel} revision ${detail.revision}`}>Close</Button>}
+        >
           {!detail && <EmptyState message="Nothing selected. Read every question and its options before freezing." />}
           {detail && (
             <ol className={styles.questions}>
               {detail.questions.map((q) => (
                 <li key={q.itemId}>
-                  <p><strong>{q.itemCode}</strong> · {q.subdomainName} · {q.ageBand} · {q.context}</p>
+                  <p>
+                    <strong>{q.itemCode}</strong> · {q.subdomainName} · {q.ageBand} · {q.context}
+                    {q.status === 'RETIRED' && <StatusPill tone="neutral" label="Hidden from participants" />}
+                  </p>
                   <p>{q.text}</p>
                   <ol className={styles.options} aria-label={`Options for ${q.itemCode}`}>
                     {q.options.map((o) => <li key={o.position}>{o.text}</li>)}
                   </ol>
+                  {detail.status === 'FROZEN' && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => { setProblem(null); setReason(''); setItemDialog({ item: q, nextStatus: q.status === 'RETIRED' ? 'ACTIVE' : 'RETIRED' }); }}
+                      aria-label={q.status === 'RETIRED' ? `Show ${q.itemCode} to participants` : `Hide ${q.itemCode} from participants`}
+                    >
+                      {q.status === 'RETIRED' ? 'Show to participants' : 'Hide from participants'}
+                    </Button>
+                  )}
                 </li>
               ))}
             </ol>
@@ -271,6 +306,26 @@ export default function QuestionSetsPage() {
           onConfirm={confirmDelete}
           onCancel={() => setDeleteTarget(null)}
         >
+          {problem && <StatusMessage type="error" message={problem} />}
+        </ConfirmDialog>
+      )}
+
+      {itemDialog && (
+        <ConfirmDialog
+          open
+          title={itemDialog.nextStatus === 'RETIRED' ? `Hide ${itemDialog.item.itemCode} from participants?` : `Show ${itemDialog.item.itemCode} to participants?`}
+          message={itemDialog.nextStatus === 'RETIRED'
+            ? 'Participants will no longer be given this question. It stays here for review and can be shown again at any time. Refused if this would leave its domain with no question showing.'
+            : 'Participants may be given this question again, alongside the others in its domain.'}
+          confirmLabel={itemDialog.nextStatus === 'RETIRED' ? 'Hide' : 'Show'}
+          tone={itemDialog.nextStatus === 'RETIRED' ? 'warning' : 'brand'}
+          busy={working}
+          confirmDisabled={reason.trim().length < 3}
+          onConfirm={confirmItemStatus}
+          onCancel={() => { setItemDialog(null); setReason(''); }}
+        >
+          <label className={styles.reasonLabel} htmlFor="qs-item-reason">Reason (required, 3 to 300 characters)</label>
+          <textarea id="qs-item-reason" className={styles.reason} rows={3} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
           {problem && <StatusMessage type="error" message={problem} />}
         </ConfirmDialog>
       )}

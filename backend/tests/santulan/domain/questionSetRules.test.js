@@ -39,6 +39,48 @@ describe('decideUpload (pure)', () => {
   });
 });
 
+describe('assertItemStatusChange (pure, given real fetched items)', () => {
+  const itemsOf = async (setId) => (await f.db()).collection('items').find({ assessment_version_id: setId }).sort({ display_order: 1 }).toArray();
+
+  test('refuses a non-CORE layer item - it is never delivered regardless of status, so there is nothing to toggle', () => {
+    const v = { _id: 'x', layer: 'V', status: 'ACTIVE', domain_code: 'C1' };
+    expect(() => rules.assertItemStatusChange(v, [v], 'ADOLESCENT', 'RETIRED')).toThrow(expect.objectContaining({ status: 422, code: 'INVALID_STATE' }));
+  });
+
+  test('refuses setting the same status it already has', async () => {
+    const lbl = label();
+    const items = await itemsOf((await upload(lbl)).body.setId);
+    expect(() => rules.assertItemStatusChange(items[0], items, 'ADOLESCENT', 'ACTIVE')).toThrow(expect.objectContaining({ status: 422, code: 'INVALID_STATE' }));
+  });
+
+  test('refuses an unknown status value', () => {
+    const item = { _id: 'x', layer: 'CORE', status: 'ACTIVE', domain_code: 'C1' };
+    expect(() => rules.assertItemStatusChange(item, [item], 'ADOLESCENT', 'DELETED')).toThrow(expect.objectContaining({ status: 400, code: 'VALIDATION_ERROR' }));
+  });
+
+  test('hiding is allowed when a domain sibling is still ACTIVE and eligible', async () => {
+    const lbl = label();
+    const rows = W.validRows({ label: lbl, perDomain: 2 });
+    const items = await itemsOf((await upload(lbl, rows)).body.setId);
+    const [a, b] = items.filter((i) => i.domain_code === items[0].domain_code);
+    expect(() => rules.assertItemStatusChange(a, items, 'ADOLESCENT', 'RETIRED')).not.toThrow();
+    expect(b.status).toBe('ACTIVE'); // untouched by the assertion itself (it only checks; the service performs the write)
+  });
+
+  test('hiding the only eligible question in a domain is refused, naming that domain (SET_INCOMPLETE)', async () => {
+    const lbl = label();
+    const items = await itemsOf((await upload(lbl)).body.setId); // perDomain defaults to 1
+    const only = items[0];
+    expect(() => rules.assertItemStatusChange(only, items, 'ADOLESCENT', 'RETIRED'))
+      .toThrow(expect.objectContaining({ status: 409, code: 'SET_INCOMPLETE', message: expect.stringContaining(only.domain_code) }));
+  });
+
+  test('showing a question back (RETIRED -> ACTIVE) is never restricted, even alone in its domain', async () => {
+    const item = { _id: 'x', layer: 'CORE', status: 'RETIRED', domain_code: 'C1' };
+    expect(() => rules.assertItemStatusChange(item, [item], 'ADOLESCENT', 'ACTIVE')).not.toThrow();
+  });
+});
+
 describe('the upload transaction (FR-016/017)', () => {
   test('T-B02-025 a new label makes revision 1 as DRAFT / CLOSED with all questions and options stored', async () => {
     const lbl = label();

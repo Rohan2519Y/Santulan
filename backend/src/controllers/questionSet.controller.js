@@ -22,6 +22,12 @@ const setId = (req) => {
   return p.data;
 };
 
+const itemId = (req) => {
+  const p = schemas.idParam.safeParse(req.params.itemId);
+  if (!p.success) throw new HttpError(404, 'NOT_FOUND', 'Question not found');
+  return p.data;
+};
+
 module.exports = {
   receiveUpload,
   template: wrap(async (req, res) => {
@@ -46,6 +52,8 @@ module.exports = {
   open: wrap(async (req, res) => { res.json(await service.open(req.actor, setId(req), req.body.reason, req.correlationId)); }),
   close: wrap(async (req, res) => { res.json(await service.close(req.actor, setId(req), req.body.reason, req.correlationId)); }),
   delete: wrap(async (req, res) => { res.json(await service.deleteDraft(req.actor, setId(req), req.correlationId)); }),
+  setItemStatus: wrap(async (req, res) => { res.json(await service.setItemStatus(req.actor, setId(req), itemId(req), req.body.status, req.body.reason, req.correlationId)); }),
   setId,
+  itemId,
   schemas,
 };

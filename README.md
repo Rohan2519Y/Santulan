@@ -148,6 +148,36 @@ npm run build
 
 ---
 
+## Docker (alternative)
+
+Local dev (above) stays the default way to run this project. Docker is a separate, additional way to run the same code -
+useful when you want the whole stack (database, backend, frontend) up without installing Node or MongoDB locally.
+
+```bash
+cp .env.example .env    # fill in real passwords/secrets before running anything you care about
+./docker.sh start       # builds + starts mongo, runs migrations, starts backend (:8000) and frontend (:3000)
+./docker.sh seed-dev    # optional: same dev accounts as "Dev login credentials" above
+```
+
+One script, `docker.sh` (repo root), covers the whole lifecycle:
+
+| Command | Effect |
+|---|---|
+| `./docker.sh start` | Build/start mongo, run migrations, start backend + frontend |
+| `./docker.sh stop` | Stop containers, keep them and their data |
+| `./docker.sh restart` | `stop` then `start` |
+| `./docker.sh down` | Remove containers (keeps the `mongo_data` volume) |
+| `./docker.sh reset [-y]` | Remove containers **and** the `mongo_data` volume - deletes all data |
+| `./docker.sh seed-dev` | Seed the synthetic dev accounts |
+| `./docker.sh logs [service]` | Follow logs, all services or one |
+| `./docker.sh status` | Show container status |
+
+MongoDB (`mongo/`) runs the same replica-set + least-privilege-role setup as `backend/scripts/mongo-local.js`, just inside a
+container with a generated keyfile. `backend/Dockerfile` and `frontend/Dockerfile` run the same app code as local dev; the
+only things that differ are the Mongo host/credentials, supplied by `docker-compose.yml`.
+
+---
+
 ## API surface
 
 All routes mount under `/api/v1` (`backend/src/routes/v1/santulan.routes.js`).

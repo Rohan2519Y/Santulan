@@ -1,0 +1,83 @@
+# Docker (alternative to local dev - see root README "Docker (alternative)"). Local dev stays the default; this is an
+# additional, separate way to run the same code. Copy .env.example to .env (repo root - Compose loads it
+# automatically) before running `./docker.sh start`.
+services:
+  mongo:
+    build: ./mongo
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27018:27017"
+    environment:
+      SANTULAN_MIGRATOR_PASSWORD: ${SANTULAN_MIGRATOR_PASSWORD:?set this in .env}
+      SANTULAN_RUNTIME_PASSWORD: ${SANTULAN_RUNTIME_PASSWORD:?set this in .env}
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # One-off: applies data-model migrations and seeds reference content (development actions, reflection prompts) -
+  # the same npm scripts local dev uses (db:migrate, db:seed:reference). Not started by `docker compose up`; run by
+  # ./docker.sh start. Safe to re-run (migrations and seeding are both idempotent).
+  migrate:
+    build: ./backend
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGODB_URI_ADMIN: mongodb://santulan_migrator:${SANTULAN_MIGRATOR_PASSWORD:?set this in .env}@mongo:27017/santulan?replicaSet=rs0&authSource=santulan
+      MONGODB_DB: santulan
+      MONGODB_TEST_DB: santulan_qual
+    # seed-reference.js reads reference workbooks from repo-root docs/ (sibling to backend/, so outside the
+    # backend build context) - mount it read-only rather than widening the build context for one script.
+    volumes:
+      - ./docs:/docs:ro
+    command: ["sh", "-c", "node scripts/db-migrate.js && node scripts/seed-reference.js"]
+    profiles: ["tools"]
+
+  # Optional: creates the well-known synthetic dev accounts (see root README "Dev login credentials"). Never run
+  # automatically - opt in with ./docker.sh seed-dev. Refuses to run if APP_ENV=production.
+  seed-dev:
+    build: ./backend
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      # backend/Dockerfile bakes APP_ENV=production into the image; devSeed.js refuses to run there, so override it.
+      APP_ENV: development
+      MONGODB_URI_RUNTIME: mongodb://santulan_runtime:${SANTULAN_RUNTIME_PASSWORD:?set this in .env}@mongo:27017/santulan?replicaSet=rs0&authSource=santulan
+      MONGODB_DB: santulan
+    command: ["node", "seeders/santulan/dev.seeder.js"]
+    profiles: ["tools"]
+
+  backend:
+    build: ./backend
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      APP_PORT: 8000
+      APP_ENV: ${BACKEND_APP_ENV:-development}
+      MONGODB_URI_RUNTIME: mongodb://santulan_runtime:${SANTULAN_RUNTIME_PASSWORD:?set this in .env}@mongo:27017/santulan?replicaSet=rs0&authSource=santulan
+      MONGODB_DB: santulan
+      MONGODB_TEST_DB: santulan_qual
+      JWT_SECRET: ${JWT_SECRET:?set this in .env}
+      JWT_EXPIRES_IN: 2h
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      IDENTITY_PROVIDER: dev
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API_BASE: ${REACT_APP_API_BASE:-http://localhost:8000/api/v1}
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  mongo_data:

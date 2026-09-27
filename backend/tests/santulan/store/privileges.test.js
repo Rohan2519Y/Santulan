@@ -26,9 +26,17 @@ describe('G-13 Tier A collections are append-only for the runtime credential', (
     );
   });
 
-  test('B08-006 find and insert work; update and remove are Unauthorized', async () => {
+  // `items` is a documented, narrow exception (migration 005): the role also grants it `update`, so a Super Admin can
+  // show/hide a question (items.status). Same shape as how `assessment_versions` (Tier B, reference kind) already
+  // works - the database privilege is collection-wide (MongoDB has no native per-field write ACL), and it is the
+  // APPLICATION layer (access.js's `update: ['status']`, enforced in dal.js) that narrows it to one field. This test
+  // covers everything the database role itself still refuses for items; the field-level narrowing is covered by
+  // repoScan.test.js and the contract tests in questionSetsLifecycle.test.js, not here.
+  const NO_UPDATE_EXCEPTION = COLLECTIONS_BY_TIER.A.filter((n) => n !== 'items');
+
+  test('B08-006 find and insert work; update and remove are Unauthorized (except the one documented items exception below)', async () => {
     const db = await H.runtime();
-    for (const name of COLLECTIONS_BY_TIER.A) {
+    for (const name of NO_UPDATE_EXCEPTION) {
       const doc = sample[name]();
       await fx.insertRuntime(name, doc);
       expect(await db.collection(name).findOne({ _id: doc._id })).toBeTruthy();
@@ -36,6 +44,19 @@ describe('G-13 Tier A collections are append-only for the runtime credential', (
       await unauthorized(db.collection(name).replaceOne({ _id: doc._id }, doc));
       await unauthorized(db.collection(name).deleteOne({ _id: doc._id }));
     }
+  });
+
+  test('items: the database role allows update (schema-valid only) but never remove; the field-level narrowing to status only is an application-layer guarantee, not a database one', async () => {
+    const db = await H.runtime();
+    const doc = sample.items();
+    await fx.insertRuntime('items', doc);
+    // authorized at the database level now - refused only because this generic payload fails the $jsonSchema validator
+    // (additionalProperties: false), not because the role forbids the verb
+    await H.expectRefused(db.collection('items').updateOne({ _id: doc._id }, { $set: { touched: true } }), 121);
+    // a schema-valid update (still just the one real field) is genuinely permitted at the database level
+    await expect(db.collection('items').updateOne({ _id: doc._id }, { $set: { status: 'RETIRED' } })).resolves.toMatchObject({ modifiedCount: 1 });
+    await db.collection('items').updateOne({ _id: doc._id }, { $set: { status: 'ACTIVE' } }); // restore for the rest of the suite
+    await unauthorized(db.collection('items').deleteOne({ _id: doc._id })); // remove is still refused - unchanged
   });
 
   test('B08-054 audit rows can be neither edited nor deleted', async () => {

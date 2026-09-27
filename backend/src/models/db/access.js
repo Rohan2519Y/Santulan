@@ -1,6 +1,7 @@
 /*
  * Access rules per collection: how a scope sees the collection (kind) and which fields the application may ever update
- * (Tier B "named mutation"; Tier A collections have no update path at all). The credential enforces the same limits at the
+ * (Tier B "named mutation"; Tier A collections have no update path at all, with one narrow exception - `items.status`,
+ * whether a question is shown to participants, never its content). The credential enforces the same limits at the
  * store (role santulan_runtime); this table is the application half of the guarantee.
  *
  * kinds
@@ -24,7 +25,7 @@ const ACCESS = {
   consents: { kind: 'owned', field: 'participant_id', update: ['status', 'granted_at', 'verified_at', 'withdrawn_at', 'verification_method'] },
 
   assessment_versions: { kind: 'reference', writeBy: 'privileged', update: ['status', 'frozen_at', 'participation_state'] },
-  items: { kind: 'reference', writeBy: 'privileged', update: null },
+  items: { kind: 'reference', writeBy: 'privileged', update: ['status'] }, // the only field ever updatable on an item - whether it's shown to participants
   interpretation_rules: { kind: 'privileged', update: ['status'] },
   development_actions: { kind: 'privileged', update: ['active'] },
   reflection_prompts: { kind: 'privileged', update: ['status'] },

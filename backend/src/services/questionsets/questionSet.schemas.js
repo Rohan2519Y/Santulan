@@ -9,6 +9,7 @@ const listQuery = z.object({
 
 const freezeSchema = strictObject({});
 const reasonSchema = strictObject({ reason: z.string().trim().min(3).max(300) });
+const itemStatusSchema = strictObject({ status: z.enum(['ACTIVE', 'RETIRED']), reason: z.string().trim().min(3).max(300) });
 const idParam = z.string().uuid();
 
-module.exports = { listQuery, freezeSchema, reasonSchema, idParam };
+module.exports = { listQuery, freezeSchema, reasonSchema, itemStatusSchema, idParam };

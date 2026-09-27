@@ -106,7 +106,7 @@ async function get(actor, setId) {
       ...sets.toApi(summary),
       questions: items.map((i) => ({
         itemId: i._id, itemCode: i.item_code, order: i.display_order, domainCode: i.domain_code, subdomainCode: i.subdomain_code, subdomainName: i.subdomain_name,
-        text: i.item_text, keying: i.keying, ageBand: i.age_band, context: i.context, layer: i.layer, options: i.options,
+        text: i.item_text, keying: i.keying, ageBand: i.age_band, context: i.context, layer: i.layer, options: i.options, status: i.status,
       })),
     };
   });
@@ -185,4 +185,27 @@ async function deleteDraft(actor, setId, correlationId = null) {
   });
 }
 
-module.exports = { upload, list, get, freeze, open, close, deleteDraft, SHOWN_PROBLEMS };
+/**
+ * Shows or hides one question from participants (status ACTIVE / RETIRED) - only on a FROZEN set; a DRAFT set's
+ * questions are still being edited by re-uploading, so there is nothing to show or hide yet. Refused if it would
+ * leave the question's domain with none showing (rules.assertItemStatusChange). Content and options never change
+ * either way - the question is still there for admin review, just not delivered. Audited with a reason.
+ */
+async function setItemStatus(actor, setId, itemId, status, reason, correlationId = null) {
+  return asAdmin(actor, async (tx) => {
+    const set = await loadSet(tx, setId);
+    if (set.status !== 'FROZEN') throw new HttpError(409, 'SET_NOT_FROZEN', 'Only a frozen question set has questions to show or hide');
+    const items = await sets.questionsOf(tx, setId);
+    const item = items.find((i) => i._id === itemId);
+    if (!item) throw new HttpError(404, 'NOT_FOUND', 'Question not found in this set');
+    rules.assertItemStatusChange(item, items, set.configuration, status);
+    if (!(await sets.setItemStatus(tx, itemId, item.status, status))) throw new HttpError(409, 'INVALID_STATE', 'The question changed while updating; try again');
+    await writeAudit(tx, {
+      ...actorOf(actor), actionType: status === 'RETIRED' ? 'QUESTION_ITEM_HIDDEN' : 'QUESTION_ITEM_SHOWN', targetEntity: 'items', targetId: itemId,
+      previousState: { status: item.status }, newState: { status }, reason, correlationId,
+    });
+    return { itemId, status };
+  });
+}
+
+module.exports = { upload, list, get, freeze, open, close, deleteDraft, setItemStatus, SHOWN_PROBLEMS };

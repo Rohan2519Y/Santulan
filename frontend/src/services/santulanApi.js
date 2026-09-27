@@ -141,6 +141,8 @@ export const questionSetApi = {
   close: (id, reason) => call(`/admin/question-sets/${id}/close`, { method: 'POST', body: { reason } }),
   /** Only ever refused for a set that has already been frozen (a frozen set is permanent, CR-006-12); a draft has no reason to give. */
   delete: (id) => call(`/admin/question-sets/${id}/delete`, { method: 'POST', body: {} }),
+  /** Shows or hides one question from participants (status ACTIVE/RETIRED) - only on a frozen set. The question's text and options never change either way. */
+  setItemStatus: (setId, itemId, status, reason) => call(`/admin/question-sets/${setId}/items/${itemId}/status`, { method: 'POST', body: { status, reason } }),
   /** Downloads the blank template (needs the bearer token, so it is fetched and saved rather than linked). */
   downloadTemplate: async () => {
     let res;

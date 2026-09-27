@@ -13,14 +13,17 @@ beforeEach(async () => { (await f.db()).collection('assessment_versions').update
 
 const auth = (t = admin.token) => ({ Authorization: `Bearer ${t}` });
 const label = () => `fx-lc-${f.u().toLowerCase()}`;
-const upload = async (ageGroup = 'ADOLESCENT') => {
+const upload = async (ageGroup = 'ADOLESCENT', perDomain = 1) => {
   const lbl = label();
-  const res = await request(app).post('/api/v1/admin/question-sets').set(auth()).field('ageGroup', ageGroup).attach('file', W.workbook(W.validRows({ label: lbl, ageGroup })), 'q.xlsx');
+  const res = await request(app).post('/api/v1/admin/question-sets').set(auth()).field('ageGroup', ageGroup).attach('file', W.workbook(W.validRows({ label: lbl, ageGroup, perDomain })), 'q.xlsx');
   expect(res.status).toBe(201);
   return res.body;
 };
 const step = (id, verb, body = {}, headers = auth()) => request(app).post(`/api/v1/admin/question-sets/${id}/${verb}`).set(headers).send(body);
+const itemStep = (setId, itemId, body, headers = auth()) => request(app).post(`/api/v1/admin/question-sets/${setId}/items/${itemId}/status`).set(headers).send(body);
 const audits = async (id) => (await f.db()).collection('audit_logs').find({ target_id: id, action_type: { $regex: '^QUESTION_SET_' } }).sort({ occurred_at: 1 }).toArray();
+const itemAudits = async (itemId) => (await f.db()).collection('audit_logs').find({ target_id: itemId, action_type: { $regex: '^QUESTION_ITEM_' } }).sort({ occurred_at: 1 }).toArray();
+const itemsOf = async (setId) => (await f.db()).collection('items').find({ assessment_version_id: setId }).sort({ display_order: 1 }).toArray();
 
 describe('US4 acceptance: draft -> frozen -> open -> closed', () => {
   test('T-B02-011 the whole lifecycle, one audit row per step, and nothing else changes', async () => {
@@ -134,5 +137,92 @@ describe('CR-006-12: deleting a draft question set', () => {
     expect((await step(set.setId, 'delete', {}, auth(p.token))).status).toBe(403);
     expect((await step(set.setId, 'delete', { reason: 'not accepted here' })).status).toBe(400);
     expect((await step('00000000-0000-4000-8000-000000000000', 'delete')).status).toBe(404);
+  });
+});
+
+describe('showing and hiding a question from participants (items.status)', () => {
+  test('hiding a question with a sibling in its domain succeeds, is audited, and the item stays in Review (still readable) but ACTIVE elsewhere in the same domain', async () => {
+    const set = await upload('ADOLESCENT', 2); // 2 questions per domain, so hiding one still leaves the domain covered
+    await step(set.setId, 'freeze');
+    const items = await itemsOf(set.setId);
+    const [first, second] = items.filter((i) => i.domain_code === items[0].domain_code);
+
+    const hide = await itemStep(set.setId, first._id, { status: 'RETIRED', reason: 'flagged as ambiguous wording' });
+    expect(hide.status).toBe(200);
+    expect(hide.body).toEqual({ itemId: first._id, status: 'RETIRED' });
+    expect((await itemAudits(first._id)).map((a) => a.action_type)).toEqual(['QUESTION_ITEM_HIDDEN']);
+    expect((await itemAudits(first._id))[0]).toMatchObject({ previous_state: { status: 'ACTIVE' }, new_state: { status: 'RETIRED' }, reason: 'flagged as ambiguous wording' });
+
+    // hidden from delivery/scoring eligibility - the exact filter attemptService.getItems and scoreAttempt both use
+    const deliverable = await (await f.db()).collection('items').find({ assessment_version_id: set.setId, layer: 'CORE', status: 'ACTIVE' }).toArray();
+    expect(deliverable.map((i) => i._id)).not.toContain(first._id);
+    expect(deliverable.map((i) => i._id)).toContain(second._id); // its sibling is untouched
+
+    // still visible to the admin review endpoint, now marked hidden
+    const review = await request(app).get(`/api/v1/admin/question-sets/${set.setId}`).set(auth());
+    const reviewed = review.body.questions.find((q) => q.itemId === first._id);
+    expect(reviewed).toMatchObject({ status: 'RETIRED' });
+
+    // showing it back has no restriction and is audited separately
+    const show = await itemStep(set.setId, first._id, { status: 'ACTIVE', reason: 'wording approved after review' });
+    expect(show.status).toBe(200);
+    expect((await itemAudits(first._id)).map((a) => a.action_type)).toEqual(['QUESTION_ITEM_HIDDEN', 'QUESTION_ITEM_SHOWN']);
+  });
+
+  test('hiding the last active question in a domain is refused (409 SET_INCOMPLETE) - scoring can never be silently broken', async () => {
+    const set = await upload('ADOLESCENT', 1); // exactly one question per domain
+    await step(set.setId, 'freeze');
+    const [only] = await itemsOf(set.setId);
+    const hide = await itemStep(set.setId, only._id, { status: 'RETIRED', reason: 'trying to hide the only one' });
+    expect(hide.status).toBe(409);
+    expect(hide.body.error.code).toBe('SET_INCOMPLETE');
+    expect(hide.body.error.message).toContain(only.domain_code);
+    const row = await (await f.db()).collection('items').findOne({ _id: only._id });
+    expect(row.status).toBe('ACTIVE'); // unchanged
+  });
+
+  test('refused on a DRAFT set (409 SET_NOT_FROZEN) - nothing to show or hide before freezing', async () => {
+    const set = await upload('ADOLESCENT', 2);
+    const [item] = await itemsOf(set.setId);
+    const res = await itemStep(set.setId, item._id, { status: 'RETIRED', reason: 'too early' });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('SET_NOT_FROZEN');
+  });
+
+  test('an already-hidden question cannot be hidden again, and an unknown item is 404', async () => {
+    const set = await upload('ADOLESCENT', 2);
+    await step(set.setId, 'freeze');
+    const [item] = await itemsOf(set.setId);
+    expect((await itemStep(set.setId, item._id, { status: 'RETIRED', reason: 'first hide' })).status).toBe(200);
+    const again = await itemStep(set.setId, item._id, { status: 'RETIRED', reason: 'second hide' });
+    expect(again.status).toBe(422);
+    expect(again.body.error.code).toBe('INVALID_STATE');
+    const unknown = await itemStep(set.setId, '00000000-0000-4000-8000-000000000000', { status: 'RETIRED', reason: 'no such item' });
+    expect(unknown.status).toBe(404);
+  });
+
+  test('needs a reason of 3 to 300 characters, a valid status enum value, and no unknown keys (400)', async () => {
+    const set = await upload('ADOLESCENT', 2);
+    await step(set.setId, 'freeze');
+    const [item] = await itemsOf(set.setId);
+    for (const body of [{ status: 'RETIRED' }, { status: 'RETIRED', reason: '' }, { status: 'RETIRED', reason: 'ab' }, { status: 'RETIRED', reason: 'x'.repeat(301) }, { status: 'HIDDEN', reason: 'not a real status' }, { status: 'RETIRED', reason: 'ok reason', extra: 1 }]) {
+      expect((await itemStep(set.setId, item._id, body)).status).toBe(400);
+    }
+    const row = await (await f.db()).collection('items').findOne({ _id: item._id });
+    expect(row.status).toBe('ACTIVE'); // unchanged by every rejected attempt
+  });
+
+  test('non-admins are refused; a real admin token is required (401/403)', async () => {
+    const set = await upload('ADOLESCENT', 2);
+    await step(set.setId, 'freeze');
+    const [item] = await itemsOf(set.setId);
+    const p = await f.participant(16);
+    const suspended = await f.admin('SUSPENDED');
+    const body = { status: 'RETIRED', reason: 'access check' };
+    expect((await itemStep(set.setId, item._id, body, {})).status).toBe(401);
+    expect((await itemStep(set.setId, item._id, body, auth(p.token))).status).toBe(403);
+    expect((await itemStep(set.setId, item._id, body, auth(suspended.token))).status).toBe(403);
+    const row = await (await f.db()).collection('items').findOne({ _id: item._id });
+    expect(row.status).toBe('ACTIVE'); // unchanged - none of the refused attempts took effect
   });
 });

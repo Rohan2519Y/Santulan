@@ -169,6 +169,30 @@ describe('RosterImportPage', () => {
     expect(screen.getByText('REQUIRED')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Commit import' })).toBeDisabled();
   });
+
+  test('after a successful commit, Close clears the completed state so a new import can start', async () => {
+    adminApi.institutions.mockResolvedValue({ institutions: [{ institutionId: 'i1', institutionName: 'Greenfield', status: 'ACTIVE', cohorts: [{ cohortId: 'c1', cohortName: '2026 intake', status: 'ACTIVE' }] }] });
+    adminApi.importRoster.mockResolvedValueOnce({ ok: true, rowCount: 2, eligible: { ADOLESCENT: 2 }, warnings: [] });
+    adminApi.importRoster.mockResolvedValueOnce({ count: 2, importId: 'imp1' });
+    renderAdmin(<RosterImportPage />);
+    await screen.findByRole('option', { name: 'Greenfield' }); // wait for the async institutions load, not just the select existing
+    await userEvent.selectOptions(screen.getByLabelText('Institution'), 'i1');
+    await userEvent.selectOptions(screen.getByLabelText('Cohort'), 'c1');
+    const file = new File(['a,b'], 'roster.csv', { type: 'text/csv' });
+    await userEvent.upload(screen.getByLabelText(/drop the roster file here/i), file);
+    await userEvent.click(screen.getByRole('button', { name: 'Validate file' }));
+    await screen.findByText(/the file is valid/i);
+    await userEvent.click(screen.getByRole('button', { name: 'Commit import' }));
+
+    expect(await screen.findByText('2 participants registered.')).toBeInTheDocument();
+    const closeBtn = screen.getByRole('button', { name: 'Close' });
+    await userEvent.click(closeBtn);
+
+    expect(screen.queryByText('2 participants registered.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Commit import' })).toBeDisabled(); // back to a clean, unstarted form
+    expect(screen.getByLabelText('Institution')).toHaveValue(''); // institution/cohort reset too, a real fresh start
+  });
 });
 
 describe('SubmissionsPage', () => {

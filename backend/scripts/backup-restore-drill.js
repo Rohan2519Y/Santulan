@@ -86,7 +86,7 @@ async function main() {
 
     // 4. role for the restored database (roles are not part of a dump)
     const t1 = new Date();
-    const { up } = require('../db/migrations/004_runtime_role'); // eslint-disable-line global-require
+    const { up } = require('../db/migrations/005_items_status_role'); // eslint-disable-line global-require
     await up(client.db(TARGET), { client });
     record({ label: 'recreate the least-privilege role for the restored database', ok: true, started: t1.toISOString(), finished: new Date().toISOString(), output: '' });
 

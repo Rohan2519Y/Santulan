@@ -1,9 +1,7 @@
 node_modules
-.mongo
+build
 .env
 .env.*
 !.env.example
-exports
-backups
 coverage
 npm-debug.log

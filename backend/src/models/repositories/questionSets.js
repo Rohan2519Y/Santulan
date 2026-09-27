@@ -1,6 +1,7 @@
 /*
- * Question sets and questions (assessment_versions, items). Items are Tier A: inserted with their set, never updated
- * (there is no update path for a question or its options). The set has only compare-and-set lifecycle moves.
+ * Question sets and questions (assessment_versions, items). Items are Tier A: inserted with their set, and never updated
+ * except one field - `status`, whether the question is shown to participants (setItemStatus below); the question text
+ * and its options never change. The set has only compare-and-set lifecycle moves.
  */
 const { camel } = require('../db/naming');
 
@@ -20,6 +21,11 @@ async function insertSetWithItems(tx, set, items) {
   await tx.c.assessment_versions.insertOne(set);
   if (items.length) await tx.c.items.insertMany(items);
   return set;
+}
+
+/** ACTIVE <-> RETIRED, compare-and-set. The only update items ever allow (access.js). */
+async function setItemStatus(tx, itemId, from, to) {
+  return tx.c.items.transition(itemId, { status: from }, { status: to });
 }
 
 /** DRAFT -> RETIRED for a superseded draft revision (compare-and-set). */
@@ -77,4 +83,4 @@ function toApi(s) {
   };
 }
 
-module.exports = { findRevisions, getSetRaw, questionsOf, insertSetWithItems, retireDraft, freeze, open, close, listSets, withCounts, toApi, S };
+module.exports = { findRevisions, getSetRaw, questionsOf, insertSetWithItems, setItemStatus, retireDraft, freeze, open, close, listSets, withCounts, toApi, S };

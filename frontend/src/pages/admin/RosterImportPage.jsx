@@ -33,6 +33,7 @@ export default function RosterImportPage() {
   const ready = institutionId && cohortId && file;
 
   const reset = () => { setCheck(null); setCommitted(null); setProblem(null); };
+  const startNew = () => { reset(); setFile(null); setInstitutionId(''); setCohortId(''); };
   const pick = (f) => {
     reset();
     if (f.size > MAX_BYTES) { setProblem('That file is larger than 10 MB.'); return; }
@@ -108,7 +109,10 @@ export default function RosterImportPage() {
             <>
               <StatusMessage type="success" message={`${committed.count} participants registered.`} />
               <p className={styles.muted}>The credential file holds each participant&apos;s temporary sign-in. It can be downloaded once.</p>
-              <Button type="button" variant="primary" onClick={download}>Download credential file</Button>
+              <span className={styles.rowActions}>
+                <Button type="button" variant="primary" onClick={download}>Download credential file</Button>
+                <Button type="button" variant="secondary" onClick={startNew}>Close</Button>
+              </span>
             </>
           )}
         </Panel>
