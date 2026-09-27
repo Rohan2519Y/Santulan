@@ -51,11 +51,11 @@ const err = (message) => Promise.reject(new Error(message));
 beforeEach(() => { jest.clearAllMocks(); });
 
 describe('AdminLayout navigation (T151)', () => {
-  test('the sidebar has exactly the eleven US5/US8 pages and no leftover Item Pools entry', () => {
+  test('the sidebar has the eleven US5/US8 pages plus Response distribution (ASSUMED addition), and no leftover Item Pools entry', () => {
     const labels = NAV_ITEMS.map((i) => i.label);
     expect(labels).toEqual([
       'Overview', 'Participants', 'Institutions', 'Submissions', 'Quality review', 'Reports',
-      'Question sets', 'Assessment control', 'Research exports', 'Audit log', 'Release switches',
+      'Question sets', 'Response distribution', 'Assessment control', 'Research exports', 'Audit log', 'Release switches',
     ]);
     expect(labels).not.toContain('Item Pools');
   });

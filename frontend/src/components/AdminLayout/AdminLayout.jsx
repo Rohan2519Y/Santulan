@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, ClipboardList, ShieldAlert, FileText, ListChecks, SlidersHorizontal, Download, ScrollText, ToggleRight, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, ClipboardList, ShieldAlert, FileText, ListChecks, SlidersHorizontal, Download, ScrollText, ToggleRight, LogOut, Menu, X, ChartBarBig } from 'lucide-react';
 import styles from './AdminLayout.module.css';
 
 export const NAV_ITEMS = [
@@ -11,6 +11,7 @@ export const NAV_ITEMS = [
   { to: '/admin/quality-review', label: 'Quality review', icon: ShieldAlert },
   { to: '/admin/reports', label: 'Reports', icon: FileText },
   { to: '/admin/question-sets', label: 'Question sets', icon: ListChecks },
+  { to: '/admin/response-distribution', label: 'Response distribution', icon: ChartBarBig },
   { to: '/admin/participation', label: 'Assessment control', icon: SlidersHorizontal },
   { to: '/admin/exports', label: 'Research exports', icon: Download },
   { to: '/admin/audit-log', label: 'Audit log', icon: ScrollText },
@@ -56,7 +57,7 @@ export default function AdminLayout({ user, onSignOut, children }) {
           </button>
         </div>
 
-        <nav aria-label="Admin">
+        <nav aria-label="Admin" className={styles.nav}>
           <ul className={styles.navList}>
             {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
               <li key={to}>

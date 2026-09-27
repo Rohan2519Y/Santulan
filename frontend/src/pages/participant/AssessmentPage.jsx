@@ -214,8 +214,8 @@ export default function AssessmentPage() {
           <Button variant="secondary" size="lg" onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0}><ArrowLeft size={20} aria-hidden="true" /> Previous</Button>
           <Button variant="quiet-link" onClick={pause}><Pause size={18} aria-hidden="true" /> Pause</Button>
           {index < items.length - 1
-            ? <Button size="lg" onClick={() => setIndex((i) => i + 1)} disabled={answers[item.itemId] == null}>Next <ArrowRight size={20} aria-hidden="true" /></Button>
-            : <Button size="lg" onClick={submit} disabled={answered < items.length}>Submit my answers</Button>}
+            ? <Button size="lg" onClick={() => setIndex((i) => i + 1)}>Next <ArrowRight size={20} aria-hidden="true" /></Button>
+            : <Button size="lg" onClick={submit}>Submit my answers</Button>}
         </div>
       </div>
     </div>

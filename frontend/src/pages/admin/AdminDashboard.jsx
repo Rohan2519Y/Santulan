@@ -10,6 +10,7 @@ import SubmissionsPage from './SubmissionsPage';
 import QualityReviewPage from './QualityReviewPage';
 import ReportsPage from './ReportsPage';
 import QuestionSetsPage from './QuestionSetsPage';
+import ResponseDistributionPage from './ResponseDistributionPage';
 import ParticipationPage from './ParticipationPage';
 import ExportsPage from './ExportsPage';
 import AuditLogPage from './AuditLogPage';
@@ -39,6 +40,7 @@ export default function AdminDashboard() {
           <Route path="quality-review" element={<QualityReviewPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="question-sets" element={<QuestionSetsPage />} />
+          <Route path="response-distribution" element={<ResponseDistributionPage />} />
           <Route path="participation" element={<ParticipationPage />} />
           <Route path="exports" element={<ExportsPage />} />
           <Route path="audit-log" element={<AuditLogPage />} />

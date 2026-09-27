@@ -52,7 +52,7 @@ describe('assessment player (T131)', () => {
     expect(screen.getAllByRole('radio')).toHaveLength(5);
     expect(screen.getByText('Almost never')).toBeInTheDocument();
     expect(screen.getByText('Almost always')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();       // Next needs an answer
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();        // a question can be skipped
   });
 
   test('an answer is saved with its own idempotency key and never carries a score, a participant or a version id', async () => {
@@ -106,6 +106,14 @@ describe('assessment player (T131)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Submit my answers' }));
     await waitFor(() => expect(api.submit).toHaveBeenCalledTimes(2));
     expect(api.submit.mock.calls[1][1]).toBe(api.submit.mock.calls[0][1]);
+  });
+
+  test('a question can be skipped: Next with no option chosen moves on without saving a response', async () => {
+    await openFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText(ITEMS[1].text);
+    expect(api.saveResponse).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Submit my answers' })).toBeEnabled(); // the last question can also be left unanswered
   });
 
   test('an attempt that is already submitted goes to the progress screen instead of the player', async () => {

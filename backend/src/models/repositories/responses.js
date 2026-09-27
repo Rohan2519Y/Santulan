@@ -25,6 +25,16 @@ async function countCurrent(tx, attemptId) {
   return tx.c.responses.count({ attempt_id: attemptId, is_current: true });
 }
 
+/** Current answers across many attempts, grouped by item and chosen option position - the response-distribution report's
+ * only query (privileged/superAdmin scope only, same as any other aggregate on this collection). */
+async function distributionByItem(tx, attemptIds) {
+  if (!attemptIds.length) return [];
+  return tx.c.responses.aggregate([
+    { $match: { attempt_id: { $in: attemptIds }, is_current: true } },
+    { $group: { _id: { itemId: '$item_id', position: '$response_value' }, count: { $sum: 1 } } },
+  ]);
+}
+
 /** Inserts the next version as the CURRENT answer. */
 async function insertVersion(tx, { attemptId, itemId, value, version, supersedes, responseTimeMs, presentedOrder, idempotencyKey }) {
   const doc = {
@@ -42,4 +52,4 @@ async function retireCurrent(tx, attemptId, response) {
   return r.modified === 1;
 }
 
-module.exports = { findByKey, currentFor, currentByAttempt, countCurrent, insertVersion, retireCurrent };
+module.exports = { findByKey, currentFor, currentByAttempt, countCurrent, distributionByItem, insertVersion, retireCurrent };

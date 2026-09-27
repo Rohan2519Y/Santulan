@@ -5,13 +5,18 @@
 const { HttpError } = require('../../errors');
 const store = require('../../models/db');
 const sets = require('../../models/repositories/questionSets');
+const responsesRepo = require('../../models/repositories/responses');
 const { writeAudit } = require('../audit/auditService');
 const rules = require('../domain/questionSetRules');
+const attemptRules = require('../domain/attemptRules');
 const canonical = require('./canonical');
 const { parseQuestionWorkbook } = require('./questionSetParser');
 const { validate } = require('./questionSetValidator');
 
 const SHOWN_PROBLEMS = 200;
+// ASSUMED (no contract for this report): only attempts that reached SUBMITTED or later make "skipped" meaningful - one
+// still in progress just hasn't reached that question yet, so it isn't counted as skipped or answered either way.
+const COMPLETED_STATUSES = attemptRules.NONTERMINAL.filter((s) => !attemptRules.OPEN_STATES.has(s));
 
 const asAdmin = (actor, fn) => store.withScope(store.superAdminScope(actor.adminUserId), fn, { transaction: true });
 const actorOf = (actor) => ({ actorType: 'ADMIN', actorId: actor.adminUserId });
@@ -208,4 +213,43 @@ async function setItemStatus(actor, setId, itemId, status, reason, correlationId
   });
 }
 
-module.exports = { upload, list, get, freeze, open, close, deleteDraft, setItemStatus, SHOWN_PROBLEMS };
+/**
+ * Per-question response distribution for one assessment (ASSUMED read-only addition, same basis as submissionService's
+ * raw-answers view - the contract never specified this report). For every question in the set: how many completed
+ * attempts chose each option, and how many left it unanswered. Aggregate counts only, never a participant's individual
+ * answers, so unlike submissionService.responses this is not audited (same reasoning as the unaudited get()/list() above).
+ */
+async function responseDistribution(actor, setId) {
+  return store.withScope(store.superAdminScope(actor.adminUserId), async (tx) => {
+    const set = await sets.getSetRaw(tx, setId);
+    if (!set) throw new HttpError(404, 'NOT_FOUND', 'Question set not found');
+    const items = await sets.questionsOf(tx, setId);
+    const attempts = await tx.c.assessment_attempts.find({ assessment_version_id: setId, status: { $in: COMPLETED_STATUSES } }, { projection: { _id: 1 } });
+    const attemptIds = attempts.map((a) => a._id);
+    const totalAttempts = attemptIds.length;
+
+    const counted = await responsesRepo.distributionByItem(tx, attemptIds);
+    const byItem = new Map(); // itemId -> Map(position string -> count)
+    for (const row of counted) {
+      if (!byItem.has(row._id.itemId)) byItem.set(row._id.itemId, new Map());
+      byItem.get(row._id.itemId).set(row._id.position, row.count);
+    }
+
+    const summary = { ...set, question_count: items.length, option_count: items.reduce((n, i) => n + i.options.length, 0) };
+    return {
+      ...sets.toApi(summary),
+      totalAttempts,
+      items: items.map((i) => {
+        const counts = byItem.get(i._id) || new Map();
+        const options = i.options.map((o) => ({ position: o.position, text: o.text, count: counts.get(String(o.position)) || 0 }));
+        const answeredCount = options.reduce((n, o) => n + o.count, 0);
+        return {
+          itemId: i._id, itemCode: i.item_code, domainCode: i.domain_code, displayOrder: i.display_order, questionText: i.item_text,
+          status: i.status, options, answeredCount, skippedCount: totalAttempts - answeredCount,
+        };
+      }).sort((x, y) => (x.displayOrder ?? 0) - (y.displayOrder ?? 0)),
+    };
+  });
+}
+
+module.exports = { upload, list, get, freeze, open, close, deleteDraft, setItemStatus, responseDistribution, SHOWN_PROBLEMS };

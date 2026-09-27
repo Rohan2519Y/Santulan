@@ -143,6 +143,10 @@ export const questionSetApi = {
   delete: (id) => call(`/admin/question-sets/${id}/delete`, { method: 'POST', body: {} }),
   /** Shows or hides one question from participants (status ACTIVE/RETIRED) - only on a frozen set. The question's text and options never change either way. */
   setItemStatus: (setId, itemId, status, reason) => call(`/admin/question-sets/${setId}/items/${itemId}/status`, { method: 'POST', body: { status, reason } }),
+  /** Per-question option counts and skip counts across every completed attempt of this assessment. */
+  responseDistribution: (setId) => call(`/admin/question-sets/${setId}/response-distribution`),
+  /** The same data as an .xlsx workbook (needs the bearer token, so it is fetched and saved rather than linked). */
+  downloadResponseDistribution: (setId) => saveFile(`/admin/question-sets/${setId}/response-distribution/export`, 'santulan-response-distribution.xlsx', 'The response distribution could not be exported.'),
   /** Downloads the blank template (needs the bearer token, so it is fetched and saved rather than linked). */
   downloadTemplate: async () => {
     let res;

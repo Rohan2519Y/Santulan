@@ -7,6 +7,7 @@ const { HttpError } = require('../errors');
 const service = require('../services/questionsets/questionSetService');
 const schemas = require('../services/questionsets/questionSet.schemas');
 const { buildTemplate, TEMPLATE_FILE_NAME } = require('../services/questionsets/template');
+const { buildResponseDistributionWorkbook } = require('../services/questionsets/responseDistributionWorkbook');
 const { MAX_BYTES } = require('../services/questionsets/questionSetParser');
 
 const uploadFile = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES, files: 1 } }).single('file');
@@ -53,6 +54,16 @@ module.exports = {
   close: wrap(async (req, res) => { res.json(await service.close(req.actor, setId(req), req.body.reason, req.correlationId)); }),
   delete: wrap(async (req, res) => { res.json(await service.deleteDraft(req.actor, setId(req), req.correlationId)); }),
   setItemStatus: wrap(async (req, res) => { res.json(await service.setItemStatus(req.actor, setId(req), itemId(req), req.body.status, req.body.reason, req.correlationId)); }),
+  responseDistribution: wrap(async (req, res) => { res.json(await service.responseDistribution(req.actor, setId(req))); }),
+  exportResponseDistribution: async (req, res, next) => {
+    try {
+      const distribution = await service.responseDistribution(req.actor, setId(req));
+      const fileTag = `${distribution.versionLabel}-r${distribution.revision}`.replace(/[^A-Za-z0-9_-]/g, '');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="santulan-response-distribution-${fileTag}.xlsx"`);
+      res.send(await buildResponseDistributionWorkbook(distribution));
+    } catch (err) { next(err); }
+  },
   setId,
   itemId,
   schemas,

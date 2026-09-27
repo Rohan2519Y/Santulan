@@ -74,6 +74,32 @@
   margin-left: auto;
 }
 
+/* The nav list is the ONE scrolling region of the sidebar - brandRow above and footer (user + sign out) below stay put,
+   so sign out is always reachable no matter how many links are added (it was clipped off-screen before this). */
+.nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 calc(var(--sp-4) * -1);
+  padding: 0 var(--sp-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-nav-bg-active) transparent;
+}
+.nav::-webkit-scrollbar {
+  width: 6px;
+}
+.nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nav::-webkit-scrollbar-thumb {
+  background-color: var(--c-nav-bg-active);
+  border-radius: 3px;
+}
+.nav::-webkit-scrollbar-thumb:hover {
+  background-color: var(--c-nav-accent);
+}
+
 .navList {
   list-style: none;
   margin: 0;
