@@ -163,7 +163,10 @@ describe('OTP-verified age declaration and registration state (T03-011, T03-026)
 
     const state = await request(app).get('/api/v1/registration/state').set('Authorization', `Bearer ${res.body.accessToken}`);
     expect(state.status).toBe(200);
-    expect(state.body).toEqual({ santulanId: res.body.santulanId, participationRoute: 'OPEN', assessmentTrack: 'ADOLESCENT', isMinor: true, requiredConsents: ['PARENT_GUARDIAN_CONSENT', 'STUDENT_ASSENT'], attempt: null });
+    expect(state.body).toEqual({
+      santulanId: res.body.santulanId, participationRoute: 'OPEN', assessmentTrack: 'ADOLESCENT', isMinor: true,
+      requiredConsents: ['PARENT_GUARDIAN_CONSENT', 'STUDENT_ASSENT'], attempt: null, profileCompleted: false,
+    });
     expect(JSON.stringify(state.body)).not.toContain(subject);
     expect((await request(app).get('/api/v1/registration/state')).status).toBe(401);
   });

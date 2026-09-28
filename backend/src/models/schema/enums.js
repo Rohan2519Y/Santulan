@@ -44,4 +44,24 @@ module.exports = {
   DEV_STATUS: ['active', 'disabled'],
   DOMAIN: framework.domains.map((d) => d.code),
   SUBDOMAIN: framework.subdomains.map((s) => s.code),
+
+  // Student Demographic & Research Profile Capture Form v1.0 ("the profile form"), Part I section B/C and Part II
+  // section 2/4 - the recommended validation-profile extension (never referenced by C1-C7 scoring; profile form p.9).
+  EDUCATION_STAGE: ['SCHOOL', 'DIPLOMA_VOCATIONAL', 'UNDERGRADUATE', 'POSTGRADUATE', 'NOT_ENROLLED', 'OTHER'], // RP-001
+  CURRENT_CLASS_YEAR: [ // RP-002, profile form Part II section 2 (which codes are valid for which education_stage is a domain rule, not a DB-level check)
+    'GRADE_7_OR_BELOW', 'GRADE_8', 'GRADE_9', 'GRADE_10', 'GRADE_11', 'GRADE_12',
+    'YEAR_1', 'YEAR_2', 'YEAR_3', 'YEAR_4',
+    'UG_YEAR_1', 'UG_YEAR_2', 'UG_YEAR_3', 'UG_YEAR_4', 'UG_YEAR_5',
+    'PG_YEAR_1', 'PG_YEAR_2',
+    'NOT_APPLICABLE', 'OTHER',
+  ],
+  // The form's own language field has no fixed code list (profile form p.6: "use a controlled language list" without
+  // enumerating one) - so the closed set here is the answer MODE (question 7's four checkboxes); the language itself,
+  // when typed, is free text in *_detail (ASSUMED split - ties the mode+detail field pair to the form's own UI, not invented).
+  LANGUAGE_MODE: ['SAME_AS_ASSESSMENT', 'DIFFERENT', 'MULTILINGUAL', 'PREFER_NOT_TO_SAY'], // RP-003
+  MEDIUM_OF_INSTRUCTION: ['ENGLISH', 'HINDI', 'OTHER', 'MIXED', 'NOT_APPLICABLE', 'PREFER_NOT_TO_SAY'], // RP-004
+  GENDER_RESEARCH: ['FEMALE', 'MALE', 'NON_BINARY_OTHER', 'SELF_DESCRIBE', 'PREFER_NOT_TO_SAY'], // RP-005, profile form section 4
+  REGION_MODE: ['STATE_UT', 'BROADER', 'PREFER_NOT_TO_SAY'], // RP-006, question 11's three checkboxes (OPEN route only - domain rule, not a DB-level check)
+  URBANICITY: ['URBAN', 'SEMI_URBAN', 'RURAL', 'OTHER', 'PREFER_NOT_TO_SAY'], // RP-007
+  ACCESSIBILITY_ACCOMMODATION: ['NONE', 'LARGE_TEXT', 'READER', 'EXTRA_TIME', 'TRANSLATION', 'OTHER', 'PREFER_NOT_TO_SAY'], // RP-008
 };

@@ -2,12 +2,16 @@
  * Research export end to end (T137; AT-20, AT-21, AT-28, AT-30, B08-024..083): a populated scratch database is exported through the
  * real endpoints and the real worker (claimAndGenerate), and every sheet of the downloaded workbook is cross-checked against the
  * database it was written from. Generation runs to a scratch temp directory; downloads stream the file and never a path.
+ *
+ * Rebuilt to match "Santulan Pilot - Sample Validation Data After Assessment Submission v1.0" (docs/Santulan 2.0/Profile):
+ * nine sheets (README, PARTICIPANTS, ITEM_RESPONSES_LONG_nn, QUALITY_REVIEW, ATTEMPT_SUMMARY, one VALIDATION_WIDE_<track>,
+ * ITEM_CODEBOOK, RESEARCH_DASHBOARD), participants identified by participant_research_id (not santulan_id), and
+ * ITEM_RESPONSES_LONG carrying an explicit row for every expected item - answered or missing.
  */
 process.env.EXPORT_DIR = require('path').join(require('os').tmpdir(), `santulan-export-t137-${process.pid}`);
 
 const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
 const request = require('supertest');
 const XLSX = require('xlsx');
 const app = require('../../../src/app');
@@ -15,14 +19,13 @@ const f = require('../helpers/committed');
 const F = require('../helpers/fixtures');
 const H = require('../helpers/mongoHarness');
 const { v4: uuidv4 } = require('uuid');
-const RULES_SHEETS = require('../../../src/services/research/workbookWriter').SHEETS;
-const { TRUNCATION_MARKER } = require('../../../src/services/domain/exportRules');
-const { FORBIDDEN_COLUMNS } = require('../../../src/services/research/researchIdentity');
+const { FORBIDDEN_COLUMNS, participantResearchId } = require('../../../src/services/research/researchIdentity');
 const store = require('../../../src/models/db');
 const { claimAndGenerate } = require('../../../src/services/research/exportService');
 
 const EXPORT_DIR = process.env.EXPORT_DIR;
 const INTERNAL = { 'X-Internal-Api-Key': 'test-internal-key' };
+const ITEMS_PER_SET = 14; // f.openSet({ perDomain: 2 }) below: 7 domains x 2
 const api = () => request(app);
 const auth = (who) => ({ Authorization: `Bearer ${who.token}` });
 const post = (p, who, body) => api().post(`/api/v1${p}`).set(auth(who)).send(body);
@@ -48,13 +51,13 @@ async function iPart({ institution_id, cohort_id, status = 'ACTIVE', age = 16 })
   return { participantId: doc._id, token: f.participantToken(doc._id), santulanId: doc.santulan_id, status };
 }
 
-/** Creates an attempt through the endpoint (201), answers every question and returns the attempt id. */
-async function attemptFor(p) {
+/** Creates an attempt through the endpoint (201) and answers every question. `answer` overrides which items are answered. */
+async function attemptFor(p, answer = () => '3') {
   const created = await post('/attempts', p);
   expect(created.status).toBe(201);
   const id = created.body.attemptId;
   expect((await post(`/attempts/${id}/sessions/resume`, p)).status).toBe(200);
-  await f.answerAll(id, () => '3');
+  await f.answerAll(id, answer);
   return id;
 }
 
@@ -105,11 +108,15 @@ const sheetOf = (wb, name) => {
   return ws ? XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false }) : null;
 };
 const dataRows = (sheet) => (sheet || []).slice(1).filter((r) => r.some((c) => c !== null && c !== undefined && c !== ''));
-const itemResponseRows = (wb) => Object.keys(wb.Sheets).filter((n) => n.startsWith('ITEM_RESPONSES'))
-  .reduce((sum, n) => sum + dataRows(sheetOf(wb, n)).length, 0);
+const rowsOf = (wb, name) => dataRows(sheetOf(wb, name)).length;
+const irSheetNames = (wb) => Object.keys(wb.Sheets).filter((n) => n.startsWith('ITEM_RESPONSES_LONG'));
+const irRows = (wb) => irSheetNames(wb).reduce((sum, n) => sum + dataRows(sheetOf(wb, n)).length, 0);
+const readmeText = (wb) => (sheetOf(wb, 'README') || []).flat().map((c) => (c === null ? '' : String(c))).join(' ');
 
-/** Mirrors exportService.buildScope + the identity policy so workbook counts can be compared with the database they came from. */
-async function expectedCounts({ institutionId, cohortId, status, dateFrom, dateTo, allVersions = false } = {}) {
+/** Mirrors buildScope + the identity policy, plus the new attempt x item-catalog model, so workbook counts can be
+ * compared with the database they came from. Every fixture attempt below is fully answered via f.answerAll, except
+ * `partialAttempt` (deliberately created with some items skipped) - see beforeAll. */
+async function expectedCounts({ institutionId, cohortId, status, dateFrom, dateTo } = {}) {
   const attemptFilter = { assessment_version_id: S.setId };
   if (dateFrom || dateTo) {
     attemptFilter.created_at = {};
@@ -125,34 +132,25 @@ async function expectedCounts({ institutionId, cohortId, status, dateFrom, dateT
   const allowed = people.filter((p) => p.status !== 'WITHDRAWN');
   const allowedIds = new Set(allowed.map((p) => p._id));
   const allowedAttempts = attempts.filter((a) => allowedIds.has(a.participant_id));
-  const respFilter = { attempt_id: { $in: allowedAttempts.map((a) => a._id) } };
-  if (!allVersions) respFilter.is_current = true;
   const count = (coll, filter) => db.collection(coll).countDocuments(filter);
+  const missing = await db.collection('responses').aggregate([
+    { $match: { attempt_id: { $in: allowedAttempts.map((a) => a._id) }, is_current: true } },
+    { $group: { _id: '$attempt_id', n: { $sum: 1 } } },
+  ]).toArray();
+  const answeredByAttempt = new Map(missing.map((m) => [String(m._id), m.n]));
+  const totalMissing = allowedAttempts.reduce((sum, a) => sum + (ITEMS_PER_SET - (answeredByAttempt.get(String(a._id)) || 0)), 0);
   return {
     attempts: allowedAttempts.length, participants: allowed.length, withdrawn: people.length - allowed.length,
-    responses: await count('responses', respFilter),
-    scores: await count('score_results', { attempt_id: { $in: allowedAttempts.map((a) => a._id) } }),
-    events: await count('response_events', { attempt_id: { $in: allowedAttempts.map((a) => a._id) } }),
-    quality: await count('quality_flags', { attempt_id: { $in: allowedAttempts.map((a) => a._id) } }),
+    itemResponseRows: allowedAttempts.length * ITEMS_PER_SET, // every expected item gets a row, answered or missing
+    missingRows: totalMissing,
+    quality: await count('quality_flags', { attempt_id: { $in: allowedAttempts.map((a) => a._id) }, flag_code: { $ne: 'Q09' } }),
   };
 }
 
-function metadataRows(wb) {
-  return dataRows(sheetOf(wb, 'EXPORT_METADATA'));
-}
-const metadataValue = (wb, key) => {
-  const row = metadataRows(wb).find((r) => String(r[0]) === key);
-  return row ? String(row[1]) : undefined;
-};
-
-/** How many data rows the sheet actually carries. */
-const rowsOf = (wb, name) => dataRows(sheetOf(wb, name)).length;
-const itemResponsesOf = (wb, name) => {
-  const rows = dataRows(sheetOf(wb, name));
-  return rows;
-};
-
 const dated = (daysAgo) => new Date(Date.now() - daysAgo * 24 * 3600 * 1000).toISOString().slice(0, 10);
+
+let partialAttempt; // deliberately answers only the first 5 of 14 items, to exercise missing-row synthesis
+let partialParticipant;
 
 beforeAll(async () => {
   db = await H.admin();
@@ -166,28 +164,24 @@ beforeAll(async () => {
   const instB = await f.institution('ACTIVE');
   const cohB = await f.cohort(instB, 'ACTIVE');
 
-  // text a spreadsheet could read as a formula: the export must escape it (B08-033)
-  const formulaInst = F.institution({ institution_code: '=EVAL(0)' });
-  await db.collection('institutions').insertOne(formulaInst);
-  await db.collection('cohorts').insertOne(F.cohort(formulaInst._id, { cohort_code: '+CMD(1)' }));
+  // text a spreadsheet could read as a formula: the export must escape it (B08-033). instA/cohA (not an unlinked
+  // fixture institution) so the codes actually reach a real participant's exported rows - the new sheet set has no
+  // standalone cohort-metadata sheet that would list an institution regardless of participant linkage.
+  await db.collection('institutions').updateOne({ _id: instA }, { $set: { institution_code: '=EVAL(0)' } });
+  await db.collection('cohorts').updateOne({ _id: cohA }, { $set: { cohort_code: '+CMD(1)' } });
 
   const oldA = await iPart({ institution_id: instA, cohort_id: cohA });
   const oldAttempt = await scoredAttempt(oldA);
   await db.collection('assessment_attempts').updateOne({ _id: oldAttempt }, { $set: { created_at: new Date(Date.now() - 30 * 24 * 3600 * 1000) } });
   await db.collection('responses').updateMany({ attempt_id: oldAttempt }, { $set: { answered_at: new Date(Date.now() - 30 * 24 * 3600 * 1000) } });
-  const eventsT = new Date(Date.now() - 30 * 24 * 3600 * 1000);
-  await db.collection('response_events').insertMany([
-    F.responseEvent(oldAttempt, { event_type: 'QUALITY_CHECK_COMPLETED', occurred_at: eventsT, metadata: { notes: 'x'.repeat(40000) } }),
-    F.responseEvent(oldAttempt, { event_type: 'REPORT_RETRY', occurred_at: eventsT, metadata: { note: 'ordinary long-running event metadata' } }),
-    F.responseEvent(oldAttempt, { event_type: 'SESSION_START', occurred_at: eventsT }),
-  ]);
 
   const A = [];
   for (let i = 0; i < 6; i += 1) { const p = await iPart({ institution_id: instA, cohort_id: cohA }); A.push(p); await scoredAttempt(p); }
   const B = [];
   for (let i = 0; i < 4; i += 1) { const p = await iPart({ institution_id: instB, cohort_id: cohB }); B.push(p); await scoredAttempt(p); }
 
-  // version-2 supersession on the first B attempt: v1 stays in the archive, only v2 "counts"
+  // version-2 supersession on the first B attempt: v1 stays in the archive, only v2 "counts" (is_current) - the
+  // export always reads is_current, so this attempt still shows as fully answered with zero missing rows
   const bParts = await db.collection('assessment_attempts').find({ participant_id: B[0].participantId }, { projection: { _id: 1 } }).toArray();
   const bAttempt = bParts[0]._id;
   const oldDocs = await db.collection('responses').find({ attempt_id: bAttempt }).toArray();
@@ -195,17 +189,18 @@ beforeAll(async () => {
   await db.collection('responses').updateMany({ attempt_id: bAttempt }, { $set: { is_current: false } });
   await db.collection('responses').insertMany(replacements);
 
-  // one OPEN, never-submitted attempt with quality flags (Q03 + Q07) and a couple of events
+  // one OPEN, never-submitted attempt with quality flags (Q03 + Q07)
   const openP = await iPart({ institution_id: instB, cohort_id: cohB });
   const openAttempt = await attemptFor(openP);
   await db.collection('quality_flags').insertMany([
     F.qualityFlag(openAttempt, { flag_code: 'Q03', severity: 'MEDIUM', disposition: 'UNREVIEWED' }),
     F.qualityFlag(openAttempt, { flag_code: 'Q07', severity: 'LOW', disposition: 'UNREVIEWED' }),
   ]);
-  await db.collection('response_events').insertMany([
-    F.responseEvent(openAttempt, { event_type: 'SESSION_START', session_number: 1 }),
-    F.responseEvent(openAttempt, { event_type: 'SESSION_END', session_number: 2 }),
-  ]);
+
+  // deliberately partial: answers only the first 5 of 14 items, to exercise ITEM_RESPONSES_LONG's missing rows and
+  // ATTEMPT_SUMMARY's completion/capture-class/readiness classification
+  partialParticipant = await iPart({ institution_id: instA, cohort_id: cohA });
+  partialAttempt = await attemptFor(partialParticipant, ({ order }) => (order <= 5 ? '3' : null));
 
   // two participants score and only later withdraw: exported as excluded, never as rows
   const W = [];
@@ -248,10 +243,6 @@ describe('research export request and worker lifecycle (B08-024, B08-028, B08-03
   });
 
   test('B08-028 a key can be claimed exactly once even under concurrency', async () => {
-    // Same key, same payload, genuinely simultaneous: the loser detects the winner's deterministic-id write conflict
-    // (IDEMPOTENCY_RACE), retries internally, and re-reads the winner's committed outcome - the documented replay
-    // semantics of shared/idempotency.js ("same key + same payload => replay"), so the loser is a 200, not a 409
-    // (409 is reserved for the same key with a DIFFERENT payload, covered by B08-050).
     const key = claimKey('once');
     const [a, b] = await Promise.all([claim(admin, key, {}), claim(admin, key, {})]);
     const ok = [a, b].filter((r) => r.status === 202);
@@ -259,7 +250,7 @@ describe('research export request and worker lifecycle (B08-024, B08-028, B08-03
     expect(ok).toHaveLength(1);
     expect(dup).toHaveLength(1);
     expect(dup[0].status).toBe(200);
-    expect(dup[0].body.exportId).toBe(ok[0].body.exportId); // only one export document was ever created for this key
+    expect(dup[0].body.exportId).toBe(ok[0].body.exportId);
     const exportId = ok[0].body.exportId;
     exportIds.push(exportId);
     const done = await claimAndGenerate(exportId);
@@ -323,6 +314,11 @@ describe('research export request validation (B08-025, B08-026, B08-027, B08-054
     expect(res.body.error.code).toBe('EXPORT_FILTER_UNKNOWN');
   });
 
+  test('B08-026b includeAllVersions is no longer a request field - it is refused as an unknown key, not silently accepted', async () => {
+    const res = await api().post('/api/v1/research-exports').set(auth(admin)).set('Idempotency-Key', claimKey('iav')).send({ sourceAssessmentVersionId: S.setId, anonymisationVersion: 'fx-anon-v1', includeAllVersions: true });
+    expect(res.status).toBe(400); // top-level strictObject: unrecognised key
+  });
+
   test('B08-027 an invalid filter value is a 422', async () => {
     const res = await api().post('/api/v1/research-exports').set(auth(admin)).set('Idempotency-Key', claimKey('fval')).send({ sourceAssessmentVersionId: S.setId, anonymisationVersion: 'fx-anon-v1', filters: { participantStatus: 'BANANA' } });
     expect(res.status).toBe(422);
@@ -344,101 +340,111 @@ describe('research export request validation (B08-025, B08-026, B08-027, B08-054
     expect(fs.existsSync(path.join(EXPORT_DIR, `${e.body.exportId}.xlsx`))).toBe(false);
     const s = (await get(`/research-exports/${e.body.exportId}`, admin)).body;
     expect(s.status).toBe('FAILED');
-    // a plain JSON-aware request here, not the byte-buffering download() helper: this response is the error body, not a file
     const res = await get(`/research-exports/${e.body.exportId}/download`, admin);
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('INVALID_STATE');
   });
 
   test('B08-034 a failed generation leaves no file and a fresh key still works afterwards', async () => {
-    const failed = await claim(admin, claimKey('fail2'), {});
-    exportIds.push(failed.body.exportId);
+    const failedReq = await claim(admin, claimKey('fail2'), {});
+    exportIds.push(failedReq.body.exportId);
     const spy = jest.spyOn(fs, 'renameSync').mockImplementationOnce(() => { throw new Error('boom'); });
-    const done = await claimAndGenerate(failed.body.exportId);
+    const done = await claimAndGenerate(failedReq.body.exportId);
     spy.mockRestore();
     expect(done.status).toBe('FAILED');
-    const leftovers = fs.existsSync(path.join(EXPORT_DIR, failed.body.exportId)) || fs.existsSync(path.join(EXPORT_DIR, `${failed.body.exportId}.xlsx`));
+    const leftovers = fs.existsSync(path.join(EXPORT_DIR, failedReq.body.exportId)) || fs.existsSync(path.join(EXPORT_DIR, `${failedReq.body.exportId}.xlsx`));
     expect(leftovers).toBe(false);
     const ok = await claimAndGenerateOne(claimKey('afresh'), {});
     expect(ok.status).toBe('READY');
   });
 });
 
-describe('research export workbook contents (AT-20, AT-21, AT-28, AT-30, B08-029..B08-033, B08-040, B08-055..B08-059)', () => {
-  test('AT-28 + AT-21 + B08-040 the workbook reconciles with the partition plan: every sheet row count matches the database', async () => {
-    const { e, wb } = await master();
-    const exp = await expectedCounts();
-    const sheets = {};
-    for (const name of wb.SheetNames) sheets[name] = rowsOf(wb, name);
-    expect(sheets.README).toBeGreaterThan(0);
-    expect(sheets.DATA_DICTIONARY).toBeGreaterThan(0);
-    expect(sheets.PARTICIPANTS).toBe(exp.participants);
-    expect(sheets.ATTEMPTS).toBe(exp.attempts);
-    expect(sheets.DOMAIN_SCORES).toBe(exp.scores);
-    expect(sheets.QUALITY_FLAGS).toBe(exp.quality);
-    expect(sheets.RESPONSE_EVENTS).toBe(exp.events);
-    expect(sheets.ASSESSMENT_VERSION).toBe(1);
-    expect(sheets.COHORT_METADATA).toBeGreaterThan(0);
-    expect(itemResponsesOf(wb, 'ITEM_RESPONSES_01')).toHaveLength(sheets.ITEM_RESPONSES_01);
-    // STN-outer: the number of answer rows equals the frozen attempt answer total in the database
-    expect(sheets.ITEM_RESPONSES_01).toBe(exp.responses);
-    // EXPORT_METADATA states what was written, per sheet, and the file agrees
-    // EXPORT_METADATA cannot state its own row count (not known until it is written), so every OTHER sheet only
-    for (const name of wb.SheetNames) { if (name === 'EXPORT_METADATA') continue; expect(metadataValue(wb, `rows_${name}`)).toBe(String(sheets[name])); }
-    expect(metadataValue(wb, 'export_id')).toBe(e.exportId);
-    expect(metadataValue(wb, 'withdrawn_participants_excluded')).toBe(String(exp.withdrawn));
-  });
-
-  test('B08-029 workbook sheet order matches the export contract', async () => {
+describe('research export workbook contents (AT-20, AT-21, AT-28, AT-30, B08-029..B08-033, B08-055..B08-059)', () => {
+  test('the workbook has exactly the nine sheets of the sample format, in order (ADOLESCENT track: VALIDATION_WIDE_ADO only)', async () => {
     const { wb } = await master();
-    expect(wb.SheetNames).toEqual(['README', 'DATA_DICTIONARY', 'PARTICIPANTS', 'ATTEMPTS', 'ITEM_RESPONSES_01', 'DOMAIN_SCORES', 'QUALITY_FLAGS', 'RESPONSE_EVENTS', 'ASSESSMENT_VERSION', 'COHORT_METADATA', 'EXPORT_METADATA']);
+    expect(wb.SheetNames).toEqual(['README', 'PARTICIPANTS', 'ITEM_RESPONSES_LONG_01', 'ATTEMPT_SUMMARY', 'QUALITY_REVIEW', 'VALIDATION_WIDE_ADO', 'ITEM_CODEBOOK', 'RESEARCH_DASHBOARD']);
   });
 
-  test('AT-30 + B08-030 no direct-identity column survives in any sheet, and the opaque Santulan ID is the only identifier', async () => {
+  test('AT-28 + AT-21 every sheet row count matches the database it was written from, including synthesised missing rows', async () => {
+    const { wb } = await master();
+    const exp = await expectedCounts();
+    expect(rowsOf(wb, 'PARTICIPANTS')).toBe(exp.participants);
+    expect(rowsOf(wb, 'ATTEMPT_SUMMARY')).toBe(exp.attempts);
+    expect(rowsOf(wb, 'VALIDATION_WIDE_ADO')).toBe(exp.attempts);
+    expect(rowsOf(wb, 'QUALITY_REVIEW')).toBe(exp.quality);
+    expect(rowsOf(wb, 'ITEM_CODEBOOK')).toBeGreaterThan(0);
+    expect(irRows(wb)).toBe(exp.itemResponseRows);
+  });
+
+  test('AT-30 + B08-030 no direct-identity column survives in any sheet, and participant_research_id is the only identifier', async () => {
     const { wb } = await master();
     for (const name of wb.SheetNames) {
-      const header = (sheetOf(wb, name) || [])[0] || []; // the raw sheet's first row (dataRows already strips it)
+      const header = (sheetOf(wb, name) || [])[0] || [];
       for (const cell of header) expect(FORBIDDEN_COLUMNS.has(String(cell).toLowerCase())).toBe(false);
+      expect(header).not.toContain('santulan_id');
     }
-    const participantsPrefix = dataRows(sheetOf(wb, 'PARTICIPANTS')).map((r) => String(r[0]));
-    expect(participantsPrefix.length).toBeGreaterThan(0);
-    expect(participantsPrefix.every((id) => id.startsWith('STN-'))).toBe(true);
-    const attempts = dataRows(sheetOf(wb, 'ATTEMPTS'));
-    for (const row of attempts) expect(String(row[1])).toMatch(/^STN-/); // santulan_id column (0 = attempt_id, 1 = santulan_id)
+    const participantIds = dataRows(sheetOf(wb, 'PARTICIPANTS')).map((r) => String(r[0]));
+    expect(participantIds.length).toBeGreaterThan(0);
+    expect(participantIds.every((id) => /^PR-\d{6}$/.test(id))).toBe(true);
+    // the pseudonym is stable and deterministic: recomputing it from the fixture's own santulan_id matches the file
+    const p = global.T137_SCOPE.A[0];
+    expect(participantIds).toContain(participantResearchId(p.santulanId));
   });
 
-  test('B08-055 ITEM_RESPONSES carries the contract headers and no item text or direct identity', async () => {
+  test('ITEM_RESPONSES_LONG carries domain/subdomain context, an explicit missing row per unanswered item, and no item text or direct identity', async () => {
     const { wb } = await master();
-    const header = (sheetOf(wb, 'ITEM_RESPONSES_01') || [])[0];
-    expect(header).toEqual(Object.keys(RULES_SHEETS.ITEM_RESPONSES.columns));
+    const header = (sheetOf(wb, 'ITEM_RESPONSES_LONG_01') || [])[0];
+    expect(header).toEqual(['research_record_id', 'participant_research_id', 'attempt_id', 'assessment_form', 'assessment_version', 'item_code', 'domain_code', 'subdomain_code', 'response_value', 'missing_flag', 'response_version', 'is_current', 'response_timestamp', 'time_spent_ms']);
     expect(header).not.toContain('item_text');
     expect(header).not.toContain('participant_id');
-    const rows = dataRows(sheetOf(wb, 'ITEM_RESPONSES_01'));
-    expect(rows.length).toBeGreaterThan(0);
-    for (const row of rows) {
-      expect(Number(row[4])).toBeGreaterThan(0); // response_value position (0=response_id,1=attempt_id,2=santulan_id,3=item_code,4=response_value)
-      expect(String(row[3])).toMatch(/^C\d-0\d$/); // item_code
-    }
+
+    const rows = dataRows(sheetOf(wb, 'ITEM_RESPONSES_LONG_01'));
+    const partialRows = rows.filter((r) => String(r[2]) === String(partialAttempt));
+    expect(partialRows).toHaveLength(ITEMS_PER_SET); // one row per expected item, answered or missing
+    expect(partialRows.filter((r) => r[9] === 'YES')).toHaveLength(ITEMS_PER_SET - 5); // 5 answered, 9 missing
+    expect(partialRows.filter((r) => r[9] === 'NO')).toHaveLength(5);
+    for (const r of partialRows.filter((r2) => r2[9] === 'NO')) expect(Number(r[8])).toBeGreaterThan(0); // response_value on an answered row
+    for (const r of partialRows.filter((r2) => r2[9] === 'YES')) expect(r[8]).toBeNull(); // no response_value on a missing row
   });
 
-  test('B08-031 DOMAIN_SCORES carries the contract headers and one row per scored domain', async () => {
+  test('ATTEMPT_SUMMARY classifies completion the same way domain-level scoring already does, and derives validation_data_status', async () => {
     const { wb } = await master();
-    const header = (sheetOf(wb, 'DOMAIN_SCORES') || [])[0];
-    expect(header).toEqual(Object.keys(RULES_SHEETS.DOMAIN_SCORES.columns));
-    const rows = dataRows(sheetOf(wb, 'DOMAIN_SCORES'));
-    expect(rows).toHaveLength(await expectedCounts().then((e) => e.scores));
-    const domains = new Set(rows.map((r) => r[2]));
-    expect([...domains].sort()).toEqual(['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']);
+    const header = (sheetOf(wb, 'ATTEMPT_SUMMARY') || [])[0];
+    expect(header).toEqual(['participant_research_id', 'attempt_id', 'assessment_form', 'assessment_version', 'age_years_at_attempt', 'developmental_band', 'attempt_status', 'total_items_expected', 'total_items_answered', 'completion_pct', 'missing_item_count', 'capture_class', 'quality_flag_count', 'validation_data_status', 'submitted_at']);
+    const rows = dataRows(sheetOf(wb, 'ATTEMPT_SUMMARY'));
+    const partialRow = rows.find((r) => String(r[1]) === String(partialAttempt));
+    expect(partialRow).toBeDefined();
+    expect(partialRow[5]).toBe('D2'); // developmental_band - partialParticipant is registered at age 16 (registrationRules: <=17 -> D2); must not be blank
+    expect(Number(partialRow[7])).toBe(ITEMS_PER_SET); // total_items_expected
+    expect(Number(partialRow[8])).toBe(5); // total_items_answered
+    expect(Number(partialRow[10])).toBe(ITEMS_PER_SET - 5); // missing_item_count
+    expect(partialRow[11]).toBe('INSUFFICIENT'); // 5/14 = 35.7%, at or below the 60% boundary (scoringRules.completenessStatus)
+    expect(partialRow[13]).toBe('NOT_READY');
+
+    const fullyAnswered = rows.find((r) => Number(r[8]) === ITEMS_PER_SET && r[11] === 'COMPLETE');
+    expect(fullyAnswered).toBeDefined();
   });
 
-  test('B08-032 QUALITY_FLAGS carries its flags and never the Q09 code', async () => {
+  test('QUALITY_REVIEW carries its flags and never the Q09 code', async () => {
     const { wb } = await master();
-    const header = (sheetOf(wb, 'QUALITY_FLAGS') || [])[0];
-    expect(header).toEqual(Object.keys(RULES_SHEETS.QUALITY_FLAGS.columns));
-    const codes = dataRows(sheetOf(wb, 'QUALITY_FLAGS')).map((r) => String(r[3]));
+    const header = (sheetOf(wb, 'QUALITY_REVIEW') || [])[0];
+    expect(header).toEqual(['flag_id', 'participant_research_id', 'attempt_id', 'flag_code', 'domain_code', 'severity', 'disposition', 'detected_at', 'reviewed_at']);
+    const codes = dataRows(sheetOf(wb, 'QUALITY_REVIEW')).map((r) => String(r[3]));
     expect(codes).toContain('Q03');
     expect(codes).toContain('Q07');
     expect(codes).not.toContain('Q09');
+  });
+
+  test('VALIDATION_WIDE_ADO has one column per expected item and no score columns; a missing item is a blank cell', async () => {
+    const { wb } = await master();
+    const header = (sheetOf(wb, 'VALIDATION_WIDE_ADO') || [])[0];
+    expect(header.slice(0, 8)).toEqual(['participant_research_id', 'attempt_id', 'institution_code', 'cohort_code', 'age_years', 'developmental_band', 'assessment_form', 'assessment_version']);
+    expect(header.length - 8).toBe(ITEMS_PER_SET);
+    const rows = dataRows(sheetOf(wb, 'VALIDATION_WIDE_ADO'));
+    const partialRow = rows.find((r) => String(r[1]) === String(partialAttempt));
+    expect(partialRow[5]).toBe('D2'); // developmental_band - must not be blank
+    const itemCells = partialRow.slice(8);
+    expect(itemCells.filter((c) => c !== null && c !== '')).toHaveLength(5);
   });
 
   test('B08-033 formula-lookalike text is written inert, never executed', async () => {
@@ -446,44 +452,25 @@ describe('research export workbook contents (AT-20, AT-21, AT-28, AT-30, B08-029
     const cells = wb.SheetNames.flatMap((name) => dataRows(sheetOf(wb, name)).flatMap((r) => r.map((c) => (c === null || c === undefined ? '' : String(c)))));
     const hit = cells.find((c) => c.replace(/^'/, '') === '=EVAL(0)');
     expect(hit).toBeDefined();
-    expect(hit.startsWith("'")).toBe(true); // the escape is what keeps the cell inert
+    expect(hit.startsWith("'")).toBe(true);
     const plus = cells.find((c) => c.replace(/^'/, '') === '+CMD(1)');
     expect(plus).toBeDefined();
     expect(plus.startsWith("'")).toBe(true);
     expect(cells.some((c) => c.startsWith('=') && !c.startsWith("'"))).toBe(false);
   });
 
-  test('B08-071 oversized metadata is truncated with the truncation marker', async () => {
-    const { wb } = await master();
-    const metaCells = dataRows(sheetOf(wb, 'RESPONSE_EVENTS')).map((r) => String(r[6] || '')).filter((c) => c.length > 1000);
-    expect(metaCells.length).toBeGreaterThan(0);
-    for (const cell of metaCells) {
-      expect(cell.length).toBeGreaterThanOrEqual(32000);
-      expect(cell.endsWith(TRUNCATION_MARKER)).toBe(true);
-      expect(cell.length).toBeLessThanOrEqual(32000 + TRUNCATION_MARKER.length + 8);
-    }
-  });
-
-  test('B08-056 + B08-057 the current-only dataset is the baseline and metadata is present for every sheet', async () => {
-    const { wb } = await master();
-    const meta = metadataRows(wb);
-    // EXPORT_METADATA cannot state its own row count (the count isn't known until it is written), so every OTHER sheet only
-    for (const name of wb.SheetNames) { if (name === 'EXPORT_METADATA') continue; expect(meta.some((r) => r[0] === `rows_${name}`)).toBe(true); }
-    expect(metadataValue(wb, 'dataset')).toBe('current-only');
-    expect(metadataValue(wb, 'include_all_versions')).toBe('false');
-  });
-
-  test('B08-058 the all-versions dataset adds exactly the superseded answers and nothing else', async () => {
-    const { e, wb } = await master();
-    const { wb: aWb } = await filtered('allv', { includeAllVersions: true });
-    const all = itemResponseRows(aWb);
-    const current = itemResponseRows(wb);
-    const expectedAll = await expectedCounts({ allVersions: true });
-    expect(all).toBe(expectedAll.responses);
-    expect(all - current).toBe(14); // the superseded v1 responses of one B attempt
-    expect(metadataValue(aWb, 'dataset')).toBe('all-versions');
-    expect(metadataValue(aWb, 'include_all_versions')).toBe('true');
-    expect(e.exportId).toBeDefined();
+  test('B08-075 + B08-059 the README ships with the workbook, names the export, and downloads expose no export-directory path', async () => {
+    const { e } = await master();
+    const res = await workbookOf(e.exportId, admin);
+    const wb = XLSX.read(res.body, { type: 'buffer' });
+    const text = readmeText(wb).toLowerCase();
+    expect(text).toContain('santulan research export');
+    expect(text).toContain('participant_research_id');
+    expect(text).toContain(e.exportId.toLowerCase());
+    const disposition = String(res.headers['content-disposition']);
+    expect(disposition).toMatch(/santulan_research_export_\d{4}-\d{2}-\d{2}\.xlsx/);
+    expect(disposition).not.toContain('santulan-export-t137');
+    expect(Buffer.from(res.body).includes(Buffer.from(EXPORT_DIR))).toBe(false);
   });
 });
 
@@ -492,13 +479,13 @@ describe('research export filters (B08-065, B08-066, B08-067, B08-082, AT-20)', 
     const z = global.T137_SCOPE;
     const { wb } = await filtered('instA', { filters: { institutionId: z.instA } });
     const exp = await expectedCounts({ institutionId: z.instA });
-    expect(exp.participants).toBe(7); // A1..A7 (withdrawn A-people are excluded by the policy, not the filter)
-    expect(rowsOf(wb, 'ATTEMPTS')).toBe(exp.attempts);
-    expect(rowsOf(wb, 'ITEM_RESPONSES_01')).toBe(exp.responses);
+    expect(exp.participants).toBe(8); // A1..A7 + the partial-answer participant (withdrawn A-people excluded by the policy, not the filter)
+    expect(rowsOf(wb, 'ATTEMPT_SUMMARY')).toBe(exp.attempts);
+    expect(irRows(wb)).toBe(exp.itemResponseRows);
     expect(rowsOf(wb, 'PARTICIPANTS')).toBe(exp.participants);
-    const allCells = [...wb.SheetNames].filter((n) => !['README', 'DATA_DICTIONARY', 'EXPORT_METADATA', 'ASSESSMENT_VERSION'].includes(n))
+    const allCells = wb.SheetNames.filter((n) => n !== 'README')
       .flatMap((n) => dataRows(sheetOf(wb, n)).flatMap((r) => r.map((c) => String(c))));
-    expect(allCells.some((c) => c.startsWith('STN-') && c === global.T137_SCOPE.W.find((w) => w === c))).toBe(false);
+    expect(allCells.some((c) => z.W.some((w) => participantResearchId(w) === c))).toBe(false);
   });
 
   test('B08-065 the cohort filter limits every sheet to that cohort', async () => {
@@ -506,12 +493,12 @@ describe('research export filters (B08-065, B08-066, B08-067, B08-082, AT-20)', 
     const { wb } = await filtered('coh', { filters: { cohortId: z.cohA } });
     const exp = await expectedCounts({ cohortId: z.cohA });
     expect(exp.attempts).toBeGreaterThan(0);
-    expect(rowsOf(wb, 'ATTEMPTS')).toBe(exp.attempts);
+    expect(rowsOf(wb, 'ATTEMPT_SUMMARY')).toBe(exp.attempts);
     expect(rowsOf(wb, 'PARTICIPANTS')).toBe(exp.participants);
-    expect(rowsOf(wb, 'ITEM_RESPONSES_01')).toBe(exp.responses);
+    expect(irRows(wb)).toBe(exp.itemResponseRows);
     const bAttempts = await db.collection('assessment_attempts').find({ assessment_version_id: S.setId }).toArray();
-    const bIds = new Set(bAttempts.filter((a) => global.T137_SCOPE.B.some((p) => p.participantId === a.participant_id)).map((a) => String(a._id)));
-    const attemptCells = dataRows(sheetOf(wb, 'ATTEMPTS')).map((r) => String(r[0]));
+    const bIds = new Set(bAttempts.filter((a) => z.B.some((p) => p.participantId === a.participant_id)).map((a) => String(a._id)));
+    const attemptCells = dataRows(sheetOf(wb, 'ATTEMPT_SUMMARY')).map((r) => String(r[1]));
     for (const id of attemptCells) expect(bIds.has(id)).toBe(false);
   });
 
@@ -520,34 +507,20 @@ describe('research export filters (B08-065, B08-066, B08-067, B08-082, AT-20)', 
     const exp = await expectedCounts({ status: 'ACTIVE' });
     expect(exp.withdrawn).toBe(0);
     expect(rowsOf(wb, 'PARTICIPANTS')).toBe(exp.participants);
-    expect(rowsOf(wb, 'ATTEMPTS')).toBe(exp.attempts);
+    expect(rowsOf(wb, 'ATTEMPT_SUMMARY')).toBe(exp.attempts);
     const z = global.T137_SCOPE;
-    const allCells = wb.SheetNames.flatMap((n) => dataRows(sheetOf(wb, n || 'README')).flatMap((r) => r.map((c) => String(c))));
-    for (const w of z.W) expect(allCells).not.toContain(w);
+    const allCells = wb.SheetNames.flatMap((n) => dataRows(sheetOf(wb, n)).flatMap((r) => r.map((c) => String(c))));
+    for (const w of z.W) expect(allCells).not.toContain(participantResearchId(w));
   });
 
-  test('B08-082 dateFrom/dateTo restrict response rows to attempts in the window', async () => {
+  test('B08-082 dateFrom/dateTo restrict attempt rows to the window', async () => {
     const z = global.T137_SCOPE;
     const { wb } = await filtered('dates', { filters: { dateFrom: dated(7), dateTo: dated(0) } });
     const exp = await expectedCounts({ dateFrom: dated(7), dateTo: dated(0) });
-    expect(rowsOf(wb, 'ATTEMPTS')).toBe(exp.attempts);
-    expect(rowsOf(wb, 'ITEM_RESPONSES_01')).toBe(exp.responses);
-    const attemptCells = dataRows(sheetOf(wb, 'ATTEMPTS')).map((r) => String(r[0]));
+    expect(rowsOf(wb, 'ATTEMPT_SUMMARY')).toBe(exp.attempts);
+    expect(irRows(wb)).toBe(exp.itemResponseRows);
+    const attemptCells = dataRows(sheetOf(wb, 'ATTEMPT_SUMMARY')).map((r) => String(r[1]));
     expect(attemptCells).not.toContain(String(z.oldAttempt));
-  });
-
-  test('B08-075 + B08-059 the README ships with the workbook and downloads expose no export-directory path', async () => {
-    const { e } = await master();
-    const res = await workbookOf(e.exportId, admin);
-    const wb = XLSX.read(res.body, { type: 'buffer' });
-    // the phrase lives in the sheet's own header cell (dataRows strips it), so read the raw sheet, header included
-    const text = (sheetOf(wb, 'README') || []).flat().map(String).join(' ');
-    expect(text.toLowerCase()).toContain('santulan research export');
-    expect(text.toLowerCase()).toContain('opaque santulan id');
-    const disposition = String(res.headers['content-disposition']);
-    expect(disposition).toMatch(/santulan_research_export_\d{4}-\d{2}-\d{2}\.xlsx/);
-    expect(disposition).not.toContain('santulan-export-t137');
-    expect(Buffer.from(res.body).includes(Buffer.from(EXPORT_DIR))).toBe(false);
   });
 
   test('B08-070 a download records a RESEARCH_EXPORT_DOWNLOADED audit row', async () => {
@@ -563,7 +536,6 @@ describe('research export filters (B08-065, B08-066, B08-067, B08-082, AT-20)', 
     const res = await download(e.exportId, admin);
     spy.mockRestore();
     expect(res.status).toBe(500);
-    // no file content ever streamed: the response is the small JSON error body, never the xlsx bytes (no zip magic number)
     expect(Buffer.from(res.body).slice(0, 2).toString()).not.toBe('PK');
     expect(res.headers['content-type']).not.toContain('spreadsheetml');
   });

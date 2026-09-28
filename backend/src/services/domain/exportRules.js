@@ -7,16 +7,22 @@
 const { HttpError } = require('../../errors');
 
 const TRANSITIONS = { REQUESTED: ['GENERATING'], GENERATING: ['READY', 'FAILED'], READY: [], FAILED: [] };
-const FILTER_KEYS = ['institutionId', 'cohortId', 'participantStatus', 'dateFrom', 'dateTo', 'includeAllVersions'];
+// includeAllVersions was withdrawn with the rebuilt workbook: ITEM_RESPONSES_LONG is always current-answer-only plus
+// explicit missing rows (the sample's own design), which does not compose with "every saved version".
+const FILTER_KEYS = ['institutionId', 'cohortId', 'participantStatus', 'dateFrom', 'dateTo'];
 const PARTICIPANT_STATUSES = ['ACTIVE', 'SUSPENDED', 'WITHDRAWN'];
 const MAX_CELL = 32000; // Excel: 32,767 characters per cell; oversized metadata is truncated with a marker
 const TRUNCATION_MARKER = ' ...[truncated]';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-const FIXED_SHEETS_BEFORE = ['README', 'DATA_DICTIONARY', 'PARTICIPANTS', 'ATTEMPTS'];
-const FIXED_SHEETS_AFTER = ['DOMAIN_SCORES', 'QUALITY_FLAGS', 'RESPONSE_EVENTS', 'ASSESSMENT_VERSION', 'COHORT_METADATA', 'EXPORT_METADATA'];
-const responseSheetName = (n) => `ITEM_RESPONSES_${String(n).padStart(2, '0')}`;
+// Matches "Santulan Pilot - Sample Validation Data After Assessment Submission v1.0" exactly: nine sheets, no
+// DATA_DICTIONARY/EXPORT_METADATA. Only the ONE track's wide sheet is ever written (see workbookWriter.js), so both
+// are listed as OPTIONAL_AFTER rather than always-present.
+const FIXED_SHEETS_BEFORE = ['README', 'PARTICIPANTS'];
+const OPTIONAL_WIDE_SHEETS = ['VALIDATION_WIDE_ADO', 'VALIDATION_WIDE_EA'];
+const FIXED_SHEETS_AFTER = ['QUALITY_REVIEW', 'ATTEMPT_SUMMARY', 'ITEM_CODEBOOK', 'RESEARCH_DASHBOARD'];
+const responseSheetName = (n) => `ITEM_RESPONSES_LONG_${String(n).padStart(2, '0')}`;
 
 const canMove = (from, to) => (TRANSITIONS[from] || []).includes(to);
 
@@ -28,28 +34,22 @@ function escapeCell(value) {
 }
 
 /**
- * Validates a request body: { sourceAssessmentVersionId, anonymisationVersion, filters?, includeAllVersions? }.
- * Unknown filter keys are a 422 EXPORT_FILTER_UNKNOWN; returns the normalised filters (includeAllVersions folded in).
+ * Validates a request body: { sourceAssessmentVersionId, anonymisationVersion, filters? }.
+ * Unknown filter keys are a 422 EXPORT_FILTER_UNKNOWN; returns the normalised filters.
  */
 function normaliseRequest(body) {
   const filters = { ...(body.filters || {}) };
   const unknown = Object.keys(filters).filter((k) => !FILTER_KEYS.includes(k));
   if (unknown.length) throw new HttpError(422, 'EXPORT_FILTER_UNKNOWN', `Unknown filter: ${unknown.join(', ')}`);
-  if (body.includeAllVersions !== undefined) filters.includeAllVersions = body.includeAllVersions;
   const bad = (m) => new HttpError(422, 'VALIDATION_ERROR', m);
   for (const key of ['institutionId', 'cohortId']) if (filters[key] !== undefined && !UUID.test(filters[key])) throw bad(`${key} must be an id`);
   if (filters.participantStatus !== undefined && !PARTICIPANT_STATUSES.includes(filters.participantStatus)) throw bad('participantStatus is not recognised');
   for (const key of ['dateFrom', 'dateTo']) if (filters[key] !== undefined && (!DATE.test(filters[key]) || Number.isNaN(Date.parse(filters[key])))) throw bad(`${key} must be a date (YYYY-MM-DD)`);
   if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) throw bad('dateFrom is after dateTo');
-  if (filters.includeAllVersions !== undefined && typeof filters.includeAllVersions !== 'boolean') throw bad('includeAllVersions must be true or false');
-  filters.includeAllVersions = filters.includeAllVersions === true;
   return filters;
 }
 
-/** The dataset kind stated in the status and in EXPORT_METADATA. */
-const datasetOf = (filters) => (filters && filters.includeAllVersions ? 'all-versions' : 'current-only');
-
 module.exports = {
-  TRANSITIONS, FILTER_KEYS, MAX_CELL, TRUNCATION_MARKER, FIXED_SHEETS_BEFORE, FIXED_SHEETS_AFTER,
-  canMove, escapeCell, normaliseRequest, datasetOf, responseSheetName,
+  TRANSITIONS, FILTER_KEYS, MAX_CELL, TRUNCATION_MARKER, FIXED_SHEETS_BEFORE, FIXED_SHEETS_AFTER, OPTIONAL_WIDE_SHEETS,
+  canMove, escapeCell, normaliseRequest, responseSheetName,
 };

@@ -17,12 +17,21 @@ const sample = {
   growth_reviews: () => ({ _id: F.versionDoc()._id, goal_id: F.versionDoc()._id, review_date: '2026-01-01', what_happened: null, barrier: null, learning: null, adjustment: null, evidence_note: null, next_step: null, created_at: new Date() }),
   pathway_decisions: () => F.pathwayDecision(F.participant()._id, F.attempt(F.participant()._id, F.versionDoc()._id)._id),
   pathway_reviews: () => ({ _id: F.versionDoc()._id, pathway_decision_id: F.versionDoc()._id, outcome: 'CONFIRMED', evidence_note: null, support_change: null, next_step: null, reviewed_by: null, reviewed_at: new Date() }),
+  // Student Demographic & Research Profile Capture Form v1.0 - every question is optional, so every field but
+  // participant_id/profile_version/created_at is null in this bare sample.
+  participant_profiles: () => ({
+    _id: F.versionDoc()._id, participant_id: F.participant()._id, profile_version: 'STUDENT_PROFILE_v1.0',
+    education_stage: null, current_class_year: null, primary_language_mode: null, primary_language_detail: null,
+    medium_of_instruction: null, medium_of_instruction_detail: null, gender_research: null, gender_self_description: null,
+    broad_region_mode: null, broad_region_detail: null, urbanicity: null, accessibility_accommodation: null,
+    accessibility_accommodation_detail: null, created_at: new Date(),
+  }),
 };
 
 describe('G-13 Tier A collections are append-only for the runtime credential', () => {
-  test('G-13 the eight Tier A collections are the ones the contract names', () => {
+  test('G-13 the nine Tier A collections are the ones the contract names', () => {
     expect([...COLLECTIONS_BY_TIER.A].sort()).toEqual(
-      ['audit_logs', 'growth_reviews', 'items', 'participant_cohort_history', 'pathway_decisions', 'pathway_reviews', 'response_events', 'score_results'],
+      ['audit_logs', 'growth_reviews', 'items', 'participant_cohort_history', 'participant_profiles', 'pathway_decisions', 'pathway_reviews', 'response_events', 'score_results'],
     );
   });
 

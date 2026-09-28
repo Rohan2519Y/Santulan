@@ -88,6 +88,12 @@ export const api = {
 
   registrationState: () => call('/registration/state'),
 
+  /** Student Demographic & Research Profile Capture Form v1.0 - captured once, right after registration, never edited.
+   * Every field is optional; omit a key entirely to leave that question unanswered ("Prefer not to say" where offered
+   * is a real enum value, not the same as omitting the key). */
+  submitProfile: (body) => call('/participants/profile', { method: 'POST', body }),
+  ownProfile: () => call('/participants/profile'),
+
   // consent (participants read; the consent service creates and verifies)
   consentRequirements: () => call('/consents/requirements'),
   consentGate: () => call('/consents/gate'),
@@ -232,5 +238,6 @@ export const adminApi = {
 
   exports: () => call('/research-exports'),
   requestExport: (body, idempotencyKey) => call('/research-exports', { method: 'POST', body, headers: { 'Idempotency-Key': idempotencyKey } }),
+  exportStatus: (exportId) => call(`/research-exports/${exportId}`),
   downloadExport: (exportId) => saveFile(`/research-exports/${exportId}/download`, 'santulan_research_export.xlsx', 'The export could not be downloaded.'),
 };

@@ -4,6 +4,7 @@
  * set, and the data-model version marker matches the code (G-17).
  */
 const { MongoClient } = require('mongodb');
+const os = require('os');
 const config = require('../../config');
 const { HttpError } = require('../../errors');
 const { DATA_MODEL_VERSION } = require('../schema');
@@ -21,7 +22,12 @@ async function getClient() {
   if (!connecting) {
     const uri = config.mongodbUriRuntime;
     if (!uri) throw unavailable('MONGODB_URI_RUNTIME is not configured');
-    const c = new MongoClient(uri, { serverSelectionTimeoutMS: 8000, maxPoolSize: 20 });
+    // runtimeAdapters.os: the driver's default path builds handshake client metadata via `await import('os')`;
+    // under Jest's sandboxed module loader that dynamic import of a builtin rejects and the driver silently
+    // sends an empty metadata document, which newer MongoDB servers refuse ("Missing required sub-document
+    // 'driver'"). Passing the already-required os module bypasses the dynamic import entirely - same module,
+    // no behavior change outside tests, and it fixes the in-process app under the integration test suite.
+    const c = new MongoClient(uri, { serverSelectionTimeoutMS: 8000, maxPoolSize: 20, runtimeAdapters: { os } });
     connecting = c.connect()
       .then(() => { client = c; return c; })
       .catch((e) => { connecting = null; throw unavailable(`Cannot connect to the data store: ${e.message}`); });

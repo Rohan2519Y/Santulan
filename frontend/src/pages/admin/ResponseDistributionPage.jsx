@@ -8,7 +8,7 @@ import StatusPill from '../../components/StatusPill/StatusPill';
 import Skeleton from '../../components/Skeleton/Skeleton';
 import BarChart from '../../components/BarChart/BarChart';
 import Button from '../../components/Button/Button';
-import { questionSetApi } from '../../services/santulanApi';
+import { adminApi, questionSetApi, newKey } from '../../services/santulanApi';
 import useAdminData from './useAdminData';
 import styles from './adminPages.module.css';
 
@@ -28,10 +28,25 @@ export default function ResponseDistributionPage() {
   const setOptions = sets.data ? sets.data.sets.filter((s) => s.status !== 'DRAFT') : [];
   const d = distribution.data;
 
+  const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+  /** Requests the full nine-sheet research export for this assessment, waits for it to finish generating, then downloads it. */
   const downloadWorkbook = async () => {
     setExporting(true);
     setExportError(null);
-    try { await questionSetApi.downloadResponseDistribution(setId); } catch (err) { setExportError(err.message); } finally { setExporting(false); }
+    try {
+      const key = newKey('export');
+      const anonymisationVersion = `response-distribution-auto-${new Date().toISOString().slice(0, 10)}`;
+      const { exportId, status } = await adminApi.requestExport({ sourceAssessmentVersionId: setId, anonymisationVersion }, key);
+      let current = status;
+      for (let attempt = 0; current !== 'READY' && current !== 'FAILED' && attempt < 30; attempt += 1) {
+        await sleep(1500);
+        current = (await adminApi.exportStatus(exportId)).status;
+      }
+      if (current === 'READY') await adminApi.downloadExport(exportId);
+      else if (current === 'FAILED') throw new Error('The export failed to generate. Please try again.');
+      else throw new Error('The export is taking longer than expected. Check the Research exports page shortly.');
+    } catch (err) { setExportError(err.message); } finally { setExporting(false); }
   };
 
   return (

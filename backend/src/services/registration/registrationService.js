@@ -102,7 +102,10 @@ async function getRegistrationState(participantId) {
     if (!p) throw new HttpError(404, 'NOT_FOUND', 'Participant not found');
     // the participant's most recent attempt (id + status only), so the dashboard can pick up where they are
     const [attempt] = await tx.c.assessment_attempts.find({ participant_id: participantId }, { sort: { created_at: -1 }, limit: 1 });
-    return { ...toResponse(p, resolveAgeRoute(p.ageYearsAtRegistration)), attempt: attempt ? { attemptId: attempt._id, status: attempt.status } : null };
+    // ASSUMED addition (Student Demographic & Research Profile Capture Form v1.0): lets the frontend show the
+    // validation-profile step exactly once, right after registration - never re-asked once it exists.
+    const profileCompleted = Boolean(await identity.findProfile(tx, participantId));
+    return { ...toResponse(p, resolveAgeRoute(p.ageYearsAtRegistration)), attempt: attempt ? { attemptId: attempt._id, status: attempt.status } : null, profileCompleted };
   });
 }
 

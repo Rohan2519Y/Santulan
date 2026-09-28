@@ -21,6 +21,7 @@ const ACCESS = {
   institutions: { kind: 'tenantSelf', update: ['institution_name', 'institution_type', 'parent_institution_id', 'status', 'updated_at'] },
   cohorts: { kind: 'tenant', field: 'institution_id', update: ['cohort_name', 'academic_year', 'developmental_band', 'education_stage', 'status', 'updated_at'] },
   admin_users: { kind: 'privileged', update: ['status', 'updated_at'] },
+  participant_profiles: { kind: 'owned', field: 'participant_id', update: null },
   participant_cohort_history: { kind: 'owned', field: 'participant_id', update: null },
   consents: { kind: 'owned', field: 'participant_id', update: ['status', 'granted_at', 'verified_at', 'withdrawn_at', 'verification_method'] },
 

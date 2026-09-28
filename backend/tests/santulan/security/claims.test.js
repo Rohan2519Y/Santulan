@@ -122,10 +122,16 @@ describe('authentic pipeline output on the scratch database (SEC-25, SC-020)', (
       .set(auth(admin)).buffer(true).parse((r, cb) => { const cs = []; r.on('data', (c) => cs.push(c)); r.on('end', () => cb(null, Buffer.concat(cs))); });
     expect(res.status).toBe(200);
     const wb = XLSX.read(res.body, { type: 'buffer' });
+    // ITEM_CODEBOOK and ITEM_RESPONSES_LONG_nn carry subdomain_code (e.g. "C1.1") as a structural instrument-metadata
+    // column - this is the approved sample format (docs/Santulan 2.0/Profile), not a participant-facing claim about any
+    // one score, so SUBDOMAIN_SCORE is scoped out of those two sheets only; every other rule still applies everywhere.
+    const structuralSubdomainSheets = /^(ITEM_CODEBOOK|ITEM_RESPONSES_LONG_\d+)$/;
     for (const name of wb.SheetNames) {
       const cells = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null, raw: false })
         .flat().filter((c) => c !== null && c !== undefined).map(String).join(' ');
-      expect(scanClaims({ sheet: name, cells })).toEqual([]);
+      const hits = scanClaims({ sheet: name, cells });
+      const relevant = structuralSubdomainSheets.test(name) ? hits.filter((h) => h.rule !== 'SUBDOMAIN_SCORE') : hits;
+      expect(relevant).toEqual([]);
     }
     await (await H.admin()).collection('research_exports').deleteMany({ _id: claim.body.exportId });
   });

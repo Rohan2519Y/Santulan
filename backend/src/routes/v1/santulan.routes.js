@@ -50,6 +50,10 @@ router.post('/registrations/open', registrationThrottle, validate(registration.o
 router.post('/registrations/institutional', requireActiveSuperAdmin, validate(registration.institutionalSchema), registration.registerInstitutional);
 router.post('/participants/age-declaration', registrationThrottle, validate(registration.ageDeclarationSchema), registration.ageDeclaration);
 router.get('/registration/state', requireParticipantToken, registration.state);
+// ASSUMED addition (Student Demographic & Research Profile Capture Form v1.0): the recommended validation-profile
+// extension, captured once at registration, never edited.
+router.post('/participants/profile', requireParticipantToken, validate(registration.profileSchema), registration.submitProfile);
+router.get('/participants/profile', requireParticipantToken, registration.profile);
 
 // --- Roster import + one-time credential export (BUILD 03 §9 / US4). Super admin; validates before it ever writes.
 router.post('/cohorts/import', requireActiveSuperAdmin, rosterUpload, roster.importRoster);

@@ -14,7 +14,6 @@ const requestSchema = strictObject({
   sourceAssessmentVersionId: z.string().uuid(),
   anonymisationVersion: z.string().trim().min(1).max(64),
   filters: z.record(z.any()).optional(), // keys are checked by the export rules so an unknown key is EXPORT_FILTER_UNKNOWN (422), not a generic 400
-  includeAllVersions: z.boolean().optional(),
 });
 
 function idempotencyKey(req) {

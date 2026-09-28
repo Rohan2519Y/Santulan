@@ -112,7 +112,7 @@ describe('institutional sign-in: temporary password then forced change (AT-27)',
     const [stored] = await (await col('dev_identity_credentials')).find({}).sort({ created_at: -1 }).limit(1).toArray();
     expect(stored.secret_hash).toMatch(/^\$2[aby]\$/);
     const fields = canonical.flatMap((c) => c.fields).filter((n) => /password|otp|secret/i.test(n));
-    expect(fields).toEqual([]); // no credential field exists in any of the 27 canonical collections
+    expect(fields).toEqual([]); // no credential field exists in any of the 28 canonical collections
   });
 });
 

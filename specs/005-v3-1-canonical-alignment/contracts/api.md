@@ -113,7 +113,7 @@ Registration never creates an attempt and never states or implies consent/eligib
 | `POST /admin/catalog/reconcile` | run reconcile (never apply) | yes |
 | `GET /admin/monitoring/summary` | counts only (participants by route/status, attempts by state, reports by state/retry queue, exports by state, quality-review counts) | — |
 | `GET /admin/quality-flags`, `PATCH /admin/quality-flags/{id}` | review queue; disposition + note only | yes |
-| `POST /research-exports` | `Idempotency-Key`; body `{sourceAssessmentVersionId, anonymisationVersion, filters, includeAllVersions}` | yes |
+| `POST /research-exports` | `Idempotency-Key`; body `{sourceAssessmentVersionId, anonymisationVersion, filters}` | yes |
 | `GET /research-exports/{id}` | status + metadata | — |
 | `GET /research-exports/{id}/download` | only when `READY`; streams the file | download audited; fails closed |
 | `GET /admin/audit-logs` | read-only, filters actor/action/target/date | — |
@@ -140,12 +140,29 @@ rules as the table above.
 | `GET /admin/submissions/{id}/responses` | the participant's saved answers for that attempt — question text, chosen option, timestamp, resolved from `responses` + `items` | yes — more sensitive than the aggregate results above, so the read itself is audit-logged (`SUBMISSION_RESPONSES_VIEWED`) |
 | `GET /admin/submissions/{id}/responses/export` | same answers as a downloadable CSV (`santulan_id,attempt_id,item_code,domain_code,question,answer,answered_at` — every row carries the Santulan ID so the file identifies its participant on its own once downloaded; filename is `santulan-answers-{santulanId}.csv`; formula-injection-safe like the credential export) | yes — audited separately from viewing (`SUBMISSION_RESPONSES_EXPORTED`), because a file leaves the system |
 
+### Additions beyond this contract (ASSUMED, participant token)
+
+Built after this contract was written (D-M20), for the recommended validation-profile extension of the Student
+Demographic & Research Profile Capture Form v1.0 — education, language, gender, region and accessibility context for
+sampling/fairness/DIF research only, **never referenced by C1-C7 scoring**. Every question is individually optional
+("Prefer not to say" is a real value for several; omitting the key entirely leaves it unanswered). Captured **once**,
+right after registration (the frontend's own "Go to Dashboard" step); there is no endpoint to edit it afterwards.
+
+| Method & path | Purpose | Audit |
+|---------------|---------|-------|
+| `POST /participants/profile` | submit the validation profile | body: `educationStage?, currentClassYear?, primaryLanguageMode?, primaryLanguageDetail?, mediumOfInstruction?, mediumOfInstructionDetail?, genderResearch?, genderSelfDescription?, broadRegionMode?, broadRegionDetail?, urbanicity?, accessibilityAccommodation?, accessibilityAccommodationDetail?` (enum values per `enums.js` `EDUCATION_STAGE`/`CURRENT_CLASS_YEAR`/`LANGUAGE_MODE`/`MEDIUM_OF_INSTRUCTION`/`GENDER_RESEARCH`/`REGION_MODE`/`URBANICITY`/`ACCESSIBILITY_ACCOMMODATION`); a `*_detail` field is required only when its paired mode/value demands text (`422` `VALIDATION_ERROR`/`400` otherwise); `currentClassYear` must belong to the chosen `educationStage` (`422 CLASS_YEAR_INVALID_FOR_STAGE`); `broadRegionMode`/`urbanicity` are refused for an INSTITUTIONAL participant (`422 FIELD_NOT_APPLICABLE` — their institution/cohort already carries that context); a second submission is `409 PROFILE_ALREADY_SUBMITTED` | yes (`PARTICIPANT_PROFILE_SUBMITTED`) |
+| `GET /participants/profile` | read back the caller's own submitted profile (`404` before one exists) | — |
+
+`GET /registration/state` gains **`profileCompleted`** (boolean) alongside the shape below, so the frontend shows this
+step at most once.
+
 ## 7. Response shapes that matter
 
 - **Registration** `{ santulanId, participationRoute, assessmentTrack, isMinor, requiredConsents: ["PARENT_GUARDIAN_CONSENT","STUDENT_ASSENT"] }` — never an attempt, never "eligible".
 - **Resume model** as §4 — operational state only.
 - **Report** `{ reportId, state: "REPORT_READY"|"UNDER_REVIEW"|"NOT_ELIGIBLE", sections: [{type, domain?, locale, contentVersion, order, content}] }` — only `is_released_to_participant` sections; T11/T12 carry the fixed neutral copy and no code, severity or reason detail beyond the safe administrative reason.
-- **Export status** `{ exportId, status, createdAt, completedAt?, filters, anonymisationVersion, sourceAssessmentVersionId, dataset: "current-only"|"all-versions" }` — no file path.
+- **Export status** `{ exportId, status, createdAt, completedAt?, filters, anonymisationVersion, sourceAssessmentVersionId }` — no file path.
+- **Export workbook** (rebuilt after this contract was written, to match "Santulan Pilot - Sample Validation Data After Assessment Submission v1.0" - `docs/Santulan 2.0/Profile`): nine fixed sheets, `README, PARTICIPANTS, ITEM_RESPONSES_LONG_nn, ATTEMPT_SUMMARY, QUALITY_REVIEW, VALIDATION_WIDE_<ADO|EA>, ITEM_CODEBOOK, RESEARCH_DASHBOARD` (only the ONE track's wide sheet, matching the source question set's own age group). Participants are identified only by `participant_research_id` (a stable, one-way pseudonym derived from the Santulan ID - never the Santulan ID itself, so a research-dataset exposure and an operational one are never the same event). `ITEM_RESPONSES_LONG` carries one row per participant × expected question, answered or explicitly missing (`missing_flag`) - it no longer varies by an "every saved version" toggle (`includeAllVersions` was withdrawn with it).
 - **Roster validate** `{ ok, rows: n, errors: [{row, field, code}], warnings: [...], eligible: {ADOLESCENT: n, EMERGING_ADULT: n} }` — codes, never PII echoes beyond the row number.
 
 ## 8. Non-goals of this contract

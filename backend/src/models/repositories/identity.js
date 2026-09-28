@@ -79,10 +79,17 @@ async function transitionAdminStatus(tx, adminUserId, from, to) {
 // ---- cohort history (append only)
 async function appendCohortHistory(tx, doc) { await tx.c.participant_cohort_history.insertOne(doc); return camel(doc, 'historyId'); }
 
+// ---- validation-profile extension (Tier A, one row per participant, never edited)
+async function findProfile(tx, participantId) {
+  return camel(await tx.c.participant_profiles.findOne({ participant_id: participantId }), 'profileId');
+}
+async function insertProfile(tx, doc) { await tx.c.participant_profiles.insertOne(doc); return camel(doc, 'profileId'); }
+
 module.exports = {
   getParticipant, findParticipantByAuthSubject, findParticipantBySantulanId, insertParticipant, transitionParticipantStatus, listParticipants,
   getInstitution, getCohort, insertInstitution, insertCohort, listInstitutions, listCohorts, findActiveScope,
   getAdmin, findAdminByAuthSubject, insertAdmin, transitionAdminStatus,
   appendCohortHistory,
+  findProfile, insertProfile,
   fromParticipant: P, fromInstitution: I, fromCohort: C, fromAdmin: A,
 };

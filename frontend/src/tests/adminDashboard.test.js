@@ -365,7 +365,7 @@ describe('ParticipationPage (Assessment control)', () => {
 
 describe('ExportsPage', () => {
   test('empty state and Download is offered only for a Ready export', async () => {
-    adminApi.exports.mockResolvedValue({ exports: [{ exportId: 'e1', createdAt: '2026-09-10T00:00:00Z', status: 'GENERATING', dataset: 'current-only', filters: {}, anonymisationVersion: 'v1' }, { exportId: 'e2', createdAt: '2026-09-11T00:00:00Z', status: 'READY', dataset: 'current-only', filters: {}, anonymisationVersion: 'v1' }] });
+    adminApi.exports.mockResolvedValue({ exports: [{ exportId: 'e1', createdAt: '2026-09-10T00:00:00Z', status: 'GENERATING', filters: {}, anonymisationVersion: 'v1' }, { exportId: 'e2', createdAt: '2026-09-11T00:00:00Z', status: 'READY', filters: {}, anonymisationVersion: 'v1' }] });
     questionSetApi.list.mockResolvedValue({ sets: [] });
     adminApi.institutions.mockResolvedValue({ institutions: [] });
     renderAdmin(<ExportsPage />);

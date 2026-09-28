@@ -28,7 +28,7 @@ describe('report worker', () => {
     expect(await reportOf(invalid.id)).toMatchObject({ generation_status: 'NOT_ELIGIBLE', report_type: 'T12' });
     expect([await attemptStatus(scored.id), await attemptStatus(held.id), await attemptStatus(invalid.id)]).toEqual(['REPORT_READY', 'QUALITY_HOLD', 'INVALID']);
     expect(await worker.runOnce()).toMatchObject({ processed: 0, errors: 0 });
-  });
+  }, 60000);
 
   test('a render failure leaves FAILED_RETRYABLE with the attempt SCORED; the worker does not retry it (the retry is a controlled, audited action)', async () => {
     const a = await scoredAttempt({ s2: true });

@@ -14,7 +14,7 @@ import styles from '../../styles/ui.module.css';
 import s from '../../styles/site.module.css';
 import { PublicLayout } from '../../components/layouts';
 import ImageSlot from '../../components/ImageSlot/ImageSlot';
-import { StepIndicator, OtpInput, CopyField, ChoiceCard, IconBadge, InfoNote, ButtonLink } from '../../components/participantKit';
+import { StepIndicator, OtpInput, CopyField, IconBadge, InfoNote, ButtonLink } from '../../components/participantKit';
 import Button from '../../components/Button/Button';
 import Field from '../../components/Field/Field';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
@@ -104,7 +104,6 @@ export default function RegisterPage() {
   const [registrationToken, setRegistrationToken] = useState(null);
   const [ageText, setAgeText] = useState('');
   const [route, setRoute] = useState(null);
-  const [choice, setChoice] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -143,17 +142,16 @@ export default function RegisterPage() {
       throw new Error('Santulan is for people aged 13 to 25, so we cannot register you right now. If you are unsure, please talk to someone you trust or visit the Support page.');
     }
     const r = await api.routeAge(age);
-    setRoute(r); setChoice(r.isMinor ? 'minor' : 'adult'); setStep(4);
+    setRoute(r); setStep(4);
   });
 
   const createAccount = () => run(async () => {
-    const declared = route.isMinor ? 'minor' : 'adult';
-    if (choice !== declared) throw new Error('That option does not match the age you entered. Please go back or choose the matching option.');
     const res = await api.declareAge(registrationToken, Number(ageText), idempotencyKey.current);
     signIn(res.accessToken); setResult(res); setStep(5);
   });
 
-  const contradicts = route && choice && choice !== (route.isMinor ? 'minor' : 'adult');
+  // The age was already entered in step 3; step 4 shows what it derives, it never asks the participant to choose again.
+  const role = route ? (route.isMinor ? 'minor' : 'adult') : null;
   const back = (to) => { setError(''); setStep(to); };
   const ChannelIcon = channel === 'email' ? Mail : Smartphone;
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
@@ -263,16 +261,23 @@ export default function RegisterPage() {
               <div className={s.authForm}>
                 <div>
                   <h1 className={s.authTitle}>Consent and Participation</h1>
-                  <p className={s.authSub}>Please select the option that applies to you.</p>
+                  <p className={s.authSub}>Based on the age you entered, here is how you will take part.</p>
                 </div>
-                <div role="radiogroup" aria-label="Which applies to you?" className={styles.stack}>
-                  <ChoiceCard name="consent-route" value="adult" checked={choice === 'adult'} onChange={() => setChoice('adult')} icon={UserRound} tone="blue"
-                    title="I am 18 years or older" description="I can provide my own consent to participate in Santulan." tag="Self-Consent" />
-                  <ChoiceCard name="consent-route" value="minor" checked={choice === 'minor'} onChange={() => setChoice('minor')} icon={Users} tone="green"
-                    title="I am below 18 years" description="I will need assent and my parent/guardian’s consent to participate." tag="Assent + Parent/Guardian Consent" />
-                </div>
-                {contradicts && <StatusMessage type="warning" message="That option does not match the age you entered." />}
-                {!contradicts && route.requiredConsents.map((c) => (
+                {/* Read-only: the age was already collected in step 3, so this states what it derives rather than
+                    asking the participant to pick again (and possibly contradict their own answer). */}
+                <section className={`${styles.card} ${route.isMinor ? styles.toneGreen : styles.toneBlue}`}>
+                  <div className={styles.row} style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+                    <IconBadge icon={route.isMinor ? Users : UserRound} tone={route.isMinor ? 'green' : 'blue'} />
+                    <div>
+                      <p className={styles.h4} style={{ margin: '0 0 4px' }}>{route.isMinor ? 'Below 18 years' : '18 years or older'}</p>
+                      <p style={{ margin: '0 0 8px' }}>
+                        {route.isMinor ? 'You will need assent and your parent/guardian’s consent to participate.' : 'You can provide your own consent to participate in Santulan.'}
+                      </p>
+                      <span className={`${styles.pill} ${route.isMinor ? styles.pillGreen : ''}`.trim()}>{route.isMinor ? 'Assent + Parent/Guardian Consent' : 'Self-Consent'}</span>
+                    </div>
+                  </div>
+                </section>
+                {route.requiredConsents.map((c) => (
                   <section key={c} className={`${styles.card} ${styles.toneBlue}`}>
                     <span className={styles.pill}>{CONSENT_CARDS[c].tag}</span>
                     <h2 className={styles.h3} style={{ marginTop: 'var(--sp-2)' }}>{CONSENT_CARDS[c].title}</h2>
@@ -285,7 +290,7 @@ export default function RegisterPage() {
                   </section>
                 ))}
                 <InfoNote icon={Info}>Honest information helps us ensure the right support and a safe experience for all participants.</InfoNote>
-                <Button size="lg" block onClick={createAccount} disabled={busy || contradicts || !route.requiredConsents.filter((c) => c !== 'STUDENT_ASSENT').every((c) => agreedConsents[c])}>Create my account <ArrowRight size={20} aria-hidden="true" /></Button>
+                <Button size="lg" block onClick={createAccount} disabled={busy || !route.requiredConsents.filter((c) => c !== 'STUDENT_ASSENT').every((c) => agreedConsents[c])}>Create my account <ArrowRight size={20} aria-hidden="true" /></Button>
                 <InfoNote icon={Lock} tone="quiet">Your information is secure and used only for participation and support purposes.</InfoNote>
               </div>
             )}
@@ -303,7 +308,9 @@ export default function RegisterPage() {
                 <Button size="lg" block disabled aria-describedby="start-reason">Start assessment <ArrowRight size={20} aria-hidden="true" /></Button>
                 <p id="start-reason" className={`${styles.muted} ${s.centerText}`} style={{ margin: 0 }}>The start button turns on when your consent has been verified.</p>
                 <div className={s.orRule} aria-hidden="true">OR</div>
-                <Button variant="secondary" size="lg" block onClick={() => navigate('/student')}>Go to Dashboard <ArrowRight size={20} aria-hidden="true" /></Button>
+                {/* the validation-profile step (Student Demographic & Research Profile Capture Form v1.0) is asked once,
+                    here, before the dashboard - never as part of this fixed five-step wizard itself */}
+                <Button variant="secondary" size="lg" block onClick={() => navigate('/student/validation-profile')}>Go to Dashboard <ArrowRight size={20} aria-hidden="true" /></Button>
               </div>
             )}
           </div>
@@ -311,7 +318,7 @@ export default function RegisterPage() {
       </div>
       <ConsentFormModal
         open={!!consentModalKey}
-        role={choice}
+        role={role}
         onClose={() => setConsentModalKey(null)}
         onAgree={() => { setAgreedConsents((prev) => ({ ...prev, [consentModalKey]: true })); setConsentModalKey(null); }}
       />

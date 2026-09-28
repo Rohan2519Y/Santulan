@@ -3,11 +3,16 @@
  * module is the last line of defence and the extension point. The DEFAULT policy:
  *   - never lets a direct-identity column through (participant_id, auth provider fields, external student id, contact and guardian fields)
  *   - excludes a WITHDRAWN participant everywhere (the count reaches EXPORT_METADATA)
- *   - leaves the Santulan ID as it is
+ *   - replaces santulan_id with participant_research_id (Student Demographic & Research Profile Capture Form v1.0's
+ *     "Research identity rule": research datasets use a governed pseudonymous key, decoupled from the operational id
+ *     used for sign-in/credential-reset, so a research-dataset exposure and an operational one are never the same event)
  * An approved pseudonymisation policy can later replace it through setPolicy() with the same interface - the exporter does not change.
  *
  *   policy = { name, version, includeRow(row) -> boolean, mapRow(row) -> row }
  */
+const crypto = require('crypto');
+const config = require('../../config');
+
 const FORBIDDEN_COLUMNS = new Set([
   'participant_id', 'auth_provider', 'auth_provider_subject_id', 'external_student_id', 'email', 'mobile', 'phone', 'contact', 'contact_email', 'contact_mobile',
   'guardian_name', 'guardian_email', 'guardian_mobile', 'parent_name', 'parent_email', 'parent_mobile', 'full_name', 'name', 'date_of_birth', 'dob',
@@ -20,11 +25,28 @@ function stripDirectIdentity(row) {
   return out;
 }
 
+/**
+ * A stable, deterministic, one-way pseudonym for a participant: PR-<6 digits>, derived by keyed hash so it can never be
+ * recomputed without the server's own secret (reuses JWT_SECRET rather than adding a second required secret just for
+ * this - the two uses are unrelated, so there is no cross-purpose weakness in sharing it). The same santulan_id always
+ * yields the same participant_research_id, so joins across exports of the same participant stay possible without ever
+ * carrying the operational id itself.
+ */
+function participantResearchId(santulanId) {
+  const digest = crypto.createHmac('sha256', config.jwtSecret).update(`participant-research-id:${santulanId}`).digest('hex');
+  const n = parseInt(digest.slice(0, 8), 16) % 1000000;
+  return `PR-${String(n).padStart(6, '0')}`;
+}
+
 const defaultPolicy = {
   name: 'default-research-safe',
-  version: '1',
+  version: '2',
   includeRow: (row) => row.participant_status !== 'WITHDRAWN',
-  mapRow: (row) => row,
+  mapRow: (row) => {
+    if (!('santulan_id' in row)) return row;
+    const { santulan_id: santulanId, ...rest } = row;
+    return { participant_research_id: participantResearchId(santulanId), ...rest };
+  },
 };
 
 let current = defaultPolicy;
@@ -50,4 +72,4 @@ function project(row, policy = current) {
   return stripDirectIdentity(policy.mapRow(stripDirectIdentity(row)));
 }
 
-module.exports = { FORBIDDEN_COLUMNS, stripDirectIdentity, defaultPolicy, setPolicy, getPolicy, resetPolicy, project, isPolicy };
+module.exports = { FORBIDDEN_COLUMNS, stripDirectIdentity, participantResearchId, defaultPolicy, setPolicy, getPolicy, resetPolicy, project, isPolicy };

@@ -5,8 +5,10 @@ const { HttpError } = require('../errors');
 const { getProvider } = require('../services/identity');
 const { strictObject } = require('../middleware/http');
 const { register, getRegistrationState } = require('../services/registration/registrationService');
+const { submitProfile, getOwnProfile } = require('../services/registration/participantProfileService');
 const { resolveAgeRoute } = require('../services/registration/routing');
 const { verifyPurposeToken, signToken } = require('../middleware/auth');
+const E = require('../models/schema/enums');
 
 const age = z.number().int();
 const language = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/).optional();
@@ -21,6 +23,26 @@ const institutionalSchema = strictObject({
   externalStudentId: z.string().min(1).max(64).optional(),
 });
 const ageDeclarationSchema = strictObject({ age, language });
+
+// Student Demographic & Research Profile Capture Form v1.0 ("full recommended set") - every question on the live form
+// is individually optional, so every field here is `.optional()`; the *_detail companions are free text (the form has
+// no fixed language/region code list to validate against - see enums.js).
+const detail = z.string().trim().min(1).max(120);
+const profileSchema = strictObject({
+  educationStage: z.enum(E.EDUCATION_STAGE).optional(),
+  currentClassYear: z.enum(E.CURRENT_CLASS_YEAR).optional(),
+  primaryLanguageMode: z.enum(E.LANGUAGE_MODE).optional(),
+  primaryLanguageDetail: detail.optional(),
+  mediumOfInstruction: z.enum(E.MEDIUM_OF_INSTRUCTION).optional(),
+  mediumOfInstructionDetail: detail.optional(),
+  genderResearch: z.enum(E.GENDER_RESEARCH).optional(),
+  genderSelfDescription: detail.optional(),
+  broadRegionMode: z.enum(E.REGION_MODE).optional(),
+  broadRegionDetail: detail.optional(),
+  urbanicity: z.enum(E.URBANICITY).optional(),
+  accessibilityAccommodation: z.enum(E.ACCESSIBILITY_ACCOMMODATION).optional(),
+  accessibilityAccommodationDetail: detail.optional(),
+});
 
 function idempotencyKey(req) {
   const key = req.headers['idempotency-key'];
@@ -84,4 +106,23 @@ async function state(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { routeSchema, openSchema, institutionalSchema, ageDeclarationSchema, resolveRoute, registerOpen, registerInstitutional, ageDeclaration, state };
+/** Authenticated participant session; the actor comes from the verified token, never the body. */
+async function submitProfileHandler(req, res, next) {
+  try {
+    res.status(201).json(await submitProfile(req.actor.participantId, req.body, req.correlationId));
+  } catch (err) { next(err); }
+}
+
+async function profile(req, res, next) {
+  try {
+    const p = await getOwnProfile(req.actor.participantId);
+    if (!p) throw new HttpError(404, 'NOT_FOUND', 'No validation profile has been submitted yet');
+    res.json(p);
+  } catch (err) { next(err); }
+}
+
+module.exports = {
+  routeSchema, openSchema, institutionalSchema, ageDeclarationSchema, profileSchema,
+  resolveRoute, registerOpen, registerInstitutional, ageDeclaration, state,
+  submitProfile: submitProfileHandler, profile,
+};

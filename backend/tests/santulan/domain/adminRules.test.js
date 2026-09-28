@@ -172,8 +172,8 @@ describe('the Santulan ID search box (admin listings)', () => {
 });
 
 describe('the data model is unchanged (B08-079)', () => {
-  test('27 canonical collections, one dev collection and 9 views exist in the scratch database', async () => {
-    expect(collections.canonical).toHaveLength(27);
+  test('28 canonical collections, one dev collection and 9 views exist in the scratch database', async () => {
+    expect(collections.canonical).toHaveLength(28);
     expect(views).toHaveLength(9);
     const list = await (await H.admin()).listCollections().toArray();
     const names = (type) => list.filter((c) => c.type === type).map((c) => c.name);

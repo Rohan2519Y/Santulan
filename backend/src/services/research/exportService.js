@@ -34,7 +34,7 @@ const partPath = (exportId) => path.join(exportDir(), `${exportId}.xlsx.part`);
 
 const shape = (x) => ({
   exportId: x.exportId, status: x.status, createdAt: x.createdAt, completedAt: x.completedAt || null, filters: x.filters, anonymisationVersion: x.anonymisationVersion,
-  sourceAssessmentVersionId: x.sourceAssessmentVersionId, dataset: rules.datasetOf(x.filters),
+  sourceAssessmentVersionId: x.sourceAssessmentVersionId,
 });
 
 // ---------------------------------------------------------------------------------------------------------------- request
@@ -57,7 +57,7 @@ async function request(actor, { idempotencyKey, body, correlationId }) {
     const created = await exportsRepo.insertExport(tx, { requestedBy: actor.adminUserId, filters, anonymisationVersion, sourceAssessmentVersionId: set._id });
     await writeAudit(tx, {
       id: outcomeId(ACTION_REQUESTED, idempotencyKey), actorType: 'ADMIN', actorId: actor.adminUserId, actionType: ACTION_REQUESTED, targetEntity: 'research_exports', targetId: created.exportId,
-      newState: { payload_hash: hash, status: 'REQUESTED', dataset: rules.datasetOf(filters) }, correlationId: keyToken(idempotencyKey),
+      newState: { payload_hash: hash, status: 'REQUESTED' }, correlationId: keyToken(idempotencyKey),
     });
     return { replay: false, export: created };
   }, { transaction: true });
@@ -128,7 +128,7 @@ async function buildScope(tx, x) {
 }
 
 function describeFilters(filters) {
-  const shown = Object.entries(filters).filter(([k, v]) => k !== 'includeAllVersions' && v !== undefined && v !== null && v !== '');
+  const shown = Object.entries(filters).filter(([, v]) => v !== undefined && v !== null && v !== '');
   return shown.length ? shown.map(([k, v]) => `${k}=${v}`).join('; ') : 'none (all participants of the source question set)';
 }
 
@@ -140,26 +140,18 @@ async function generateFile(x, { onProgress } = {}) {
   try {
     const result = await store.withScope(sys(), async (tx) => {
       const scope = await buildScope(tx, x);
-      const dataset = rules.datasetOf(x.filters);
       const meta = {
+        exportId: x.exportId,
+        anonymisationVersion: x.anonymisationVersion,
+        filtersApplied: describeFilters(x.filters),
         readme: [
           'This file is a research export from the Santulan platform.',
-          `Dataset: ${dataset} (${dataset === 'all-versions' ? 'every saved version of each answer' : 'the current answer for each question only'})`,
-          `Anonymisation version: ${x.anonymisationVersion}`,
-          'Participants appear only by their opaque Santulan ID. No name, contact detail, guardian detail, login identifier or date of birth is included.',
-          'Participants who withdrew are excluded; their number is stated in EXPORT_METADATA.',
+          `Identity policy: ${policy.name} v${policy.version} - participants appear only by their participant_research_id pseudonym.`,
+          'No name, contact detail, guardian detail, login identifier or date of birth is included.',
           'Domain results are research data, not participant feedback. Interpret them only with the approved scoring documentation.',
-          'See DATA_DICTIONARY for every column.',
-        ],
-        metadata: (written, excluded) => [
-          ['export_id', x.exportId], ['generated_at', new Date().toISOString()], ['dataset', dataset], ['anonymisation_version', x.anonymisationVersion],
-          ['identity_policy', `${policy.name} v${policy.version}`], ['source_question_set', `${scope.sourceSet.version_label} r${scope.sourceSet.revision}`],
-          ['source_question_set_id', scope.sourceSet._id], ['source_content_hash', scope.sourceSet.content_hash], ['filters_applied', describeFilters(x.filters)],
-          ['include_all_versions', String(x.filters.includeAllVersions === true)], ['withdrawn_participants_excluded', String(excluded.withdrawn)],
-          ...written.map((w) => [`rows_${w.name}`, String(w.rows)]),
         ],
       };
-      return writeWorkbook(part, { tx, scope, meta, policy, includeAllVersions: x.filters.includeAllVersions === true, onProgress });
+      return writeWorkbook(part, { tx, scope, meta, policy, onProgress });
     });
     fs.renameSync(part, finalPath(x.exportId)); // "protected storage": a different name, only ever a READY export
     return result;

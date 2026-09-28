@@ -75,8 +75,9 @@ async function cleanupFixtures() {
   await del('response_events', { attempt_id: { $in: attempts } });
   await del('assessment_attempts', { participant_id: { $in: mine } });
   await del('consents', { participant_id: { $in: mine } });
+  await del('participant_profiles', { participant_id: { $in: mine } });
   await del('participants', { _id: { $in: mine } });
-  await del('audit_logs', { action_type: 'PARTICIPATION_CONTROL' });
+  await del('audit_logs', { action_type: { $in: ['PARTICIPATION_CONTROL', 'PARTICIPANT_PROFILE_SUBMITTED'] } });
   // question sets created by tests carry the label prefix fx- (and their questions, wording and audit rows)
   const setIds = (await db.collection('assessment_versions').find({ version_label: /^fx-/ }, { projection: { _id: 1 } }).toArray()).map((d) => d._id);
   await del('items', { assessment_version_id: { $in: setIds } });

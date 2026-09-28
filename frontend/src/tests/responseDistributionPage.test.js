@@ -2,12 +2,13 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import ResponseDistributionPage from '../pages/admin/ResponseDistributionPage';
-import { questionSetApi } from '../services/santulanApi';
+import { questionSetApi, adminApi } from '../services/santulanApi';
 import { renderPage } from './testUtils';
 
 jest.mock('../services/santulanApi', () => ({
   ...jest.requireActual('../services/santulanApi'),
   questionSetApi: { list: jest.fn(), responseDistribution: jest.fn(), downloadResponseDistribution: jest.fn() },
+  adminApi: { requestExport: jest.fn(), exportStatus: jest.fn(), downloadExport: jest.fn() },
 }));
 
 const SET = (over = {}) => ({
@@ -69,19 +70,46 @@ describe('response distribution page', () => {
     expect(screen.getAllByText(/skipped/i).length).toBeGreaterThan(0); // one "Skipped" bar per question
   });
 
-  test('downloads the workbook for the chosen assessment', async () => {
+  test('requests and downloads the full research export for the chosen assessment', async () => {
     questionSetApi.responseDistribution.mockResolvedValue(DISTRIBUTION());
-    questionSetApi.downloadResponseDistribution.mockResolvedValue();
+    adminApi.requestExport.mockResolvedValue({ exportId: 'e1', status: 'READY' });
+    adminApi.downloadExport.mockResolvedValue();
     renderIt();
     await chooseAssessment();
     await screen.findByText(/41 completed attempts/i);
     await userEvent.click(screen.getByRole('button', { name: /download excel/i }));
-    expect(questionSetApi.downloadResponseDistribution).toHaveBeenCalledWith('s1');
+    await waitFor(() => expect(adminApi.downloadExport).toHaveBeenCalledWith('e1'));
+    expect(adminApi.requestExport).toHaveBeenCalledWith(expect.objectContaining({ sourceAssessmentVersionId: 's1' }), expect.any(String));
+    expect(adminApi.exportStatus).not.toHaveBeenCalled(); // already READY on request - no need to poll
   });
 
-  test('a failed download shows the error state without crashing', async () => {
+  test('polls until the export is ready before downloading it', async () => {
     questionSetApi.responseDistribution.mockResolvedValue(DISTRIBUTION());
-    questionSetApi.downloadResponseDistribution.mockRejectedValue(new Error('export unavailable'));
+    adminApi.requestExport.mockResolvedValue({ exportId: 'e1', status: 'REQUESTED' });
+    adminApi.exportStatus.mockResolvedValueOnce({ status: 'GENERATING' }).mockResolvedValueOnce({ status: 'READY' });
+    adminApi.downloadExport.mockResolvedValue();
+    renderIt();
+    await chooseAssessment();
+    await screen.findByText(/41 completed attempts/i);
+    await userEvent.click(screen.getByRole('button', { name: /download excel/i }));
+    await waitFor(() => expect(adminApi.downloadExport).toHaveBeenCalledWith('e1'), { timeout: 10000 });
+    expect(adminApi.exportStatus).toHaveBeenCalledTimes(2);
+  }, 15000);
+
+  test('a failed export shows the error state without crashing', async () => {
+    questionSetApi.responseDistribution.mockResolvedValue(DISTRIBUTION());
+    adminApi.requestExport.mockResolvedValue({ exportId: 'e1', status: 'FAILED' });
+    renderIt();
+    await chooseAssessment();
+    await screen.findByText(/41 completed attempts/i);
+    await userEvent.click(screen.getByRole('button', { name: /download excel/i }));
+    expect(await screen.findByText(/export failed/i)).toBeInTheDocument();
+    expect(adminApi.downloadExport).not.toHaveBeenCalled();
+  });
+
+  test('a request error shows the error state without crashing', async () => {
+    questionSetApi.responseDistribution.mockResolvedValue(DISTRIBUTION());
+    adminApi.requestExport.mockRejectedValue(new Error('export unavailable'));
     renderIt();
     await chooseAssessment();
     await screen.findByText(/41 completed attempts/i);

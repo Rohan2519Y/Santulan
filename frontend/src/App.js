@@ -6,6 +6,7 @@ import RegisterPage from './pages/register/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/participant/DashboardPage';
 import AssessmentPage from './pages/participant/AssessmentPage';
+import ValidationProfilePage from './pages/participant/ValidationProfilePage';
 import { AssessmentCompletePage, GeneratingReportPage } from './pages/participant/AfterSubmitPages';
 import ResultsPage from './pages/participant/ResultsPage';
 import { ProfilePage, PreferencesPage, ThanksPage, PrivacyPage, ParticipantSupport } from './pages/participant/AccountPages';
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/student" element={<RequireRole role="participant"><ParticipantLayout /></RequireRole>}>
             <Route index element={<DashboardPage />} />
+            <Route path="validation-profile" element={<ValidationProfilePage />} />
             <Route path="assessment" element={<AssessmentPage />} />
             <Route path="complete" element={<AssessmentCompletePage />} />
             <Route path="generating" element={<GeneratingReportPage />} />

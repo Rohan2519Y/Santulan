@@ -7,6 +7,7 @@
  */
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
+const os = require('os');
 
 const DB_NAME = process.env.MONGODB_DB || process.env.MONGODB_TEST_DB || 'santulan_qual';
 
@@ -19,7 +20,11 @@ let adminClient = null;
 
 async function connect(uri, label) {
   if (!uri) throw new Error(`${label} URI is not configured (set MONGODB_URI_${label.toUpperCase()} in backend/.env).`);
-  const c = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
+  // runtimeAdapters.os: the driver's default path does `await import('os')` to build the handshake's client
+  // metadata; that dynamic import of a builtin rejects under Jest's sandboxed module loader, which the driver
+  // silently swallows into an empty {} metadata document - the server then refuses the handshake with
+  // "Missing required sub-document 'driver'". Passing the already-required os module bypasses that import.
+  const c = new MongoClient(uri, { serverSelectionTimeoutMS: 8000, runtimeAdapters: { os } });
   await c.connect();
   return c;
 }

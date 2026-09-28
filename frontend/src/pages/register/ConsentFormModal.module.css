@@ -4,46 +4,6 @@
   font-weight: var(--fw-bold, 700);
 }
 
-.switcher {
-  background: var(--c-surface, #f8fafc);
-  border: 1px solid var(--c-line, #e2e8f0);
-  border-radius: var(--radius-md, 12px);
-  padding: var(--sp-4, 16px);
-  margin-bottom: var(--sp-4, 16px);
-}
-
-.switcherLabel {
-  margin: 0 0 var(--sp-3, 12px);
-  font-weight: var(--fw-semibold, 600);
-}
-
-.switcherRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sp-3, 12px);
-}
-
-@media (max-width: 560px) {
-  .switcherRow { grid-template-columns: 1fr; }
-}
-
-.switcherOption {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2, 8px);
-  padding: var(--sp-3, 12px) var(--sp-4, 16px);
-  border: 1px solid var(--c-line, #e2e8f0);
-  border-radius: var(--radius-sm, 8px);
-  background: var(--c-panel, #fff);
-  cursor: pointer;
-  font-weight: var(--fw-medium, 500);
-}
-
-.switcherOptionActive {
-  border-color: var(--c-brand, #2563eb);
-  box-shadow: 0 0 0 1px var(--c-brand, #2563eb);
-}
-
 .heading {
   margin: 0 0 var(--sp-3, 12px);
   font-size: var(--fs-md, 1.05rem);

@@ -5,7 +5,8 @@ const scoring = require('./scoring');
 const reporting = require('./reporting');
 const research = require('./research');
 
-// Ordered: 27 canonical collections then the one non-canonical dev collection (last).
+// Ordered: the 27 BUILD 01/CR-006 canonical collections, participant_profiles (added per the Student Demographic &
+// Research Profile Capture Form v1.0), then the one non-canonical dev collection (last).
 const all = [...identity, ...content, ...delivery, ...scoring, ...reporting, ...research];
 const DEV_COLLECTIONS = ['dev_identity_credentials'];
 

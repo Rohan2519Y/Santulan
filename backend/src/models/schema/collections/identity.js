@@ -77,6 +77,49 @@ const participants = collection('participants', 'B', {
   or(and(isNull('$auth_provider'), isNull('$auth_provider_subject_id')), and(notNull('$auth_provider'), notNull('$auth_provider_subject_id'))),
 ]);
 
+/*
+ * Recommended validation-profile extension (Student Demographic & Research Profile Capture Form v1.0, "full recommended
+ * set"): education, language, gender, region and accessibility context for sampling/fairness/DIF research only - NEVER
+ * referenced by C1-C7 scoring (form's own "non-negotiable scoring boundary"). One row per participant, captured once
+ * during registration and never edited (Tier A, like participant_cohort_history above); every question on the live form
+ * is individually optional, so every field but participant_id/profile_version/created_at is nullable. The cross-field
+ * education_stage <-> current_class_year consistency (form Part II section 2) and the OPEN-route-only rule for
+ * broad_region/urbanicity (question 11-12) are domain rules, not DB-level checks - they need context ($jsonSchema sees
+ * only this one document).
+ */
+const participantProfiles = collection('participant_profiles', 'A', {
+  participant_id: uuid(),
+  profile_version: str({ nonblank: true }),
+
+  education_stage: str({ enum: E.EDUCATION_STAGE, nullable: true }),
+  current_class_year: str({ enum: E.CURRENT_CLASS_YEAR, nullable: true }),
+
+  primary_language_mode: str({ enum: E.LANGUAGE_MODE, nullable: true }),
+  primary_language_detail: str({ nullable: true, nonblank: true }), // the typed language name(s) when mode is DIFFERENT/MULTILINGUAL
+
+  medium_of_instruction: str({ enum: E.MEDIUM_OF_INSTRUCTION, nullable: true }),
+  medium_of_instruction_detail: str({ nullable: true, nonblank: true }), // when medium_of_instruction is OTHER
+
+  gender_research: str({ enum: E.GENDER_RESEARCH, nullable: true }),
+  gender_self_description: str({ nullable: true, nonblank: true }), // when gender_research is SELF_DESCRIBE
+
+  broad_region_mode: str({ enum: E.REGION_MODE, nullable: true }),
+  broad_region_detail: str({ nullable: true, nonblank: true }), // the typed state/UT or broad region name
+
+  urbanicity: str({ enum: E.URBANICITY, nullable: true }),
+
+  accessibility_accommodation: str({ enum: E.ACCESSIBILITY_ACCOMMODATION, nullable: true }),
+  accessibility_accommodation_detail: str({ nullable: true, nonblank: true }), // when accessibility_accommodation is OTHER
+
+  created_at: date(),
+}, [
+  implies(inList('$primary_language_mode', ['DIFFERENT', 'MULTILINGUAL']), notNull('$primary_language_detail')),
+  implies(eq('$medium_of_instruction', 'OTHER'), notNull('$medium_of_instruction_detail')),
+  implies(eq('$gender_research', 'SELF_DESCRIBE'), notNull('$gender_self_description')),
+  implies(inList('$broad_region_mode', ['STATE_UT', 'BROADER']), notNull('$broad_region_detail')),
+  implies(eq('$accessibility_accommodation', 'OTHER'), notNull('$accessibility_accommodation_detail')),
+]);
+
 const participantCohortHistory = collection('participant_cohort_history', 'A', {
   participant_id: uuid(),
   cohort_id: uuid(),
@@ -114,4 +157,4 @@ const consents = collection('consents', 'B', {
   nullOrGte('$withdrawn_at', '$created_at'),
 ]);
 
-module.exports = [institutions, cohorts, adminUsers, participants, participantCohortHistory, consents];
+module.exports = [institutions, cohorts, adminUsers, participants, participantProfiles, participantCohortHistory, consents];

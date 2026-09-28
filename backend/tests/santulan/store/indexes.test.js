@@ -1,4 +1,4 @@
-/* The 50 named indexes exist by name and definition, and the uniqueness guarantees behave (G-08..G-12, G-28; B05-001, T03, T04). */
+/* The 51 named indexes exist by name and definition, and the uniqueness guarantees behave (G-08..G-12, G-28; B05-001, T03, T04). */
 const H = require('../helpers/mongoHarness');
 const F = require('../helpers/fixtures');
 const { indexes, devIndexes } = require('../../../src/models/schema');
@@ -9,9 +9,9 @@ afterAll(async () => { await fx.cleanup(); await H.closeAll(); });
 const dup = (p) => H.expectRefused(p, 11000);
 
 describe('G-08 index catalogue', () => {
-  test('G-08 there are exactly 50 canonical named indexes, none anonymous', () => {
-    expect(indexes).toHaveLength(50);
-    expect(new Set(indexes.map((i) => i.name)).size).toBe(50);
+  test('G-08 there are exactly 51 canonical named indexes, none anonymous', () => {
+    expect(indexes).toHaveLength(51);
+    expect(new Set(indexes.map((i) => i.name)).size).toBe(51);
     expect(indexes.every((i) => /^(uq|idx)_/.test(i.name))).toBe(true);
     expect(devIndexes.map((i) => i.name)).toEqual(['uq_dev_identity']);
   });

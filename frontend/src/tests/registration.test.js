@@ -74,21 +74,30 @@ describe('registration wizard (T116)', () => {
     expect(api.declareAge).not.toHaveBeenCalled();
   });
 
-  test('the consent step derives the card from the age and blocks a contradictory choice', async () => {
+  test('the consent step states what the already-entered age derives - it never asks the participant to choose again', async () => {
     api.routeAge.mockResolvedValue({ eligible: true, assessmentTrack: 'ADOLESCENT', isMinor: true, requiredConsents: ['PARENT_GUARDIAN_CONSENT', 'STUDENT_ASSENT'] });
     await toAgeStep();
     await userEvent.type(screen.getByLabelText('Age in years'), '15');
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
-    expect(await screen.findByText('Parent or guardian consent')).toBeInTheDocument();
-    expect(screen.getByText('Your assent')).toBeInTheDocument();
-    expect(screen.getByLabelText('I am below 18 years')).toBeChecked();
 
-    await userEvent.click(screen.getByLabelText('I am 18 years or older'));
-    expect(screen.getByRole('alert')).toHaveTextContent(/does not match the age you entered/i);
-    expect(screen.queryByText('Parent or guardian consent')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /create my account/i })).toBeDisabled();
-    await userEvent.click(screen.getByLabelText('I am below 18 years'));
-    expect(screen.getByRole('button', { name: /create my account/i })).toBeEnabled();
+    expect(await screen.findByText('Below 18 years')).toBeInTheDocument();
+    expect(screen.getByText('Parent or guardian consent')).toBeInTheDocument();
+    expect(screen.getByText('Your assent')).toBeInTheDocument();
+    // no re-selection: neither the old choice cards nor any radiogroup exist any more
+    expect(screen.queryByText('18 years or older')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  });
+
+  test('an adult participant sees only the adult card, never the minor one', async () => {
+    api.routeAge.mockResolvedValue({ eligible: true, assessmentTrack: 'EMERGING_ADULT', isMinor: false, requiredConsents: ['ADULT_SELF_CONSENT'] });
+    await toAgeStep();
+    await userEvent.type(screen.getByLabelText('Age in years'), '20');
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+    expect(await screen.findByText('18 years or older')).toBeInTheDocument();
+    expect(screen.getByText('Your consent')).toBeInTheDocument();
+    expect(screen.queryByText('Below 18 years')).not.toBeInTheDocument();
   });
 
   test('the success step shows the Santulan ID with Copy and, for a minor, waits for consent with Start disabled; a retry reuses the same idempotency key', async () => {
@@ -99,6 +108,9 @@ describe('registration wizard (T116)', () => {
     await toAgeStep();
     await userEvent.type(screen.getByLabelText('Age in years'), '15');
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    // the parent/guardian consent form must be read before "Create my account" is enabled (student assent has no form to read)
+    await userEvent.click(await screen.findByRole('button', { name: /read consent form/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /agree & approve/i }));
     await userEvent.click(await screen.findByRole('button', { name: /create my account/i }));
     expect(await screen.findByText(/could not reach the server/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /create my account/i }));

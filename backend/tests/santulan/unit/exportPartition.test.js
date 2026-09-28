@@ -9,7 +9,7 @@ describe('sheet count', () => {
     expect(sheetCount(2220000)).toBe(3);
   });
 
-  test('ceil(rows / MAX_ROWS) across the boundaries; an empty data set still has the one ITEM_RESPONSES_01 sheet', () => {
+  test('ceil(rows / MAX_ROWS) across the boundaries; an empty data set still has the one ITEM_RESPONSES_LONG_01 sheet', () => {
     expect(sheetCount(0)).toBe(1);
     expect(sheetCount(1)).toBe(1);
     expect(sheetCount(2 * MAX_ROWS)).toBe(2);

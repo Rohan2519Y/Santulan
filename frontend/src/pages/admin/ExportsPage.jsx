@@ -14,11 +14,13 @@ import styles from './adminPages.module.css';
 
 const TONE = { REQUESTED: 'info', GENERATING: 'info', READY: 'success', FAILED: 'error' };
 const LABEL = { REQUESTED: 'Requested', GENERATING: 'Preparing', READY: 'Ready', FAILED: 'Failed' };
-const BLANK = { sourceAssessmentVersionId: '', anonymisationVersion: '', institutionId: '', cohortId: '', participantStatus: '', dateFrom: '', dateTo: '', includeAllVersions: false };
+const BLANK = { sourceAssessmentVersionId: '', anonymisationVersion: '', institutionId: '', cohortId: '', participantStatus: '', dateFrom: '', dateTo: '' };
 
 /**
- * Research exports: request a workbook (source question set, anonymisation version, optional filters), watch its status and download it
- * only when it is Ready. Each row states the dataset kind (current answers only, or every saved version). Files never leave through a path.
+ * Research exports: request a workbook (source question set, anonymisation version, optional filters), watch its status
+ * and download it only when it is Ready. Nine fixed sheets (README, PARTICIPANTS, ITEM_RESPONSES_LONG, QUALITY_REVIEW,
+ * ATTEMPT_SUMMARY, one VALIDATION_WIDE_<track>, ITEM_CODEBOOK, RESEARCH_DASHBOARD) - always the current answer for
+ * each question, with explicit missing rows. Files never leave through a path.
  */
 export default function ExportsPage() {
   const toast = useToast();
@@ -46,7 +48,7 @@ export default function ExportsPage() {
     setProblem(null);
     const filters = Object.fromEntries(['institutionId', 'cohortId', 'participantStatus', 'dateFrom', 'dateTo'].filter((k) => form[k]).map((k) => [k, form[k]]));
     try {
-      await adminApi.requestExport({ sourceAssessmentVersionId: form.sourceAssessmentVersionId, anonymisationVersion: form.anonymisationVersion.trim(), filters, includeAllVersions: form.includeAllVersions }, key);
+      await adminApi.requestExport({ sourceAssessmentVersionId: form.sourceAssessmentVersionId, anonymisationVersion: form.anonymisationVersion.trim(), filters }, key);
       toast.push({ type: 'success', message: 'Export requested. It will appear below when it is ready.' });
       setKey(newKey('export'));
       await list.reload();
@@ -59,13 +61,13 @@ export default function ExportsPage() {
 
   const setOptions = sets.data ? sets.data.sets.filter((s) => s.status !== 'DRAFT') : [];
   const describe = (x) => {
-    const f = Object.entries(x.filters || {}).filter(([k, v]) => k !== 'includeAllVersions' && v);
+    const f = Object.entries(x.filters || {}).filter(([, v]) => v);
     return f.length ? f.map(([k, v]) => `${k}: ${v}`).join(', ') : 'none';
   };
 
   return (
     <>
-      <PageHeader title="Research exports" description="A workbook of research data without names, contact details or login identifiers. Participants appear by Santulan ID only; withdrawn participants are excluded." />
+      <PageHeader title="Research exports" description="A workbook of research data without names, contact details or login identifiers. Participants appear only by a pseudonymous research id, decoupled from their sign-in Santulan ID; withdrawn participants are excluded." />
       <div className={styles.stack}>
         <Panel title="Request an export">
           <form className={styles.dialogForm} onSubmit={submit}>
@@ -106,9 +108,6 @@ export default function ExportsPage() {
                 <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={form.dateTo} onChange={change('dateTo')} />
               </label>
             </div>
-            <label>
-              <input type="checkbox" checked={form.includeAllVersions} onChange={change('includeAllVersions')} /> Include every saved version of each answer (otherwise only the current answer)
-            </label>
             {problem && <StatusMessage type="error" message={problem} />}
             <div className={styles.rowActions}>
               <Button type="submit" variant="primary" disabled={working || !form.sourceAssessmentVersionId || !form.anonymisationVersion.trim()}>{working ? 'Working…' : 'Request export'}</Button>
@@ -126,14 +125,13 @@ export default function ExportsPage() {
               <table className={tableStyles.table}>
                 <caption className="sr-only">Research exports</caption>
                 <thead>
-                  <tr><th scope="col">Requested</th><th scope="col">Status</th><th scope="col">Dataset</th><th scope="col">Filters</th><th scope="col">Anonymisation</th><th scope="col"><span className="sr-only">Actions</span></th></tr>
+                  <tr><th scope="col">Requested</th><th scope="col">Status</th><th scope="col">Filters</th><th scope="col">Anonymisation</th><th scope="col"><span className="sr-only">Actions</span></th></tr>
                 </thead>
                 <tbody>
                   {list.data.exports.map((x) => (
                     <tr key={x.exportId}>
                       <td>{formatDate(x.createdAt)}</td>
                       <td><StatusPill tone={TONE[x.status]} label={LABEL[x.status] || x.status} /></td>
-                      <td>{x.dataset === 'all-versions' ? 'All versions' : 'Current answers only'}</td>
                       <td>{describe(x)}</td>
                       <td>{x.anonymisationVersion}</td>
                       <td>{x.status === 'READY' && <Button type="button" variant="secondary" onClick={() => download(x)} aria-label={`Download the export requested ${formatDate(x.createdAt)}`}>Download</Button>}</td>
