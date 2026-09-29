@@ -36,12 +36,6 @@ function assertRegionFieldsAllowed(participationRoute, body) {
   }
 }
 
-/** A profile is submitted once (Tier A, never edited); refuse a second attempt with a clear reason rather than the
- * store's generic duplicate-key conflict. */
-function assertNotAlreadySubmitted(existing) {
-  if (existing) throw new HttpError(409, 'PROFILE_ALREADY_SUBMITTED', 'A validation profile was already submitted for this participant');
-}
-
 /** Builds the document from the validated request body. Every optional field defaults to null (the collection
  * validator requires every field to be present, even when unanswered). */
 function buildProfile({ _id, participantId, body }) {
@@ -66,4 +60,4 @@ function buildProfile({ _id, participantId, body }) {
   };
 }
 
-module.exports = { PROFILE_VERSION, CLASS_YEAR_BY_STAGE, assertClassYearForStage, assertRegionFieldsAllowed, assertNotAlreadySubmitted, buildProfile };
+module.exports = { PROFILE_VERSION, CLASS_YEAR_BY_STAGE, assertClassYearForStage, assertRegionFieldsAllowed, buildProfile };

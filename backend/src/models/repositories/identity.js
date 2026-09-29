@@ -79,9 +79,10 @@ async function transitionAdminStatus(tx, adminUserId, from, to) {
 // ---- cohort history (append only)
 async function appendCohortHistory(tx, doc) { await tx.c.participant_cohort_history.insertOne(doc); return camel(doc, 'historyId'); }
 
-// ---- validation-profile extension (Tier A, one row per participant, never edited)
+// ---- validation-profile extension (Tier A: an edit is a new row, never an in-place update; the latest by
+// created_at is the participant's current answer - the same versioned-insert pattern item responses use)
 async function findProfile(tx, participantId) {
-  return camel(await tx.c.participant_profiles.findOne({ participant_id: participantId }), 'profileId');
+  return camel(await tx.c.participant_profiles.findOne({ participant_id: participantId }, { sort: { created_at: -1 } }), 'profileId');
 }
 async function insertProfile(tx, doc) { await tx.c.participant_profiles.insertOne(doc); return camel(doc, 'profileId'); }
 

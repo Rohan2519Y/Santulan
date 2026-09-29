@@ -3,7 +3,8 @@
  * Santulan ID, route, track / age band and language. There is no name, photo, date of birth, interests or goals, and no
  * completion ring. Privacy lists every consent record with a Withdraw action (confirmed first); requests about data are static
  * text (approved contact details pending: TODO(copy)). Preferences: Language, Theme and Reduce motion, stored on this device only.
- * The three sample tabs that have a source are Personal information, Preferences and Privacy.
+ * The sample tabs are Personal information, Preferences and Privacy; Research profile (ValidationProfilePage) is an
+ * ASSUMED fourth tab added so a participant can revisit/edit the demographic and research profile form later.
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -31,12 +32,13 @@ const STATUS = { PENDING: 'Waiting', GRANTED: 'Given, waiting to be verified', V
 
 const TABS = [
   { to: '/student/profile', label: 'Personal information' },
+  { to: '/student/validation-profile', label: 'Research profile' },
   { to: '/student/profile/preferences', label: 'Preferences' },
   { to: '/student/privacy', label: 'Privacy' },
 ];
 
-/** The three profile tabs; they are links, so each one is a real page and the current one is marked aria-current. */
-function ProfileTabs({ current }) {
+/** The profile tabs; they are links, so each one is a real page and the current one is marked aria-current. */
+export function ProfileTabs({ current }) {
   return (
     <nav aria-label="Profile sections" className={styles.tabs}>
       {TABS.map((t) => (

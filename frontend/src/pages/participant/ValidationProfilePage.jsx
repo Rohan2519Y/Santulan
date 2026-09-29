@@ -1,10 +1,12 @@
 /*
  * The validation-profile step (Student Demographic & Research Profile Capture Form v1.0, "full recommended set").
- * Shown once, right after registration (RegisterPage's "Go to Dashboard" sends here first) and before the dashboard -
- * never re-asked once a profile exists (registrationState().profileCompleted). Every question is optional: "Skip for
- * now" and a bare "Save" with nothing filled in are both valid. Broad region and urbanicity only appear for OPEN
+ * First shown right after registration (RegisterPage's "Go to Dashboard" sends here first) and before the dashboard;
+ * reachable again any time afterwards from the profile tabs (My profile > Research profile) to review or change
+ * answers. Every question is optional: "Skip for now"/"Save with nothing filled in" (first visit) and a bare "Save
+ * changes" with fields cleared (a later edit) are both valid. Broad region and urbanicity only appear for OPEN
  * participation (the form's own question 11-12 scoping) - an institutional participant's institution/cohort already
- * carries that context. Never shown again, never editable here - matches the "captured once at registration" scope.
+ * carries that context. Each save is a new profile row (Tier A, insert-only) - the backend always reads back the
+ * latest one, so editing never loses the audit trail of earlier answers.
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +19,7 @@ import Skeleton from '../../components/Skeleton/Skeleton';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
 import { InfoNote } from '../../components/participantKit';
 import { api } from '../../services/santulanApi';
+import { ProfileTabs } from './AccountPages';
 
 const EDUCATION_STAGE = [
   ['SCHOOL', 'School'], ['DIPLOMA_VOCATIONAL', 'Diploma / Polytechnic / ITI / Vocational programme'],
@@ -87,33 +90,45 @@ function toPayload(form) {
   return body;
 }
 
+/** The reverse of toPayload: an existing profile (from GET /participants/profile) becomes form state, nulls become
+ * empty strings (a select's "Choose…" option). */
+function fromProfile(profile) {
+  const form = { ...BLANK };
+  for (const key of Object.keys(BLANK)) if (profile[key] != null) form[key] = profile[key];
+  return form;
+}
+
 export default function ValidationProfilePage() {
   const navigate = useNavigate();
   const [reg, setReg] = useState(null);
   const [form, setForm] = useState(BLANK);
+  const [editing, setEditing] = useState(false); // a profile already existed when this page loaded
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    api.registrationState().then((r) => {
+    Promise.all([
+      api.registrationState(),
+      api.ownProfile().catch((e) => (e.status === 404 ? null : Promise.reject(e))),
+    ]).then(([r, profile]) => {
       if (cancelled) return;
-      if (r.profileCompleted) { navigate('/student', { replace: true }); return; }
       setReg(r);
+      if (profile) { setForm(fromProfile(profile)); setEditing(true); }
     }).catch((e) => !cancelled && setError(e.message));
     return () => { cancelled = true; };
-  }, [navigate]);
+  }, []);
 
   const set = (key) => (value) => setForm((f) => ({ ...f, [key]: value, ...(key === 'educationStage' ? { currentClassYear: '' } : {}) }));
 
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true); setError('');
-    try { await api.submitProfile(toPayload(form)); navigate('/student', { replace: true }); }
+    try { await api.submitProfile(toPayload(form)); navigate(editing ? '/student/profile' : '/student', { replace: true }); }
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
-  const skip = () => navigate('/student', { replace: true });
+  const skip = () => navigate(editing ? '/student/profile' : '/student', { replace: true });
 
   if (error && !reg) return <StatusMessage type="error" message={error} />;
   if (!reg) return <div aria-busy="true" className={styles.stack}><Skeleton /><Skeleton /></div>;
@@ -122,11 +137,13 @@ export default function ValidationProfilePage() {
 
   return (
     <div className={p.page}>
+      {editing && <ProfileTabs current="/student/validation-profile" />}
       <div>
-        <h1 className={p.pageTitle}>A few questions about you</h1>
+        <h1 className={p.pageTitle}>{editing ? 'Your research profile' : 'A few questions about you'}</h1>
         <p className={p.pageLead}>
-          This helps us understand who takes part and keep the assessment fair for everyone. Every question is optional -
-          choose &quot;Prefer not to say&quot; wherever it appears, or leave a question blank. None of this affects your results.
+          {editing
+            ? 'Review or change your answers any time. Every question is optional - choose "Prefer not to say" wherever it appears, or leave a question blank. None of this affects your results.'
+            : 'This helps us understand who takes part and keep the assessment fair for everyone. Every question is optional - choose "Prefer not to say" wherever it appears, or leave a question blank. None of this affects your results.'}
         </p>
       </div>
       {error && <StatusMessage type="error" message={error} />}
@@ -179,8 +196,8 @@ export default function ValidationProfilePage() {
         <InfoNote icon={Info} tone="quiet">Your answers are used only for research on how fair and clear the assessment is. They never change your results.</InfoNote>
 
         <div className={styles.row}>
-          <Button type="submit" size="lg" disabled={busy}>{busy ? 'Saving…' : 'Save and continue'}</Button>
-          <Button type="button" variant="secondary" size="lg" onClick={skip} disabled={busy}>Skip for now</Button>
+          <Button type="submit" size="lg" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Save and continue'}</Button>
+          <Button type="button" variant="secondary" size="lg" onClick={skip} disabled={busy}>{editing ? 'Cancel' : 'Skip for now'}</Button>
         </div>
       </form>
     </div>

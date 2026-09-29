@@ -1,7 +1,7 @@
 /*
  * Validation-profile capture (ASSUMED addition, Student Demographic & Research Profile Capture Form v1.0 - the
- * "full recommended set", captured once during registration). Through the real app and the runtime credential on the
- * SCRATCH database.
+ * "full recommended set", first captured during registration and editable afterwards). Through the real app and the
+ * runtime credential on the SCRATCH database.
  */
 const request = require('supertest');
 const app = require('../../../src/app');
@@ -49,16 +49,25 @@ describe('submitting a validation profile', () => {
     expect(row).toMatchObject({ actor_type: 'PARTICIPANT', actor_id: p.participantId });
   });
 
-  test('a second submission is refused (409 PROFILE_ALREADY_SUBMITTED); nothing about the first row changes', async () => {
+  test('a second submission edits the profile: a new row is stored (Tier A, never an in-place update), and reads return the latest', async () => {
     const p = await f.participant(15);
-    const first = await post('/participants/profile', p, { educationStage: 'SCHOOL' });
+    const first = await post('/participants/profile', p, { educationStage: 'SCHOOL', currentClassYear: 'GRADE_10' });
     expect(first.status).toBe(201);
-    const second = await post('/participants/profile', p, { educationStage: 'UNDERGRADUATE' });
-    expect(second.status).toBe(409);
-    expect(second.body.error.code).toBe('PROFILE_ALREADY_SUBMITTED');
+    const second = await post('/participants/profile', p, { educationStage: 'UNDERGRADUATE', currentClassYear: 'UG_YEAR_1' });
+    expect(second.status).toBe(201);
+    expect(second.body.profileId).not.toBe(first.body.profileId);
+
     const rows = await (await f.db()).collection('participant_profiles').find({ participant_id: p.participantId }).toArray();
-    expect(rows).toHaveLength(1);
-    expect(rows[0].education_stage).toBe('SCHOOL'); // the refused second attempt never touched it
+    expect(rows).toHaveLength(2); // the first row is retained, not overwritten
+    expect(rows.find((r) => r._id === first.body.profileId).education_stage).toBe('SCHOOL');
+
+    const latest = await get('/participants/profile', p);
+    expect(latest.status).toBe(200);
+    expect(latest.body.profileId).toBe(second.body.profileId);
+    expect(latest.body.educationStage).toBe('UNDERGRADUATE');
+
+    const edited = await (await f.db()).collection('audit_logs').findOne({ action_type: 'PARTICIPANT_PROFILE_EDITED', target_id: second.body.profileId });
+    expect(edited).toMatchObject({ actor_type: 'PARTICIPANT', actor_id: p.participantId });
   });
 
   test('a class/year that does not belong to the chosen education stage is refused (422)', async () => {

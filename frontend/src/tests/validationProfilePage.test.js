@@ -8,31 +8,66 @@ import { api } from '../services/santulanApi';
 
 jest.mock('../services/santulanApi', () => ({
   ...jest.requireActual('../services/santulanApi'),
-  api: { registrationState: jest.fn(), submitProfile: jest.fn() },
+  api: { registrationState: jest.fn(), submitProfile: jest.fn(), ownProfile: jest.fn() },
 }));
 
 const STATE = (over = {}) => ({
   santulanId: 'STN-ABCDEFGHJKMNPQRSTVWX', participationRoute: 'OPEN', assessmentTrack: 'ADOLESCENT', isMinor: true,
   requiredConsents: ['PARENT_GUARDIAN_CONSENT', 'STUDENT_ASSENT'], attempt: null, profileCompleted: false, ...over,
 });
+const NOT_FOUND = { status: 404, message: 'not found' };
+const PROFILE = (over = {}) => ({
+  profileId: 'pr1', participantId: 'p1', profileVersion: 'STUDENT_PROFILE_v1.0',
+  educationStage: null, currentClassYear: null, primaryLanguageMode: null, primaryLanguageDetail: null,
+  mediumOfInstruction: null, mediumOfInstructionDetail: null, genderResearch: null, genderSelfDescription: null,
+  broadRegionMode: null, broadRegionDetail: null, urbanicity: null, accessibilityAccommodation: null, accessibilityAccommodationDetail: null,
+  ...over,
+});
 
-/** A router with a real Dashboard stand-in at /student, so "navigate to /student" is observable. */
+/** A router with real Dashboard/Profile stand-ins, so "navigate to /student" and "navigate to /student/profile" are observable. */
 const renderIt = () => render(
   <MemoryRouter initialEntries={['/student/validation-profile']}>
     <Routes>
       <Route path="/student/validation-profile" element={<ValidationProfilePage />} />
       <Route path="/student" element={<p>Dashboard landed</p>} />
+      <Route path="/student/profile" element={<p>Profile landed</p>} />
     </Routes>
   </MemoryRouter>,
 );
 
-beforeEach(() => { jest.clearAllMocks(); });
+beforeEach(() => {
+  jest.clearAllMocks();
+  api.ownProfile.mockRejectedValue(NOT_FOUND); // first-time (no profile yet) unless a test overrides this
+});
 
 describe('validation profile page', () => {
-  test('already-completed profiles skip straight to the dashboard, never showing the form', async () => {
+  test('an existing profile pre-fills the form for editing, instead of skipping the page', async () => {
     api.registrationState.mockResolvedValue(STATE({ profileCompleted: true }));
+    api.ownProfile.mockResolvedValue(PROFILE({ educationStage: 'SCHOOL', currentClassYear: 'GRADE_10' }));
     renderIt();
-    expect(await screen.findByText('Dashboard landed')).toBeInTheDocument();
+    expect(await screen.findByText('Your research profile')).toBeInTheDocument();
+    expect(screen.getByLabelText('Current education stage')).toHaveValue('SCHOOL');
+    expect(screen.getByLabelText('Current class / year')).toHaveValue('GRADE_10');
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+  });
+
+  test('editing an existing profile and saving navigates back to My profile, not the dashboard', async () => {
+    api.registrationState.mockResolvedValue(STATE({ profileCompleted: true }));
+    api.ownProfile.mockResolvedValue(PROFILE({ educationStage: 'SCHOOL' }));
+    api.submitProfile.mockResolvedValue({ profileId: 'pr2' });
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(api.submitProfile).toHaveBeenCalledWith({ educationStage: 'SCHOOL' }));
+    expect(await screen.findByText('Profile landed')).toBeInTheDocument();
+  });
+
+  test('Cancel while editing leaves without calling the API and returns to My profile', async () => {
+    api.registrationState.mockResolvedValue(STATE({ profileCompleted: true }));
+    api.ownProfile.mockResolvedValue(PROFILE());
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: /cancel/i }));
+    expect(await screen.findByText('Profile landed')).toBeInTheDocument();
     expect(api.submitProfile).not.toHaveBeenCalled();
   });
 

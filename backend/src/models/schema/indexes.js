@@ -16,7 +16,7 @@ const indexes = [
   ix('idx_participants_institution', 'participants', { institution_id: 1 }, { partial: { institution_id: str } }),
   ix('idx_participants_cohort', 'participants', { cohort_id: 1 }, { partial: { cohort_id: str } }),
   ix('idx_participant_history_participant', 'participant_cohort_history', { participant_id: 1, assigned_at: -1 }),
-  ix('uq_participant_profiles_participant', 'participant_profiles', { participant_id: 1 }, { unique: true }), // one profile per participant (never edited, so this also catches an accidental double-submit)
+  ix('idx_participant_profiles_participant_latest', 'participant_profiles', { participant_id: 1, created_at: -1 }), // an edit is a new row (Tier A); this serves "find the participant's latest profile"
   ix('idx_consents_participant_status', 'consents', { participant_id: 1, status: 1 }),
   ix('uq_verified_consent_per_protocol', 'consents', { participant_id: 1, consent_type: 1, protocol_version: 1 }, { unique: true, partial: { status: 'VERIFIED' } }),
   ix('idx_items_version_domain_order', 'items', { assessment_version_id: 1, domain_code: 1, display_order: 1 }),

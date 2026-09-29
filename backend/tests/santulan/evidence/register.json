@@ -3,692 +3,692 @@
     "id": "G-01",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\growthRules.test.js",
-    "runAt": "2026-09-28T17:10:51.889Z"
+    "runAt": "2026-09-29T16:50:08.035Z"
   },
   "G-08": {
     "id": "G-08",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\indexes.test.js",
-    "runAt": "2026-09-28T17:10:10.585Z"
+    "runAt": "2026-09-29T16:49:29.596Z"
   },
   "T-B02-011": {
     "id": "T-B02-011",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "G-29": {
     "id": "G-29",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.reporting.test.js",
-    "runAt": "2026-09-28T17:06:33.585Z"
+    "runAt": "2026-09-29T16:48:57.662Z"
   },
   "G-28": {
     "id": "G-28",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.content.test.js",
-    "runAt": "2026-09-28T17:08:42.398Z"
+    "runAt": "2026-09-29T16:49:10.207Z"
   },
   "B05-060": {
     "id": "B05-060",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\dbVerify.test.js",
-    "runAt": "2026-09-28T17:04:03.359Z"
+    "runAt": "2026-09-29T16:46:03.858Z"
   },
   "B06-019": {
     "id": "B06-019",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\dbVerify.test.js",
-    "runAt": "2026-09-28T17:04:03.359Z"
+    "runAt": "2026-09-29T16:46:03.858Z"
   },
   "T-B02-030": {
     "id": "T-B02-030",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-031": {
     "id": "T-B02-031",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\seedReference.test.js",
-    "runAt": "2026-09-28T17:09:19.172Z"
+    "runAt": "2026-09-29T16:37:49.517Z"
   },
   "T-B02-032": {
     "id": "T-B02-032",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\seedReference.test.js",
-    "runAt": "2026-09-28T17:09:19.172Z"
+    "runAt": "2026-09-29T16:37:49.517Z"
   },
   "G-04": {
     "id": "G-04",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.content.test.js",
-    "runAt": "2026-09-28T17:08:42.398Z"
+    "runAt": "2026-09-29T16:49:10.207Z"
   },
   "T-B02-020": {
     "id": "T-B02-020",
     "status": "PASS",
-    "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.content.test.js",
+    "runAt": "2026-09-29T16:49:10.207Z"
   },
   "G-17": {
     "id": "G-17",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\startup.test.js",
-    "runAt": "2026-09-28T17:06:01.612Z"
+    "runAt": "2026-09-29T16:48:39.898Z"
   },
   "G-21": {
     "id": "G-21",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\scope.test.js",
-    "runAt": "2026-09-28T17:09:30.763Z"
+    "runAt": "2026-09-29T16:49:49.427Z"
   },
   "G-22": {
     "id": "G-22",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\scope.test.js",
-    "runAt": "2026-09-28T17:09:30.763Z"
+    "runAt": "2026-09-29T16:49:49.427Z"
   },
   "G-23": {
     "id": "G-23",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\scope.test.js",
-    "runAt": "2026-09-28T17:09:30.763Z"
+    "runAt": "2026-09-29T16:49:49.427Z"
   },
   "G-24": {
     "id": "G-24",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\scope.test.js",
-    "runAt": "2026-09-28T17:09:30.763Z"
+    "runAt": "2026-09-29T16:49:49.427Z"
   },
   "G-25": {
     "id": "G-25",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\scope.test.js",
-    "runAt": "2026-09-28T17:09:30.763Z"
+    "runAt": "2026-09-29T16:49:49.427Z"
   },
   "G-26": {
     "id": "G-26",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\scope.test.js",
-    "runAt": "2026-09-28T17:09:30.764Z"
+    "runAt": "2026-09-29T16:49:49.427Z"
   },
   "G-13": {
     "id": "G-13",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\privileges.test.js",
-    "runAt": "2026-09-28T17:10:16.937Z"
+    "runAt": "2026-09-29T16:49:52.569Z"
   },
   "G-09": {
     "id": "G-09",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\indexes.test.js",
-    "runAt": "2026-09-28T17:10:10.585Z"
+    "runAt": "2026-09-29T16:49:29.596Z"
   },
   "G-10": {
     "id": "G-10",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\indexes.test.js",
-    "runAt": "2026-09-28T17:10:10.585Z"
+    "runAt": "2026-09-29T16:49:29.596Z"
   },
   "G-11": {
     "id": "G-11",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\indexes.test.js",
-    "runAt": "2026-09-28T17:10:10.585Z"
+    "runAt": "2026-09-29T16:49:29.596Z"
   },
   "G-12": {
     "id": "G-12",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\indexes.test.js",
-    "runAt": "2026-09-28T17:10:10.585Z"
+    "runAt": "2026-09-29T16:49:29.596Z"
   },
   "T03-007": {
     "id": "T03-007",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.identity.test.js",
-    "runAt": "2026-09-28T17:09:53.455Z"
+    "runAt": "2026-09-29T16:49:44.045Z"
   },
   "T03-008": {
     "id": "T03-008",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.identity.test.js",
-    "runAt": "2026-09-28T17:09:53.455Z"
+    "runAt": "2026-09-29T16:49:44.045Z"
   },
   "G-02": {
     "id": "G-02",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.identity.test.js",
-    "runAt": "2026-09-28T17:09:53.455Z"
+    "runAt": "2026-09-29T16:49:44.045Z"
   },
   "G-03": {
     "id": "G-03",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\growthEngine.test.js",
-    "runAt": "2026-09-28T17:10:48.080Z"
+    "runAt": "2026-09-29T16:50:00.065Z"
   },
   "G-07": {
     "id": "G-07",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\growthRules.test.js",
-    "runAt": "2026-09-28T17:10:51.889Z"
+    "runAt": "2026-09-29T16:50:08.035Z"
   },
   "B05-050": {
     "id": "B05-050",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.delivery.test.js",
-    "runAt": "2026-09-28T17:09:43.282Z"
+    "runAt": "2026-09-29T16:46:52.744Z"
   },
   "B05-051": {
     "id": "B05-051",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.delivery.test.js",
-    "runAt": "2026-09-28T17:09:43.282Z"
+    "runAt": "2026-09-29T16:46:52.744Z"
   },
   "B05-052": {
     "id": "B05-052",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.delivery.test.js",
-    "runAt": "2026-09-28T17:09:43.282Z"
+    "runAt": "2026-09-29T16:46:52.744Z"
   },
   "B05-053": {
     "id": "B05-053",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.delivery.test.js",
-    "runAt": "2026-09-28T17:09:43.282Z"
+    "runAt": "2026-09-29T16:46:52.744Z"
   },
   "B05-054": {
     "id": "B05-054",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.delivery.test.js",
-    "runAt": "2026-09-28T17:09:43.282Z"
+    "runAt": "2026-09-29T16:46:52.744Z"
   },
   "B05-055": {
     "id": "B05-055",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.delivery.test.js",
-    "runAt": "2026-09-28T17:09:43.282Z"
+    "runAt": "2026-09-29T16:46:52.744Z"
   },
   "G-06": {
     "id": "G-06",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\growthRules.test.js",
-    "runAt": "2026-09-28T17:10:51.889Z"
+    "runAt": "2026-09-29T16:50:08.035Z"
   },
   "G-05": {
     "id": "G-05",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\growthRules.test.js",
-    "runAt": "2026-09-28T17:10:51.889Z"
+    "runAt": "2026-09-29T16:50:08.035Z"
   },
   "B07-005": {
     "id": "B07-005",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.reporting.test.js",
-    "runAt": "2026-09-28T17:06:33.585Z"
+    "runAt": "2026-09-29T16:48:57.662Z"
   },
   "B07-037": {
     "id": "B07-037",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.reporting.test.js",
-    "runAt": "2026-09-28T17:06:33.585Z"
+    "runAt": "2026-09-29T16:48:57.662Z"
   },
   "B07-038": {
     "id": "B07-038",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.reporting.test.js",
-    "runAt": "2026-09-28T17:06:33.585Z"
+    "runAt": "2026-09-29T16:48:57.662Z"
   },
   "G-14": {
     "id": "G-14",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\privileges.test.js",
-    "runAt": "2026-09-28T17:10:16.937Z"
+    "runAt": "2026-09-29T16:49:52.569Z"
   },
   "G-15": {
     "id": "G-15",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\privileges.test.js",
-    "runAt": "2026-09-28T17:10:16.937Z"
+    "runAt": "2026-09-29T16:49:52.569Z"
   },
   "G-18": {
     "id": "G-18",
     "status": "PASS",
-    "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\atomicity.test.js",
-    "runAt": "2026-09-28T17:09:36.356Z"
+    "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\guaranteesIdentity.test.js",
+    "runAt": "2026-09-29T16:38:47.997Z"
   },
   "G-20": {
     "id": "G-20",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\atomicity.test.js",
-    "runAt": "2026-09-28T17:09:36.356Z"
+    "runAt": "2026-09-29T16:38:31.413Z"
   },
   "G-19": {
     "id": "G-19",
     "status": "PASS",
-    "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\atomicity.test.js",
-    "runAt": "2026-09-28T17:09:36.356Z"
+    "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\guaranteesIdentity.test.js",
+    "runAt": "2026-09-29T16:38:47.997Z"
   },
   "G-16": {
     "id": "G-16",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\views.test.js",
-    "runAt": "2026-09-28T17:06:53.562Z"
+    "runAt": "2026-09-29T16:48:44.269Z"
   },
   "G-27": {
     "id": "G-27",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\repoScan.test.js",
-    "runAt": "2026-09-28T17:10:49.750Z"
+    "runAt": "2026-09-29T16:50:02.040Z"
   },
   "SEC-30": {
     "id": "SEC-30",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\repoScan.test.js",
-    "runAt": "2026-09-28T17:10:49.750Z"
+    "runAt": "2026-09-29T16:50:02.040Z"
   },
   "B08-055": {
     "id": "B08-055",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\repoScan.test.js",
-    "runAt": "2026-09-28T17:10:49.750Z"
+    "runAt": "2026-09-29T16:50:02.040Z"
   },
   "B08-030": {
     "id": "B08-030",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.research.test.js",
-    "runAt": "2026-09-28T17:10:37.147Z"
+    "runAt": "2026-09-29T16:49:55.930Z"
   },
   "B08-031": {
     "id": "B08-031",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.research.test.js",
-    "runAt": "2026-09-28T17:10:37.147Z"
+    "runAt": "2026-09-29T16:49:55.930Z"
   },
   "B08-032": {
     "id": "B08-032",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\store\\validators.research.test.js",
-    "runAt": "2026-09-28T17:10:37.147Z"
+    "runAt": "2026-09-29T16:49:55.930Z"
   },
   "T04-005": {
     "id": "T04-005",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\consentRules.test.js",
-    "runAt": "2026-09-28T17:08:26.605Z"
+    "runAt": "2026-09-29T16:49:46.070Z"
   },
   "T04-010": {
     "id": "T04-010",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\consentRules.test.js",
-    "runAt": "2026-09-28T17:08:26.605Z"
+    "runAt": "2026-09-29T16:49:46.070Z"
   },
   "T04-011": {
     "id": "T04-011",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\consentRules.test.js",
-    "runAt": "2026-09-28T17:08:26.605Z"
+    "runAt": "2026-09-29T16:49:46.070Z"
   },
   "T04-015": {
     "id": "T04-015",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\consentRules.test.js",
-    "runAt": "2026-09-28T17:08:26.605Z"
+    "runAt": "2026-09-29T16:49:46.070Z"
   },
   "T04-016": {
     "id": "T04-016",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\consentRules.test.js",
-    "runAt": "2026-09-28T17:08:26.605Z"
+    "runAt": "2026-09-29T16:49:46.070Z"
   },
   "T04-025": {
     "id": "T04-025",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\consentRules.test.js",
-    "runAt": "2026-09-28T17:08:26.605Z"
+    "runAt": "2026-09-29T16:49:46.070Z"
   },
   "T04-026": {
     "id": "T04-026",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\consentRules.test.js",
-    "runAt": "2026-09-28T17:08:26.605Z"
+    "runAt": "2026-09-29T16:49:46.070Z"
   },
   "T03-009": {
     "id": "T03-009",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\registrationRules.test.js",
-    "runAt": "2026-09-28T17:08:45.328Z"
+    "runAt": "2026-09-29T16:49:04.622Z"
   },
   "T03-010": {
     "id": "T03-010",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\registrationRules.test.js",
-    "runAt": "2026-09-28T17:08:45.328Z"
+    "runAt": "2026-09-29T16:49:04.622Z"
   },
   "T03-021": {
     "id": "T03-021",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\registrationRules.test.js",
-    "runAt": "2026-09-28T17:08:45.328Z"
+    "runAt": "2026-09-29T16:49:04.622Z"
   },
   "T03-011": {
     "id": "T03-011",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\registrationRules.test.js",
-    "runAt": "2026-09-28T17:08:45.328Z"
+    "runAt": "2026-09-29T16:49:04.622Z"
   },
   "T03-012": {
     "id": "T03-012",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\registrationRules.test.js",
-    "runAt": "2026-09-28T17:08:45.328Z"
+    "runAt": "2026-09-29T16:49:04.623Z"
   },
   "T03-013": {
     "id": "T03-013",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\registrationRules.test.js",
-    "runAt": "2026-09-28T17:08:45.328Z"
+    "runAt": "2026-09-29T16:49:04.623Z"
   },
   "T03-001": {
     "id": "T03-001",
     "status": "PASS",
-    "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\registration.test.js",
-    "runAt": "2026-09-28T17:08:23.386Z"
+    "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\registrationUnits.test.js",
+    "runAt": "2026-09-29T16:46:49.432Z"
   },
   "T03-022": {
     "id": "T03-022",
     "status": "PASS",
-    "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\registration.test.js",
-    "runAt": "2026-09-28T17:08:23.386Z"
+    "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\registrationUnits.test.js",
+    "runAt": "2026-09-29T16:46:49.432Z"
   },
   "B08-060": {
     "id": "B08-060",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\registration.test.js",
-    "runAt": "2026-09-28T17:08:23.386Z"
+    "runAt": "2026-09-29T16:42:35.735Z"
   },
   "T04-001": {
     "id": "T04-001",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\consent.test.js",
-    "runAt": "2026-09-28T16:56:41.427Z"
+    "runAt": "2026-09-29T16:44:20.558Z"
   },
   "T04-018": {
     "id": "T04-018",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\consent.test.js",
-    "runAt": "2026-09-28T16:56:41.428Z"
+    "runAt": "2026-09-29T16:44:20.558Z"
   },
   "T04-023": {
     "id": "T04-023",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\consent.test.js",
-    "runAt": "2026-09-28T16:56:41.428Z"
+    "runAt": "2026-09-29T16:44:20.558Z"
   },
   "AT-27": {
     "id": "AT-27",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\auth.test.js",
-    "runAt": "2026-09-28T17:04:23.819Z"
+    "runAt": "2026-09-29T16:42:24.538Z"
   },
   "B08-008": {
     "id": "B08-008",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\foundation.test.js",
-    "runAt": "2026-09-28T17:09:09.980Z"
+    "runAt": "2026-09-29T16:49:34.433Z"
   },
   "T03-014": {
     "id": "T03-014",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\registrationUnits.test.js",
-    "runAt": "2026-09-28T17:07:27.200Z"
+    "runAt": "2026-09-29T16:46:49.432Z"
   },
   "AT-32": {
     "id": "AT-32",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\registrationUnits.test.js",
-    "runAt": "2026-09-28T17:07:27.200Z"
+    "runAt": "2026-09-29T16:46:49.432Z"
   },
   "SEC-17": {
     "id": "SEC-17",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\credentialLifecycle.test.js",
-    "runAt": "2026-09-28T17:06:30.735Z"
+    "runAt": "2026-09-29T16:43:02.667Z"
   },
   "AT-06": {
     "id": "AT-06",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\rosterValidation.test.js",
-    "runAt": "2026-09-28T17:10:39.493Z"
+    "runAt": "2026-09-29T16:49:57.841Z"
   },
   "AT-07": {
     "id": "AT-07",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\rosterValidation.test.js",
-    "runAt": "2026-09-28T17:10:39.493Z"
+    "runAt": "2026-09-29T16:49:57.842Z"
   },
   "T-B02-021": {
     "id": "T-B02-021",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-022": {
     "id": "T-B02-022",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-023": {
     "id": "T-B02-023",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-024": {
     "id": "T-B02-024",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-025": {
     "id": "T-B02-025",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-026": {
     "id": "T-B02-026",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-027": {
     "id": "T-B02-027",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-028": {
     "id": "T-B02-028",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "T-B02-029": {
     "id": "T-B02-029",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetRules.test.js",
-    "runAt": "2026-09-28T17:09:23.945Z"
+    "runAt": "2026-09-29T16:49:01.788Z"
   },
   "INFO-SC-002-upload-500": {
     "id": "INFO-SC-002-upload-500",
     "status": "INFORMATIONAL",
     "note": "500 questions x 5 options, upload + validate + transactional write (one process, local replica set)",
-    "durationMs": 2318,
-    "runAt": "2026-09-28T17:09:15.453Z"
+    "durationMs": 1271,
+    "runAt": "2026-09-29T16:38:36.914Z"
   },
   "T-B02-040": {
     "id": "T-B02-040",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-041": {
     "id": "T-B02-041",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-042": {
     "id": "T-B02-042",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-043": {
     "id": "T-B02-043",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-044": {
     "id": "T-B02-044",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-045": {
     "id": "T-B02-045",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-046": {
     "id": "T-B02-046",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-047": {
     "id": "T-B02-047",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-048": {
     "id": "T-B02-048",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-049": {
     "id": "T-B02-049",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-050": {
     "id": "T-B02-050",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-051": {
     "id": "T-B02-051",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "T-B02-052": {
     "id": "T-B02-052",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\questionSetLifecycle.test.js",
-    "runAt": "2026-09-28T17:05:50.684Z"
+    "runAt": "2026-09-29T16:46:58.630Z"
   },
   "B08-004": {
     "id": "B08-004",
     "status": "PASS",
-    "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\adminRules.test.js",
-    "runAt": "2026-09-28T17:10:14.227Z"
+    "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\questionSetsLifecycle.test.js",
+    "runAt": "2026-09-29T16:42:44.717Z"
   },
   "T03-017": {
     "id": "T03-017",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\attemptRules.test.js",
-    "runAt": "2026-09-28T17:09:56.022Z"
+    "runAt": "2026-09-29T16:47:03.205Z"
   },
   "T03-018": {
     "id": "T03-018",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\attempts.test.js",
-    "runAt": "2026-09-28T17:01:37.227Z"
+    "runAt": "2026-09-29T16:41:15.459Z"
   },
   "B05-005": {
     "id": "B05-005",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\responseRules.test.js",
-    "runAt": "2026-09-28T17:05:25.361Z"
+    "runAt": "2026-09-29T16:39:16.296Z"
   },
   "B05-007": {
     "id": "B05-007",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\responseRules.test.js",
-    "runAt": "2026-09-28T17:05:25.361Z"
+    "runAt": "2026-09-29T16:39:16.296Z"
   },
   "B05-009": {
     "id": "B05-009",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\attemptRules.test.js",
-    "runAt": "2026-09-28T17:09:56.022Z"
+    "runAt": "2026-09-29T16:47:03.205Z"
   },
   "B05-033": {
     "id": "B05-033",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\responseRules.test.js",
-    "runAt": "2026-09-28T17:05:25.361Z"
+    "runAt": "2026-09-29T16:39:16.296Z"
   },
   "B05-006": {
     "id": "B05-006",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\attemptRules.test.js",
-    "runAt": "2026-09-28T17:09:56.022Z"
+    "runAt": "2026-09-29T16:47:03.205Z"
   },
   "B05-001": {
     "id": "B05-001",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\attemptRules.test.js",
-    "runAt": "2026-09-28T17:09:56.022Z"
+    "runAt": "2026-09-29T16:47:03.205Z"
   },
   "B06-070": {
     "id": "B06-070",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\optionScale.test.js",
-    "runAt": "2026-09-28T17:10:50.633Z"
+    "runAt": "2026-09-29T16:50:06.622Z"
   },
   "B05-037": {
     "id": "B05-037",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\deliveryConcurrency.test.js",
-    "runAt": "2026-09-28T17:00:58.356Z"
+    "runAt": "2026-09-29T16:38:19.023Z"
   },
   "B05-038": {
     "id": "B05-038",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\deliveryConcurrency.test.js",
-    "runAt": "2026-09-28T17:00:58.356Z"
+    "runAt": "2026-09-29T16:38:19.023Z"
   },
   "B05-025": {
     "id": "B05-025",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\deliveryConcurrency.test.js",
-    "runAt": "2026-09-28T17:00:58.356Z"
+    "runAt": "2026-09-29T16:38:19.023Z"
   },
   "B05-039": {
     "id": "B05-039",
     "status": "SKIPPED",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\deliveryLoad.test.js",
-    "runAt": "2026-09-28T17:10:04.226Z"
+    "runAt": "2026-09-29T16:49:21.874Z"
   },
   "INFO-B05-039-delivery-load": {
     "id": "INFO-B05-039-delivery-load",
@@ -707,331 +707,331 @@
     "id": "B06-039",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\evidenceDecision.test.js",
-    "runAt": "2026-09-28T17:10:45.188Z"
+    "runAt": "2026-09-29T16:50:01.304Z"
   },
   "B06-040": {
     "id": "B06-040",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\evidenceDecision.test.js",
-    "runAt": "2026-09-28T17:10:45.188Z"
+    "runAt": "2026-09-29T16:50:01.304Z"
   },
   "B06-041": {
     "id": "B06-041",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\evidenceDecision.test.js",
-    "runAt": "2026-09-28T17:10:45.188Z"
+    "runAt": "2026-09-29T16:50:01.304Z"
   },
   "B06-011": {
     "id": "B06-011",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\scoringMath.test.js",
-    "runAt": "2026-09-28T17:10:43.839Z"
+    "runAt": "2026-09-29T16:50:05.819Z"
   },
   "B06-001": {
     "id": "B06-001",
     "status": "PASS",
-    "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\scoring.test.js",
-    "runAt": "2026-09-28T17:02:27.626Z"
+    "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\scoringRules.test.js",
+    "runAt": "2026-09-29T16:41:42.972Z"
   },
   "B06-020": {
     "id": "B06-020",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\scoringRules.test.js",
-    "runAt": "2026-09-28T16:59:58.897Z"
+    "runAt": "2026-09-29T16:41:42.972Z"
   },
   "B06-007": {
     "id": "B06-007",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\scoringRules.test.js",
-    "runAt": "2026-09-28T16:59:58.897Z"
+    "runAt": "2026-09-29T16:41:42.972Z"
   },
   "B06-030": {
     "id": "B06-030",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\qualityRules.test.js",
-    "runAt": "2026-09-28T17:07:07.331Z"
+    "runAt": "2026-09-29T16:45:03.255Z"
   },
   "B06-031": {
     "id": "B06-031",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\qualityRules.test.js",
-    "runAt": "2026-09-28T17:07:07.331Z"
+    "runAt": "2026-09-29T16:45:03.255Z"
   },
   "B06-032": {
     "id": "B06-032",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\qualityRules.test.js",
-    "runAt": "2026-09-28T17:07:07.331Z"
+    "runAt": "2026-09-29T16:45:03.255Z"
   },
   "B06-033": {
     "id": "B06-033",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\qualityRules.test.js",
-    "runAt": "2026-09-28T17:07:07.331Z"
+    "runAt": "2026-09-29T16:45:03.255Z"
   },
   "B06-034": {
     "id": "B06-034",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\qualityRules.test.js",
-    "runAt": "2026-09-28T17:07:07.332Z"
+    "runAt": "2026-09-29T16:45:03.255Z"
   },
   "B06-035": {
     "id": "B06-035",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\qualityRules.test.js",
-    "runAt": "2026-09-28T17:07:07.332Z"
+    "runAt": "2026-09-29T16:45:03.255Z"
   },
   "B06-048": {
     "id": "B06-048",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\qualityRules.test.js",
-    "runAt": "2026-09-28T17:07:07.332Z"
+    "runAt": "2026-09-29T16:45:03.255Z"
   },
   "B07-100": {
     "id": "B07-100",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\releaseFlags.test.js",
-    "runAt": "2026-09-28T17:10:06.489Z"
+    "runAt": "2026-09-29T16:49:39.127Z"
   },
   "B07-101": {
     "id": "B07-101",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\releaseFlags.test.js",
-    "runAt": "2026-09-28T17:10:06.489Z"
+    "runAt": "2026-09-29T16:49:39.127Z"
   },
   "B07-102": {
     "id": "B07-102",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\releaseFlags.test.js",
-    "runAt": "2026-09-28T17:10:06.489Z"
+    "runAt": "2026-09-29T16:49:39.127Z"
   },
   "B07-103": {
     "id": "B07-103",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\releaseFlags.test.js",
-    "runAt": "2026-09-28T17:10:06.489Z"
+    "runAt": "2026-09-29T16:49:39.127Z"
   },
   "B07-104": {
     "id": "B07-104",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\releaseFlags.test.js",
-    "runAt": "2026-09-28T17:10:06.489Z"
+    "runAt": "2026-09-29T16:49:39.127Z"
   },
   "B07-105": {
     "id": "B07-105",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\releaseFlags.test.js",
-    "runAt": "2026-09-28T17:10:06.489Z"
+    "runAt": "2026-09-29T16:49:39.127Z"
   },
   "B07-106": {
     "id": "B07-106",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\releaseFlags.test.js",
-    "runAt": "2026-09-28T17:10:06.489Z"
+    "runAt": "2026-09-29T16:49:39.127Z"
   },
   "B07-107": {
     "id": "B07-107",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\releaseFlags.test.js",
-    "runAt": "2026-09-28T17:10:06.489Z"
+    "runAt": "2026-09-29T16:49:39.127Z"
   },
   "B07-110": {
     "id": "B07-110",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminReleaseFlags.test.js",
-    "runAt": "2026-09-28T17:08:05.757Z"
+    "runAt": "2026-09-29T16:48:32.469Z"
   },
   "B07-111": {
     "id": "B07-111",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminReleaseFlags.test.js",
-    "runAt": "2026-09-28T17:08:05.757Z"
+    "runAt": "2026-09-29T16:48:32.469Z"
   },
   "B07-112": {
     "id": "B07-112",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminReleaseFlags.test.js",
-    "runAt": "2026-09-28T17:08:05.757Z"
+    "runAt": "2026-09-29T16:48:32.469Z"
   },
   "B07-113": {
     "id": "B07-113",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminReleaseFlags.test.js",
-    "runAt": "2026-09-28T17:08:05.757Z"
+    "runAt": "2026-09-29T16:48:32.469Z"
   },
   "B07-070": {
     "id": "B07-070",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\reports.test.js",
-    "runAt": "2026-09-28T16:59:25.883Z"
+    "runAt": "2026-09-29T16:36:56.331Z"
   },
   "AT-18": {
     "id": "AT-18",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\reports.test.js",
-    "runAt": "2026-09-28T16:59:25.884Z"
+    "runAt": "2026-09-29T16:36:56.331Z"
   },
   "B07-009": {
     "id": "B07-009",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\reportRules.test.js",
-    "runAt": "2026-09-28T17:01:20.171Z"
+    "runAt": "2026-09-29T16:37:41.586Z"
   },
   "B07-026": {
     "id": "B07-026",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\reportRenderer.test.js",
-    "runAt": "2026-09-28T17:10:49.074Z"
+    "runAt": "2026-09-29T16:50:07.385Z"
   },
   "B07-065": {
     "id": "B07-065",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\pathwayRules.test.js",
-    "runAt": "2026-09-28T17:04:12.472Z"
+    "runAt": "2026-09-29T16:38:28.939Z"
   },
   "B07-052": {
     "id": "B07-052",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\pathwayRules.test.js",
-    "runAt": "2026-09-28T17:04:12.472Z"
+    "runAt": "2026-09-29T16:38:28.939Z"
   },
   "B07-056": {
     "id": "B07-056",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\pathways.test.js",
-    "runAt": "2026-09-28T17:02:11.910Z"
+    "runAt": "2026-09-29T16:37:16.764Z"
   },
   "B07-062": {
     "id": "B07-062",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\pathwayRules.test.js",
-    "runAt": "2026-09-28T17:04:12.472Z"
+    "runAt": "2026-09-29T16:38:28.939Z"
   },
   "B07-063": {
     "id": "B07-063",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\pathways.test.js",
-    "runAt": "2026-09-28T17:02:11.910Z"
+    "runAt": "2026-09-29T16:37:16.764Z"
   },
   "B07-071": {
     "id": "B07-071",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\pathways.test.js",
-    "runAt": "2026-09-28T17:02:11.910Z"
+    "runAt": "2026-09-29T16:37:16.764Z"
   },
   "B07-058": {
     "id": "B07-058",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\pathwayRules.test.js",
-    "runAt": "2026-09-28T17:04:12.472Z"
+    "runAt": "2026-09-29T16:38:28.939Z"
   },
   "B06-042": {
     "id": "B06-042",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\scoring.test.js",
-    "runAt": "2026-09-28T17:02:27.626Z"
+    "runAt": "2026-09-29T16:39:28.442Z"
   },
   "B06-051": {
     "id": "B06-051",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\scoring.test.js",
-    "runAt": "2026-09-28T17:02:27.626Z"
+    "runAt": "2026-09-29T16:39:28.442Z"
   },
   "B07-078": {
     "id": "B07-078",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\releaseFlag.test.js",
-    "runAt": "2026-09-28T17:04:34.692Z"
+    "runAt": "2026-09-29T16:39:01.583Z"
   },
   "B07-003": {
     "id": "B07-003",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\reportRenderer.test.js",
-    "runAt": "2026-09-28T17:10:49.074Z"
+    "runAt": "2026-09-29T16:50:07.385Z"
   },
   "B07-035": {
     "id": "B07-035",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\reportRenderer.test.js",
-    "runAt": "2026-09-28T17:10:49.074Z"
+    "runAt": "2026-09-29T16:50:07.385Z"
   },
   "RC-09": {
     "id": "RC-09",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\reportRules.test.js",
-    "runAt": "2026-09-28T17:01:20.171Z"
+    "runAt": "2026-09-29T16:37:41.586Z"
   },
   "B07-016": {
     "id": "B07-016",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\reportRules.test.js",
-    "runAt": "2026-09-28T17:01:20.171Z"
+    "runAt": "2026-09-29T16:37:41.586Z"
   },
   "B08-065": {
     "id": "B08-065",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\unit\\researchIdentity.test.js",
-    "runAt": "2026-09-28T17:10:54.037Z"
+    "runAt": "2026-09-29T16:50:10.369Z"
   },
   "B08-013": {
     "id": "B08-013",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\adminRules.test.js",
-    "runAt": "2026-09-28T17:10:14.227Z"
+    "runAt": "2026-09-29T16:38:43.171Z"
   },
   "B08-006": {
     "id": "B08-006",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\adminRules.test.js",
-    "runAt": "2026-09-28T17:10:14.227Z"
+    "runAt": "2026-09-29T16:38:43.172Z"
   },
   "B08-079": {
     "id": "B08-079",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\domain\\adminRules.test.js",
-    "runAt": "2026-09-28T17:10:14.227Z"
+    "runAt": "2026-09-29T16:38:43.172Z"
   },
   "B08-022": {
     "id": "B08-022",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminControl.test.js",
-    "runAt": "2026-09-28T17:03:30.777Z"
+    "runAt": "2026-09-29T16:51:07.965Z"
   },
   "AT-16": {
     "id": "AT-16",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminControl.test.js",
-    "runAt": "2026-09-28T17:03:30.777Z"
+    "runAt": "2026-09-29T16:51:07.965Z"
   },
   "B08-016": {
     "id": "B08-016",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminControl.test.js",
-    "runAt": "2026-09-28T17:03:30.777Z"
+    "runAt": "2026-09-29T16:51:07.965Z"
   },
   "AT-29": {
     "id": "AT-29",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminControl.test.js",
-    "runAt": "2026-09-28T17:03:30.777Z"
+    "runAt": "2026-09-29T16:51:07.965Z"
   },
   "B08-061": {
     "id": "B08-061",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminControl.test.js",
-    "runAt": "2026-09-28T17:03:30.777Z"
+    "runAt": "2026-09-29T16:51:07.965Z"
   },
   "B08-063": {
     "id": "B08-063",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminControl.test.js",
-    "runAt": "2026-09-28T17:03:30.777Z"
+    "runAt": "2026-09-29T16:51:07.965Z"
   },
   "B08-064": {
     "id": "B08-064",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\contract\\adminControl.test.js",
-    "runAt": "2026-09-28T17:03:30.777Z"
+    "runAt": "2026-09-29T16:51:07.965Z"
   },
   "AT-01": {
     "id": "AT-01",
@@ -1127,7 +1127,7 @@
     "id": "AT-20",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\researchExport.test.js",
-    "runAt": "2026-09-28T16:58:52.674Z"
+    "runAt": "2026-09-29T16:35:47.210Z"
   },
   "AT-21": {
     "id": "AT-21",
@@ -1253,7 +1253,7 @@
     "id": "SEC-01",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\isolation.test.js",
-    "runAt": "2026-09-28T17:03:52.116Z"
+    "runAt": "2026-09-29T16:45:30.973Z"
   },
   "SEC-02": {
     "id": "SEC-02",
@@ -1271,7 +1271,7 @@
     "id": "SEC-04",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\isolation.test.js",
-    "runAt": "2026-09-28T17:03:52.116Z"
+    "runAt": "2026-09-29T16:45:30.973Z"
   },
   "SEC-05": {
     "id": "SEC-05",
@@ -1289,7 +1289,7 @@
     "id": "SEC-07",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\isolation.test.js",
-    "runAt": "2026-09-28T17:03:52.116Z"
+    "runAt": "2026-09-29T16:45:30.973Z"
   },
   "SEC-08": {
     "id": "SEC-08",
@@ -1301,7 +1301,7 @@
     "id": "SEC-09",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\isolation.test.js",
-    "runAt": "2026-09-28T17:03:52.116Z"
+    "runAt": "2026-09-29T16:45:30.973Z"
   },
   "SEC-10": {
     "id": "SEC-10",
@@ -1325,7 +1325,7 @@
     "id": "SEC-13",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\abuse.test.js",
-    "runAt": "2026-09-28T17:05:08.810Z"
+    "runAt": "2026-09-29T16:37:23.306Z"
   },
   "SEC-14": {
     "id": "SEC-14",
@@ -1337,7 +1337,7 @@
     "id": "SEC-16",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\abuse.test.js",
-    "runAt": "2026-09-28T17:05:08.810Z"
+    "runAt": "2026-09-29T16:37:23.306Z"
   },
   "SEC-18": {
     "id": "SEC-18",
@@ -1385,13 +1385,13 @@
     "id": "SEC-25",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\claims.test.js",
-    "runAt": "2026-09-28T17:08:34.621Z"
+    "runAt": "2026-09-29T16:47:20.977Z"
   },
   "SEC-26": {
     "id": "SEC-26",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\platform.test.js",
-    "runAt": "2026-09-28T17:07:18.524Z"
+    "runAt": "2026-09-29T16:46:42.090Z"
   },
   "SEC-27": {
     "id": "SEC-27",
@@ -1403,7 +1403,7 @@
     "id": "SEC-28",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\security\\platform.test.js",
-    "runAt": "2026-09-28T17:07:18.524Z"
+    "runAt": "2026-09-29T16:46:42.090Z"
   },
   "SEC-29": {
     "id": "SEC-29",
@@ -1427,13 +1427,13 @@
     "id": "B08-024",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\researchExport.test.js",
-    "runAt": "2026-09-28T16:58:52.674Z"
+    "runAt": "2026-09-29T16:35:47.210Z"
   },
   "B08-025": {
     "id": "B08-025",
     "status": "PASS",
     "file": "F:\\Santulan\\backend\\tests\\santulan\\integration\\researchExport.test.js",
-    "runAt": "2026-09-28T16:58:52.674Z"
+    "runAt": "2026-09-29T16:35:47.210Z"
   },
   "T147": {
     "id": "T147",
