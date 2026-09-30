@@ -155,3 +155,57 @@ describe('template, list and detail', () => {
     expect((await request(app).get(`/api/v1/admin/question-sets/${up.body.setId}`)).status).toBe(401);
   });
 });
+
+describe('preview: validates without saving anything, so the admin confirms before the real upload commits it', () => {
+  const postPreview = (token, buf, { ageGroup = 'ADOLESCENT', name = 'q.xlsx' } = {}) => {
+    const r = request(app).post('/api/v1/admin/question-sets/preview');
+    if (token) r.set('Authorization', `Bearer ${token}`);
+    if (ageGroup) r.field('ageGroup', ageGroup);
+    return r.attach('file', buf, name);
+  };
+
+  test('a clean file is validated and summarised, but nothing is written to the database', async () => {
+    const lbl = label();
+    const before = await (await f.db()).collection('assessment_versions').countDocuments({ version_label: lbl });
+    const res = await postPreview(admin.token, W.workbook(W.validRows({ label: lbl })));
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, totalProblems: 0, versionLabel: lbl, questionCount: 7, activeCount: 7, hiddenCount: 0 });
+    expect(res.body.problems).toEqual([]);
+    expect(res.body.domains).toEqual(expect.arrayContaining(['C1']));
+    expect(await (await f.db()).collection('assessment_versions').countDocuments({ version_label: lbl })).toBe(before);
+    expect((await audits('QUESTION_SET_UPLOADED')).find((a) => a.new_state.versionLabel === lbl)).toBeUndefined();
+  });
+
+  test('a row whose status is not READY previews as a hidden question, not a problem', async () => {
+    const rows = W.validRows({ label: label() });
+    rows[0].cells.status = 'DRAFT';
+    const res = await postPreview(admin.token, W.workbook(rows));
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, totalProblems: 0, questionCount: 7, activeCount: 6, hiddenCount: 1 });
+  });
+
+  test('a bad file previews its problems (same codes the real upload would reject with) and saves nothing', async () => {
+    const rows = W.validRows({ label: label() });
+    rows[0].cells.keying = 'REVERSE';
+    const res = await postPreview(admin.token, W.workbook(rows));
+    expect(res.status).toBe(200); // preview never 422s - the problems are data, not a rejection
+    expect(res.body.ok).toBe(false);
+    expect(res.body.totalProblems).toBeGreaterThanOrEqual(1);
+    expect(res.body.problems.map((p) => p.code)).toContain('KEYING_NOT_SUPPORTED');
+  });
+
+  test('previewing twice with the same file still lets the real upload succeed afterwards (preview never consumes anything)', async () => {
+    const lbl = label();
+    const buf = W.workbook(W.validRows({ label: lbl }));
+    expect((await postPreview(admin.token, buf)).status).toBe(200);
+    expect((await postPreview(admin.token, buf)).status).toBe(200);
+    const up = await post(admin.token, buf);
+    expect(up.status).toBe(201);
+    expect(up.body.versionLabel).toBe(lbl);
+  });
+
+  test('a missing file, unknown field and unauthenticated caller behave the same as the real upload endpoint', async () => {
+    expect((await request(app).post('/api/v1/admin/question-sets/preview').set('Authorization', `Bearer ${admin.token}`).field('ageGroup', 'ADOLESCENT')).status).toBe(400);
+    expect((await postPreview(null, W.workbook(W.validRows()))).status).toBe(401);
+  });
+});

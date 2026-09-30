@@ -1,0 +1,93 @@
+.chart {
+  position: relative;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--sp-2);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 32px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-brand-strong);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.toggle:hover {
+  background: var(--c-brand-soft);
+}
+.toggle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+}
+
+.gridline {
+  stroke: var(--c-line);
+  stroke-width: 1;
+}
+
+.axisLabel {
+  font-size: 10px;
+  fill: var(--c-ink-muted);
+}
+
+.legend {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.table th,
+.table td {
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  border-bottom: 1px solid var(--c-line);
+  color: var(--c-ink);
+}
+.table thead th {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-ink-muted);
+}
+.table tbody th {
+  font-weight: var(--fw-regular);
+}
+.table td {
+  font-variant-numeric: tabular-nums;
+}

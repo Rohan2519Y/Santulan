@@ -43,6 +43,14 @@ module.exports = {
     const result = await service.upload({ buffer: req.file.buffer, fileName: req.file.originalname, ageGroup: req.body.ageGroup, actor: req.actor, correlationId: req.correlationId });
     res.status(result.status).json(result.body);
   }),
+  /** Validates only - nothing is saved. The admin reviews this (question count, domains, any problems) and, if they
+   * want to proceed, re-submits the same file to the real upload endpoint above to actually add it. */
+  previewUpload: wrap(async (req, res) => {
+    if (!req.file) throw new HttpError(400, 'VALIDATION_ERROR', 'A question workbook file is required (field "file")');
+    const extra = Object.keys(req.body || {}).filter((k) => k !== 'ageGroup');
+    if (extra.length) throw new HttpError(400, 'VALIDATION_ERROR', `Unknown field(s): ${extra.join(', ')}`);
+    res.json(service.preview({ buffer: req.file.buffer, fileName: req.file.originalname, ageGroup: req.body.ageGroup }));
+  }),
   list: wrap(async (req, res) => {
     const q = schemas.listQuery.safeParse(req.query);
     if (!q.success) throw new HttpError(400, 'VALIDATION_ERROR', 'Invalid filter');

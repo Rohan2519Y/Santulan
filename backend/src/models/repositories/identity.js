@@ -86,11 +86,18 @@ async function findProfile(tx, participantId) {
 }
 async function insertProfile(tx, doc) { await tx.c.participant_profiles.insertOne(doc); return camel(doc, 'profileId'); }
 
+// ---- pilot study details extension (same Tier A / edit-is-a-new-row pattern as the profile above)
+async function findPilotDetails(tx, participantId) {
+  return camel(await tx.c.participant_pilot_details.findOne({ participant_id: participantId }, { sort: { created_at: -1 } }), 'detailsId');
+}
+async function insertPilotDetails(tx, doc) { await tx.c.participant_pilot_details.insertOne(doc); return camel(doc, 'detailsId'); }
+
 module.exports = {
   getParticipant, findParticipantByAuthSubject, findParticipantBySantulanId, insertParticipant, transitionParticipantStatus, listParticipants,
   getInstitution, getCohort, insertInstitution, insertCohort, listInstitutions, listCohorts, findActiveScope,
   getAdmin, findAdminByAuthSubject, insertAdmin, transitionAdminStatus,
   appendCohortHistory,
   findProfile, insertProfile,
+  findPilotDetails, insertPilotDetails,
   fromParticipant: P, fromInstitution: I, fromCohort: C, fromAdmin: A,
 };

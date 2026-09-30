@@ -4,7 +4,7 @@ import { LayoutDashboard, Users, Building2, ClipboardList, ShieldAlert, FileText
 import styles from './AdminLayout.module.css';
 
 export const NAV_ITEMS = [
-  { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/participants', label: 'Participants', icon: Users },
   { to: '/admin/institutions', label: 'Institutions', icon: Building2 },
   { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList },

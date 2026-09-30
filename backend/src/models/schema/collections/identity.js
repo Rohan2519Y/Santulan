@@ -80,9 +80,10 @@ const participants = collection('participants', 'B', {
 /*
  * Recommended validation-profile extension (Student Demographic & Research Profile Capture Form v1.0, "full recommended
  * set"): education, language, gender, region and accessibility context for sampling/fairness/DIF research only - NEVER
- * referenced by C1-C7 scoring (form's own "non-negotiable scoring boundary"). One row per participant, captured once
- * during registration and never edited (Tier A, like participant_cohort_history above); every question on the live form
- * is individually optional, so every field but participant_id/profile_version/created_at is nullable. The cross-field
+ * referenced by C1-C7 scoring (form's own "non-negotiable scoring boundary"). First captured during registration and
+ * editable afterwards - an edit is a new row, never an in-place update (Tier A, like participant_cohort_history
+ * above; identity.findProfile reads back the latest by created_at). Every question on the live form is individually
+ * optional, so every field but participant_id/profile_version/created_at is nullable. The cross-field
  * education_stage <-> current_class_year consistency (form Part II section 2) and the OPEN-route-only rule for
  * broad_region/urbanicity (question 11-12) are domain rules, not DB-level checks - they need context ($jsonSchema sees
  * only this one document).
@@ -119,6 +120,40 @@ const participantProfiles = collection('participant_profiles', 'A', {
   implies(inList('$broad_region_mode', ['STATE_UT', 'BROADER']), notNull('$broad_region_detail')),
   implies(eq('$accessibility_accommodation', 'OTHER'), notNull('$accessibility_accommodation_detail')),
 ]);
+
+/**
+ * "Santulan Pilot Study Details" PART A (docs/Santulan 2.0/Profile, the older superseded draft) - fields the
+ * currently-approved v1.0 profile form (above) explicitly lists under "Fields to EXCLUDE from the basic demographic
+ * form": full_name, date_of_birth, religion and the rest of PART A section 2/3. This collection exists ONLY because
+ * that exclusion was explicitly and deliberately overridden by direction, not because the approved form calls for it -
+ * see participantPilotDetailsRules.js for the full override note. Tier A like participant_profiles: an edit is a new
+ * row, never an in-place update; every field but participant_id/capture_version/full_name/created_at is nullable
+ * (PART A's own fields are individually optional beyond name/age, and age already exists as
+ * age_years_at_registration). Never referenced by C1-C7 scoring or joined into any research export.
+ */
+const participantPilotDetails = collection('participant_pilot_details', 'A', {
+  participant_id: uuid(),
+  capture_version: str({ nonblank: true }),
+
+  full_name: str({ nonblank: true }),
+  date_of_birth: date({ nullable: true }),
+  class_name: str({ nullable: true, nonblank: true }), // PART A Q4 "Class" - free text, the draft gives it no controlled options
+  gender: str({ nullable: true, nonblank: true }), // PART A Q5 "Gender" - free text, the draft gives it no controlled options either
+
+  birth_order: str({ enum: E.BIRTH_ORDER, nullable: true }),
+  sibling_count: int({ nullable: true, min: 0 }),
+  religion: str({ enum: E.RELIGION, nullable: true }),
+  family_type: str({ enum: E.FAMILY_TYPE, nullable: true }),
+  residence_type: str({ enum: E.RESIDENCE_TYPE, nullable: true }),
+  state: str({ nullable: true, nonblank: true }),
+
+  school_type: str({ enum: E.SCHOOL_TYPE, nullable: true }),
+  study_medium: str({ enum: E.STUDY_MEDIUM, nullable: true }),
+  board: str({ enum: E.BOARD, nullable: true }),
+  academic_stream: str({ enum: E.ACADEMIC_STREAM, nullable: true }), // PART A Q15, "Class 11-12 only" per the draft - a domain rule, not a DB-level check (class_name is free text)
+
+  created_at: date(),
+});
 
 const participantCohortHistory = collection('participant_cohort_history', 'A', {
   participant_id: uuid(),
@@ -157,4 +192,4 @@ const consents = collection('consents', 'B', {
   nullOrGte('$withdrawn_at', '$created_at'),
 ]);
 
-module.exports = [institutions, cohorts, adminUsers, participants, participantProfiles, participantCohortHistory, consents];
+module.exports = [institutions, cohorts, adminUsers, participants, participantProfiles, participantPilotDetails, participantCohortHistory, consents];

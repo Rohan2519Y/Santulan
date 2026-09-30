@@ -88,11 +88,16 @@ export const api = {
 
   registrationState: () => call('/registration/state'),
 
-  /** Student Demographic & Research Profile Capture Form v1.0 - captured once, right after registration, never edited.
-   * Every field is optional; omit a key entirely to leave that question unanswered ("Prefer not to say" where offered
-   * is a real enum value, not the same as omitting the key). */
+  /** Student Demographic & Research Profile Capture Form v1.0 - first captured right after registration, editable
+   * afterwards from the profile tabs. Every field is optional; omit a key entirely to leave that question unanswered
+   * ("Prefer not to say" where offered is a real enum value, not the same as omitting the key). */
   submitProfile: (body) => call('/participants/profile', { method: 'POST', body }),
   ownProfile: () => call('/participants/profile'),
+
+  /** "Santulan Pilot Study Details" PART A - an explicit override of the profile form's own "exclude full name/DOB/
+   * religion" list (see backend participantPilotDetailsRules.js). fullName is the one required field. */
+  submitPilotDetails: (body) => call('/participants/pilot-details', { method: 'POST', body }),
+  ownPilotDetails: () => call('/participants/pilot-details'),
 
   // consent (participants read; the consent service creates and verifies)
   consentRequirements: () => call('/consents/requirements'),
@@ -136,6 +141,14 @@ export const questionSetApi = {
     form.append('ageGroup', ageGroup);
     form.append('file', file);
     return call('/admin/question-sets', { method: 'POST', body: form });
+  },
+  /** Validates the same way `upload` would, but saves nothing - review the result, then call `upload` with the same
+   * file to actually add it. */
+  previewUpload: (file, ageGroup) => {
+    const form = new FormData();
+    form.append('ageGroup', ageGroup);
+    form.append('file', file);
+    return call('/admin/question-sets/preview', { method: 'POST', body: form });
   },
   list: (filters = {}) => {
     const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => v)).toString();
@@ -203,6 +216,7 @@ async function saveFile(path, fallbackName, failure) {
 
 export const adminApi = {
   monitoring: () => call('/admin/monitoring/summary'),
+  dashboard: (filters) => call(`/admin/dashboard${qs(filters)}`),
   control: () => call('/admin/assessment-control'),
   setControl: (state, reason) => call('/admin/assessment-control', { method: 'POST', body: { state, ...(reason ? { reason } : {}) } }),
 

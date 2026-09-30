@@ -35,7 +35,8 @@ export default function QuestionSetsPage() {
   const [ageGroup, setAgeGroup] = useState('ADOLESCENT');
   const [busy, setBusy] = useState(false);
   const [fileName, setFileName] = useState('');
-  const [rejected, setRejected] = useState(null); // { message, total, problems: [] }
+  const [rejected, setRejected] = useState(null); // { message, total, problems: [] } - a preview call itself failed (network, size, type)
+  const [pending, setPending] = useState(null); // { file, ageGroup, preview } - validated but not yet confirmed
   const [accepted, setAccepted] = useState(null);
   const [list, setList] = useState({ status: 'loading', sets: [], error: null });
   const [detail, setDetail] = useState(null);
@@ -57,9 +58,12 @@ export default function QuestionSetsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  /** Step 1: validate only. Nothing is saved here - the file is held in state so "Confirm and add" below can send the
+   * exact same bytes once the admin has reviewed the preview (question count, domains, any problems). */
   const handleFile = async (file) => {
     setRejected(null);
     setAccepted(null);
+    setPending(null);
     setFileName(file.name);
     if (!/\.xlsx$/i.test(file.name)) {
       setRejected({ message: 'The file must be an .xlsx workbook.', total: 0, problems: [] });
@@ -71,18 +75,36 @@ export default function QuestionSetsPage() {
     }
     setBusy(true);
     try {
-      const res = await questionSetApi.upload(file, ageGroup);
+      const preview = await questionSetApi.previewUpload(file, ageGroup);
+      setPending({ file, ageGroup, preview });
+    } catch (err) {
+      setRejected({ message: err.message, total: 0, problems: [] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Step 2: the admin confirms - only now does anything get saved, using the exact file (and age group) the preview
+   * above was computed from, not whatever the age-group radio happens to show now. */
+  const confirmUpload = async () => {
+    setBusy(true);
+    try {
+      const res = await questionSetApi.upload(pending.file, pending.ageGroup);
       setAccepted(res);
+      setPending(null);
       toast.push({ type: 'success', message: res.created ? `${res.versionLabel} saved as a draft.` : 'No change — this exact file is already saved.' });
       load();
     } catch (err) {
       const problems = Array.isArray(err.details) ? err.details : [];
       setRejected({ message: err.message, total: err.totalProblems || problems.length, problems });
+      setPending(null);
       toast.push({ type: 'error', message: 'Upload failed — nothing was saved.' });
     } finally {
       setBusy(false);
     }
   };
+
+  const cancelPending = () => { setPending(null); setFileName(''); };
 
   const showDetail = async (id) => {
     try { setDetail(await questionSetApi.get(id)); } catch (err) { setProblem(err.message); }
@@ -156,6 +178,60 @@ export default function QuestionSetsPage() {
               ))}
             </fieldset>
             <FileDropzone accept=".xlsx" onFile={handleFile} busy={busy} selectedName={fileName} title="Drop a question workbook (.xlsx) here, or browse" hint="Up to 2 MB and 500 questions; 2 to 20 options per question" />
+
+            {pending && (
+              <div className={pageStyles.spaceTop}>
+                <StatusMessage
+                  type={pending.preview.ok ? 'success' : 'error'}
+                  message={pending.preview.ok
+                    ? 'Nothing saved yet — review below, then confirm to add it.'
+                    : `The file has ${pending.preview.totalProblems} problem${pending.preview.totalProblems === 1 ? '' : 's'}. Nothing was saved.`}
+                />
+                {pending.preview.ok && (
+                  <>
+                    <dl className={styles.summary}>
+                      <div><dt>Label</dt><dd>{pending.preview.versionLabel}</dd></div>
+                      <div><dt>Questions</dt><dd>{pending.preview.questionCount}</dd></div>
+                      <div><dt>Domains covered</dt><dd>{pending.preview.domains.join(', ')}</dd></div>
+                      <div><dt>Shown to participants</dt><dd>{pending.preview.activeCount}</dd></div>
+                      {pending.preview.hiddenCount > 0 && <div><dt>Hidden (status not READY)</dt><dd>{pending.preview.hiddenCount}</dd></div>}
+                    </dl>
+                    {pending.preview.hiddenCount > 0 && (
+                      <p className={styles.wrap}>{pending.preview.hiddenCount} question{pending.preview.hiddenCount === 1 ? '' : 's'} will be added hidden from participants, since its status column wasn&apos;t READY. Show it later from Review once it&apos;s actually ready.</p>
+                    )}
+                    {pending.preview.warnings && pending.preview.warnings.length > 0 && (
+                      <ul className={styles.warnings} aria-label="Warnings">
+                        {pending.preview.warnings.map((w, i) => <li key={`${w.code}-${w.row}-${w.column}-${i}`}>{w.message}</li>)}
+                      </ul>
+                    )}
+                    <div className={styles.actions}>
+                      <Button type="button" onClick={confirmUpload} disabled={busy}>{busy ? 'Adding…' : 'Confirm and add'}</Button>
+                      <Button type="button" variant="secondary" onClick={cancelPending} disabled={busy}>Cancel</Button>
+                    </div>
+                  </>
+                )}
+                {!pending.preview.ok && pending.preview.problems.length > 0 && (
+                  <div className={tableStyles.scroll}>
+                    <table className={tableStyles.table}>
+                      <caption className="sr-only">Problems found in the file</caption>
+                      <thead><tr><th scope="col">Row</th><th scope="col">Column</th><th scope="col">Problem</th><th scope="col">What to do</th></tr></thead>
+                      <tbody>
+                        {pending.preview.problems.map((p, i) => (
+                          <tr key={`${p.row}-${p.column}-${p.code}-${i}`}>
+                            <td>{p.row ?? '—'}</td>
+                            <td>{p.column ?? '—'}</td>
+                            <td><code>{p.code}</code></td>
+                            <td className={styles.wrap}>{p.message}{hint(p.code) ? ` ${hint(p.code)}` : ''}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {!pending.preview.ok && pending.preview.totalProblems > pending.preview.problems.length && <p>Showing the first {pending.preview.problems.length} of {pending.preview.totalProblems}.</p>}
+                {!pending.preview.ok && <Button type="button" variant="secondary" onClick={cancelPending}>Dismiss</Button>}
+              </div>
+            )}
 
             {accepted && (
               <div className={pageStyles.spaceTop}>

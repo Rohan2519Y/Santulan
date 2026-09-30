@@ -468,7 +468,7 @@ describe('research export workbook contents (AT-20, AT-21, AT-28, AT-30, B08-029
     expect(text).toContain('participant_research_id');
     expect(text).toContain(e.exportId.toLowerCase());
     const disposition = String(res.headers['content-disposition']);
-    expect(disposition).toMatch(/santulan_research_export_\d{4}-\d{2}-\d{2}\.xlsx/);
+    expect(disposition).toMatch(new RegExp(`${S.label}_\\d{4}-\\d{2}-\\d{2}\\.xlsx`)); // named after the source assessment, not a generic filename
     expect(disposition).not.toContain('santulan-export-t137');
     expect(Buffer.from(res.body).includes(Buffer.from(EXPORT_DIR))).toBe(false);
   });

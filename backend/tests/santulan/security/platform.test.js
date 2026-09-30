@@ -43,7 +43,10 @@ const PII = [
   /\b[\w.+-]+@(gmail|yahoo|hotmail|outlook|aol|rediffmail|iclo|iCloud)\.(com|in|org|net)/i,
   /\b[6-9]\d{9}\b/,
   /\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/,
-  /\b(date_of_birth|dateOfBirth|guardian_email|guardian_mobile|parent_email|parent_mobile|external_student_id)\b/i,
+  // date_of_birth/dateOfBirth deliberately dropped from this list: participant_pilot_details now carries a real
+  // date_of_birth field by explicit override (see participantPilotDetailsRules.js), so the field name itself is
+  // expected in fixtures now - this list still catches values/fields that remain genuinely unexpected.
+  /\b(guardian_email|guardian_mobile|parent_email|parent_mobile|external_student_id)\b/i,
 ];
 const ANALYTICS_HOSTS = ['google-analytics.com', 'googletagmanager.com', 'doubleclick.net', 'googleadservices.com', 'hotjar.com', 'segment.io', 'facebook.com/tr', 'analytics.tiktok.com'];
 const ANALYTICS_CALLS = /\b(gtag\(|ga\(|fbq\(|hs\.tracker\(|analytics\.track\(|newrelic\()/;

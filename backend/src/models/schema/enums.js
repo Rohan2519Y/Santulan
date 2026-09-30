@@ -64,4 +64,18 @@ module.exports = {
   REGION_MODE: ['STATE_UT', 'BROADER', 'PREFER_NOT_TO_SAY'], // RP-006, question 11's three checkboxes (OPEN route only - domain rule, not a DB-level check)
   URBANICITY: ['URBAN', 'SEMI_URBAN', 'RURAL', 'OTHER', 'PREFER_NOT_TO_SAY'], // RP-007
   ACCESSIBILITY_ACCOMMODATION: ['NONE', 'LARGE_TEXT', 'READER', 'EXTRA_TIME', 'TRANSLATION', 'OTHER', 'PREFER_NOT_TO_SAY'], // RP-008
+
+  // "Santulan Pilot Study Details" (the older, superseded draft form, docs/Santulan 2.0/Profile) - PART A section 2/3.
+  // The approved v1.0 profile form above explicitly excludes full_name/date_of_birth/religion etc. from the canonical
+  // demographic profile ("do not add... unless a separately approved operational/legal change requires it"); this set
+  // exists ONLY because the user explicitly directed adding it despite that written exclusion (an explicit override,
+  // not a spec reading) - see participantPilotDetailsRules.js's file header.
+  BIRTH_ORDER: ['ONLY_CHILD', 'FIRST_BORN', 'MIDDLE_BORN', 'YOUNGEST', 'OTHER'],
+  RELIGION: ['HINDU', 'MUSLIM', 'CHRISTIAN', 'SIKH', 'BUDDHIST', 'JAIN', 'OTHER', 'PREFER_NOT_TO_SAY'],
+  FAMILY_TYPE: ['NUCLEAR', 'JOINT', 'EXTENDED', 'OTHER'],
+  RESIDENCE_TYPE: ['URBAN', 'SEMI_URBAN', 'RURAL'],
+  SCHOOL_TYPE: ['GOVERNMENT', 'PRIVATE', 'GOVERNMENT_AIDED', 'OTHER'],
+  STUDY_MEDIUM: ['HINDI', 'ENGLISH', 'OTHER'], // the old draft's own (smaller) list - distinct from MEDIUM_OF_INSTRUCTION above
+  BOARD: ['CBSE', 'ICSE', 'STATE_BOARD', 'OTHER'],
+  ACADEMIC_STREAM: ['SCIENCE', 'COMMERCE', 'HUMANITIES_ARTS', 'OTHER', 'NOT_APPLICABLE'],
 };

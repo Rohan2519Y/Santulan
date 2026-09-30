@@ -91,11 +91,15 @@ async function prepareDownload(actor, exportId, correlationId) {
     if (row.status !== 'READY') throw new HttpError(422, 'INVALID_STATE', `The export is not ready (${row.status})`);
     // the audit row is the precondition of the download: if it cannot be written the transaction fails and nothing is streamed
     await writeAudit(tx, { actorType: 'ADMIN', actorId: actor.adminUserId, actionType: 'RESEARCH_EXPORT_DOWNLOADED', targetEntity: 'research_exports', targetId: exportId, correlationId });
-    return row;
+    const set = await tx.c.assessment_versions.findOne({ _id: row.sourceAssessmentVersionId });
+    return { ...row, versionLabel: set ? set.version_label : null };
   }, { transaction: true });
   const file = finalPath(x.exportId);
   if (path.basename(x.fileReference) !== x.fileReference || x.fileReference !== `${x.exportId}.xlsx` || !fs.existsSync(file)) throw new HttpError(404, 'NOT_FOUND', 'The export file is no longer available');
-  return { file, size: fs.statSync(file).size, name: `santulan_research_export_${x.createdAt.toISOString().slice(0, 10)}.xlsx` };
+  // Named after the source assessment (e.g. santulan-adolescent-pilot-v3_1_2026-10-01.xlsx) so multiple downloads
+  // stay identifiable by filename alone - falls back to the old generic name if the source set is somehow gone.
+  const safeLabel = (x.versionLabel || 'santulan_research_export').replace(/[^A-Za-z0-9_-]+/g, '_');
+  return { file, size: fs.statSync(file).size, name: `${safeLabel}_${x.createdAt.toISOString().slice(0, 10)}.xlsx` };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- generate

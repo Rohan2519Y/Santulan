@@ -61,3 +61,21 @@
   background: var(--c-status-soft-error);
   color: var(--c-status-error);
 }
+
+/* Bright tones (Dashboard KPI cards only) - a lighter, more vivid palette, additive to the tones above. */
+.brightBlue .iconWrap {
+  background: var(--c-bright-blue-soft);
+  color: var(--c-bright-blue);
+}
+.brightGreen .iconWrap {
+  background: var(--c-bright-green-soft);
+  color: var(--c-bright-green);
+}
+.brightPurple .iconWrap {
+  background: var(--c-bright-purple-soft);
+  color: var(--c-bright-purple);
+}
+.brightOrange .iconWrap {
+  background: var(--c-bright-orange-soft);
+  color: var(--c-bright-orange);
+}

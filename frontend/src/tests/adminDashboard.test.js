@@ -1,5 +1,5 @@
 /*
- * Admin pages (T151): the eleven pages built in US5 (Overview, Participants, Institutions, Roster import, Submissions +
+ * Admin pages (T151): the eleven pages built in US5 (Dashboard, Participants, Institutions, Roster import, Submissions +
  * drawer, Quality review, Reports, Question sets, Assessment control, Research exports, Audit log) plus Release switches.
  * Every page reads its own data from the server (GET /admin/...); nothing is counted, filtered or exported in the browser.
  * Covers: empty states, error states, that a pause/stop/archive/suspend/switch action requires a reason (3-300 characters)
@@ -12,7 +12,7 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { axe } from 'jest-axe';
-import OverviewPage from '../pages/admin/OverviewPage';
+import DashboardPage from '../pages/admin/DashboardPage';
 import ParticipantsPage from '../pages/admin/ParticipantsPage';
 import InstitutionsPage from '../pages/admin/InstitutionsPage';
 import RosterImportPage from '../pages/admin/RosterImportPage';
@@ -30,7 +30,7 @@ import { adminApi, questionSetApi, releaseFlagApi } from '../services/santulanAp
 jest.mock('../services/santulanApi', () => ({
   ...jest.requireActual('../services/santulanApi'),
   adminApi: {
-    monitoring: jest.fn(), control: jest.fn(), setControl: jest.fn(),
+    monitoring: jest.fn(), dashboard: jest.fn(), control: jest.fn(), setControl: jest.fn(),
     institutions: jest.fn(), createInstitution: jest.fn(), updateInstitution: jest.fn(), createCohort: jest.fn(), updateCohort: jest.fn(),
     participants: jest.fn(), setParticipantStatus: jest.fn(), resetCredential: jest.fn(),
     importRoster: jest.fn(), downloadCredentials: jest.fn(),
@@ -38,7 +38,7 @@ jest.mock('../services/santulanApi', () => ({
     exports: jest.fn(), requestExport: jest.fn(), downloadExport: jest.fn(),
   },
   questionSetApi: {
-    upload: jest.fn(), list: jest.fn(), get: jest.fn(), freeze: jest.fn(), open: jest.fn(), close: jest.fn(), delete: jest.fn(), downloadTemplate: jest.fn(),
+    upload: jest.fn(), previewUpload: jest.fn(), list: jest.fn(), get: jest.fn(), freeze: jest.fn(), open: jest.fn(), close: jest.fn(), delete: jest.fn(), downloadTemplate: jest.fn(),
   },
   releaseFlagApi: { list: jest.fn(), set: jest.fn() },
 }));
@@ -54,44 +54,56 @@ describe('AdminLayout navigation (T151)', () => {
   test('the sidebar has the eleven US5/US8 pages plus Response distribution (ASSUMED addition), and no leftover Item Pools entry', () => {
     const labels = NAV_ITEMS.map((i) => i.label);
     expect(labels).toEqual([
-      'Overview', 'Participants', 'Institutions', 'Submissions', 'Quality review', 'Reports',
+      'Dashboard', 'Participants', 'Institutions', 'Submissions', 'Quality review', 'Reports',
       'Question sets', 'Response distribution', 'Assessment control', 'Research exports', 'Audit log', 'Release switches',
     ]);
     expect(labels).not.toContain('Item Pools');
   });
 });
 
-describe('OverviewPage', () => {
-  // every count below is a distinct number so a bare match (the StatTile values) can never collide with a BarChart bar's
-  // own bare count text (attempts.byState, participants.byStatus) or with each other.
-  const summary = () => ({
-    participants: { total: 12, byRoute: { OPEN: 8, INSTITUTIONAL: 4 }, byStatus: { ACTIVE: 10, SUSPENDED: 6 }, byInstitution: [] },
-    attempts: { byState: { IN_PROGRESS: 3, REPORT_READY: 5 } },
-    reports: { byState: { REPORT_READY: 5 }, retryQueue: 7 },
-    exports: { byState: {} },
-    qualityReview: { unreviewed: 9, reviewed: 4 },
-    participation: { controlPlane: 'OPEN', openAgeGroups: ['ADOLESCENT'] },
+describe('DashboardPage (ASSUMED addition, docs/Santulan 2.0/Dashboard.jpeg)', () => {
+  const dashboard = () => ({
+    kpis: { participantsAdded: 12, consentsCompleted: 9, consentsPending: 3, assessmentsStarted: 7, assessmentsNotStarted: 5, assessmentsSubmitted: 4, assessmentsInProgress: 3 },
+    completionStatus: [
+      { key: 'SUBMITTED', label: 'Submitted', count: 4 }, { key: 'IN_PROGRESS', label: 'In Progress', count: 3 },
+      { key: 'NOT_STARTED', label: 'Not Started', count: 2 }, { key: 'CONSENT_PENDING', label: 'Consent Pending', count: 3 },
+    ],
+    consentStatus: { total: 6, breakdown: [{ key: 'BOTH_VERIFIED', label: 'Parent & Student Consent', count: 4 }, { key: 'PARENT_PENDING', label: 'Parent Consent Pending', count: 1 }, { key: 'STUDENT_PENDING', label: 'Student Consent Pending', count: 1 }] },
+    recentParticipants: [{ participantId: 'p1', santulanId: 'STN-AAA', name: 'A. Sharma', age: 15, institutionCode: 'INST-1', cohortCode: 'C10', consentStatus: 'COMPLETED', assessmentStatus: 'SUBMITTED', createdAt: '2026-10-01T00:00:00.000Z' }],
+    pendingActions: { parentConsentPending: 1, studentConsentPending: 1, notStarted: 5, inProgress: 3 },
+    progressOverTime: [{ date: '2026-10-01', participantsAdded: 2, assessmentsStarted: 1, assessmentsSubmitted: 0 }],
+    completionByInstitution: [{ institutionId: 'i1', institutionCode: 'INST-1', pct: 40, total: 10 }],
   });
 
-  test('shows counts only, straight from the monitoring summary', async () => {
-    adminApi.monitoring.mockResolvedValue(summary());
-    renderAdmin(<OverviewPage />);
-    expect(await screen.findByText('12')).toBeInTheDocument(); // participants total
-    expect(screen.getByText('7')).toBeInTheDocument(); // reports to retry
-    expect(screen.getByText('9')).toBeInTheDocument(); // flags to review
-    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+  test('shows the KPI counts straight from the dashboard summary', async () => {
+    adminApi.dashboard.mockResolvedValue(dashboard());
+    const { container } = renderAdmin(<DashboardPage />);
+    await screen.findByText('Consents Completed'); // unlike "Participants Added", not reused as a chart series/legend label elsewhere on the page
+    // scoped to the KPI grid: "Participants Added" and "12" both also appear elsewhere on the page by design (the
+    // progress line chart reuses the same series label, and the completion-status donut's total sums to the same figure).
+    const kpis = within(container.querySelector('.kpiGrid'));
+    expect(kpis.getByText('12')).toBeInTheDocument(); // participants added
+    expect(kpis.getByText('9')).toBeInTheDocument(); // consents completed
+    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+  });
+
+  test('shows the recent participants table and pending actions', async () => {
+    adminApi.dashboard.mockResolvedValue(dashboard());
+    renderAdmin(<DashboardPage />);
+    expect(await screen.findByText('A. Sharma')).toBeInTheDocument();
+    expect(screen.getByText('STN-AAA')).toBeInTheDocument();
   });
 
   test('a load failure shows the error state, not a crash', async () => {
-    adminApi.monitoring.mockReturnValue(err('offline'));
-    renderAdmin(<OverviewPage />);
-    expect(await screen.findByText(/could not load the overview: offline/i)).toBeInTheDocument();
+    adminApi.dashboard.mockReturnValue(err('offline'));
+    renderAdmin(<DashboardPage />);
+    expect(await screen.findByText(/could not load the dashboard: offline/i)).toBeInTheDocument();
   });
 
   test('is axe-clean while ready', async () => {
-    adminApi.monitoring.mockResolvedValue(summary());
-    const { container } = renderAdmin(<OverviewPage />);
-    await screen.findByText('12');
+    adminApi.dashboard.mockResolvedValue(dashboard());
+    const { container } = renderAdmin(<DashboardPage />);
+    await screen.findByText('A. Sharma');
     expect(await axe(container)).toHaveNoViolations();
   });
 });
@@ -275,15 +287,47 @@ describe('QuestionSetsPage', () => {
     expect(await screen.findByText(/no question sets yet/i)).toBeInTheDocument();
   });
 
-  test('a rejected upload lists every row/column problem and saves nothing', async () => {
+  test('a bad file previews every row/column problem and saves nothing (no confirm step reached)', async () => {
     questionSetApi.list.mockResolvedValue({ sets: [] });
-    const apiErr = Object.assign(new Error('The file has 2 problems.'), { details: [{ row: 3, column: 'keying', code: 'KEYING_NOT_SUPPORTED', message: 'keying must be Positive' }, { row: 5, column: 'item_code', code: 'ITEM_CODE_DUPLICATE', message: 'duplicate item_code' }], totalProblems: 2 });
-    questionSetApi.upload.mockRejectedValue(apiErr);
+    questionSetApi.previewUpload.mockResolvedValue({
+      ok: false, totalProblems: 2,
+      problems: [{ row: 3, column: 'keying', code: 'KEYING_NOT_SUPPORTED', message: 'keying must be Positive' }, { row: 5, column: 'item_code', code: 'ITEM_CODE_DUPLICATE', message: 'duplicate item_code' }],
+      warnings: [], versionLabel: null, questionCount: 0, activeCount: 0, hiddenCount: 0, domains: [],
+    });
     renderAdmin(<QuestionSetsPage />);
     const file = new File(['x'], 'questions.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     await userEvent.upload(await screen.findByLabelText(/drop a question workbook/i), file);
     expect(await screen.findByText('KEYING_NOT_SUPPORTED')).toBeInTheDocument();
     expect(screen.getByText('ITEM_CODE_DUPLICATE')).toBeInTheDocument();
+    expect(questionSetApi.upload).not.toHaveBeenCalled(); // preview never saves anything
+  });
+
+  test('a clean file previews first (nothing saved), then only saves once "Confirm and add" is clicked', async () => {
+    questionSetApi.list.mockResolvedValue({ sets: [] });
+    questionSetApi.previewUpload.mockResolvedValue({
+      ok: true, totalProblems: 0, problems: [], warnings: [],
+      versionLabel: 'fx-preview-v1', questionCount: 7, activeCount: 7, hiddenCount: 0, domains: ['C1', 'C2'],
+    });
+    questionSetApi.upload.mockResolvedValue({ versionLabel: 'fx-preview-v1', revision: 1, created: true });
+    renderAdmin(<QuestionSetsPage />);
+    const file = new File(['x'], 'questions.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    await userEvent.upload(await screen.findByLabelText(/drop a question workbook/i), file);
+    expect(await screen.findByText('fx-preview-v1')).toBeInTheDocument();
+    expect(questionSetApi.upload).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm and add' }));
+    await waitFor(() => expect(questionSetApi.upload).toHaveBeenCalledWith(file, 'ADOLESCENT'));
+  });
+
+  test('a question whose status was not READY previews as hidden, not a problem', async () => {
+    questionSetApi.list.mockResolvedValue({ sets: [] });
+    questionSetApi.previewUpload.mockResolvedValue({
+      ok: true, totalProblems: 0, problems: [], warnings: [],
+      versionLabel: 'fx-hidden-v1', questionCount: 7, activeCount: 6, hiddenCount: 1, domains: ['C1'],
+    });
+    renderAdmin(<QuestionSetsPage />);
+    const file = new File(['x'], 'questions.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    await userEvent.upload(await screen.findByLabelText(/drop a question workbook/i), file);
+    expect(await screen.findByText(/will be added hidden from participants/i)).toBeInTheDocument();
   });
 
   test('freezing and opening a set each need their own confirmation, and opening needs a reason', async () => {

@@ -106,7 +106,11 @@ function validate({ rows, columns = [], ageGroup }) {
       else if (group && !group.contexts.includes(val.context)) bad('context', 'CONTEXT_DOES_NOT_FIT_GROUP', `context ${val.context} does not fit the ${ageGroup} age group`);
     }
     if (val.layer !== undefined && val.layer.toUpperCase() !== 'CORE') bad('layer', 'LAYER_NOT_SUPPORTED', 'Only CORE questions are supported');
-    if (val.status !== undefined && val.status.toUpperCase() !== 'READY') bad('status', 'STATUS_NOT_READY', 'Only questions with status READY are accepted');
+    // A row whose status isn't READY is no longer a file-level error: it is accepted and stored, but starts hidden
+    // from participants (item status RETIRED) instead of shown (ACTIVE) - an admin can show it later once it's
+    // actually ready, the same "Show to participants" action already used to hide/show any item after upload.
+    const pilotStatus = val.status !== undefined ? val.status.toUpperCase() : null;
+    const itemVisibility = pilotStatus === 'READY' ? 'ACTIVE' : 'RETIRED';
 
     if (order !== null) {
       if (!Number.isInteger(order) || order < 1) bad('display_order', 'DISPLAY_ORDER_INVALID', 'display_order must be a positive whole number');
@@ -138,8 +142,8 @@ function validate({ rows, columns = [], ageGroup }) {
     if (rowOk && group) {
       questions.push({
         item_code: val.item_code, domain_code: val.domain_code, subdomain_code: val.subdomain_code, subdomain_name: val.subdomain_name,
-        item_text: val.item_text, keying: 'POSITIVE', age_band: val.age_band, context: val.context, layer: 'CORE', pilot_status: 'READY',
-        display_order: order, status: 'ACTIVE', options,
+        item_text: val.item_text, keying: 'POSITIVE', age_band: val.age_band, context: val.context, layer: 'CORE', pilot_status: pilotStatus,
+        display_order: order, status: itemVisibility, options,
       });
     }
   }

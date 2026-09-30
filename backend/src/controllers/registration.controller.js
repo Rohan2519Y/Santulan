@@ -6,6 +6,7 @@ const { getProvider } = require('../services/identity');
 const { strictObject } = require('../middleware/http');
 const { register, getRegistrationState } = require('../services/registration/registrationService');
 const { submitProfile, getOwnProfile } = require('../services/registration/participantProfileService');
+const { submitPilotDetails, getOwnPilotDetails } = require('../services/registration/participantPilotDetailsService');
 const { resolveAgeRoute } = require('../services/registration/routing');
 const { verifyPurposeToken, signToken } = require('../middleware/auth');
 const E = require('../models/schema/enums');
@@ -42,6 +43,27 @@ const profileSchema = strictObject({
   urbanicity: z.enum(E.URBANICITY).optional(),
   accessibilityAccommodation: z.enum(E.ACCESSIBILITY_ACCOMMODATION).optional(),
   accessibilityAccommodationDetail: detail.optional(),
+});
+
+// "Santulan Pilot Study Details" PART A - an explicit override of the approved profile form's own exclusion list
+// (full_name/date_of_birth/religion etc.) - see participantPilotDetailsRules.js. fullName is the one required field;
+// class/gender are free text (neither source PDF gives them a fixed option list, unlike education_stage/gender_research above).
+const freeText = z.string().trim().min(1).max(120);
+const pilotDetailsSchema = strictObject({
+  fullName: z.string().trim().min(1).max(200),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  className: freeText.optional(),
+  gender: freeText.optional(),
+  birthOrder: z.enum(E.BIRTH_ORDER).optional(),
+  siblingCount: z.number().int().min(0).max(50).optional(),
+  religion: z.enum(E.RELIGION).optional(),
+  familyType: z.enum(E.FAMILY_TYPE).optional(),
+  residenceType: z.enum(E.RESIDENCE_TYPE).optional(),
+  state: freeText.optional(),
+  schoolType: z.enum(E.SCHOOL_TYPE).optional(),
+  studyMedium: z.enum(E.STUDY_MEDIUM).optional(),
+  board: z.enum(E.BOARD).optional(),
+  academicStream: z.enum(E.ACADEMIC_STREAM).optional(),
 });
 
 function idempotencyKey(req) {
@@ -121,8 +143,24 @@ async function profile(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/** Authenticated participant session; the actor comes from the verified token, never the body. */
+async function submitPilotDetailsHandler(req, res, next) {
+  try {
+    res.status(201).json(await submitPilotDetails(req.actor.participantId, req.body, req.correlationId));
+  } catch (err) { next(err); }
+}
+
+async function pilotDetails(req, res, next) {
+  try {
+    const d = await getOwnPilotDetails(req.actor.participantId);
+    if (!d) throw new HttpError(404, 'NOT_FOUND', 'No pilot study details have been submitted yet');
+    res.json(d);
+  } catch (err) { next(err); }
+}
+
 module.exports = {
-  routeSchema, openSchema, institutionalSchema, ageDeclarationSchema, profileSchema,
+  routeSchema, openSchema, institutionalSchema, ageDeclarationSchema, profileSchema, pilotDetailsSchema,
   resolveRoute, registerOpen, registerInstitutional, ageDeclaration, state,
   submitProfile: submitProfileHandler, profile,
+  submitPilotDetails: submitPilotDetailsHandler, pilotDetails,
 };

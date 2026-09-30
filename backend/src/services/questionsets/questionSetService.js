@@ -32,6 +32,32 @@ async function auditRejected(actor, { fileName, fileHash, ageGroup, problems, co
 }
 
 /**
+ * Validates a spreadsheet WITHOUT saving anything - the admin reviews this summary (and, on a clean file, a preview
+ * of what would be added) before a separate call to `upload()` actually commits it. Never writes to the database and
+ * never audits (there is nothing yet to have happened); `upload()` keeps its own existing audit trail unchanged.
+ * @returns {{ ok: boolean, problems, totalProblems, warnings, versionLabel, questionCount, activeCount, hiddenCount, domains }}
+ */
+function preview({ buffer, fileName, ageGroup }) {
+  const parsed = parseQuestionWorkbook(buffer, { fileName });
+  const checked = validate({ rows: parsed.rows, columns: parsed.columns, ageGroup });
+  const problems = [...parsed.errors, ...checked.errors];
+  const warnings = [...parsed.warnings, ...checked.warnings];
+  const questions = checked.questions;
+  const activeCount = questions.filter((q) => q.status === 'ACTIVE').length;
+  return {
+    ok: problems.length === 0,
+    problems: problems.slice(0, SHOWN_PROBLEMS),
+    totalProblems: problems.length,
+    warnings,
+    versionLabel: checked.versionLabel,
+    questionCount: questions.length,
+    activeCount,
+    hiddenCount: questions.length - activeCount,
+    domains: [...new Set(questions.map((q) => q.domain_code))].sort(),
+  };
+}
+
+/**
  * Uploads a spreadsheet as a draft question set.
  * @returns {{ status: 201|200, body }}
  */
@@ -252,4 +278,4 @@ async function responseDistribution(actor, setId) {
   });
 }
 
-module.exports = { upload, list, get, freeze, open, close, deleteDraft, setItemStatus, responseDistribution, SHOWN_PROBLEMS };
+module.exports = { preview, upload, list, get, freeze, open, close, deleteDraft, setItemStatus, responseDistribution, SHOWN_PROBLEMS };

@@ -102,9 +102,15 @@ describe('each problem code fires (row and column reported)', () => {
     expect(codes(withCells({ context: 'College/Work' }))).toContain('CONTEXT_DOES_NOT_FIT_GROUP');
     expect(codes(withCells({ context: 'School' }, undefined, 'EMERGING_ADULT'))).toContain('CONTEXT_DOES_NOT_FIT_GROUP');
   });
-  test('LAYER_NOT_SUPPORTED (V, SJT, O) and STATUS_NOT_READY', () => {
+  test('LAYER_NOT_SUPPORTED (V, SJT, O)', () => {
     for (const l of ['V', 'SJT', 'O']) expect(codes(withCells({ layer: l }))).toContain('LAYER_NOT_SUPPORTED');
-    for (const s of ['DRAFT', 'PILOT', 'RETIRED']) expect(codes(withCells({ status: s }))).toContain('STATUS_NOT_READY');
+  });
+  test('a status other than READY is not a file-level error - the row is accepted but the item starts hidden (RETIRED), not shown (ACTIVE)', () => {
+    for (const s of ['DRAFT', 'PILOT', 'RETIRED', 'review']) {
+      const r = withCells({ status: s });
+      expect(r.errors).toEqual([]);
+      expect(r.questions[0]).toMatchObject({ status: 'RETIRED', pilot_status: s.toUpperCase() });
+    }
   });
   test('DISPLAY_ORDER_INVALID and DISPLAY_ORDER_DUPLICATE (gaps are allowed)', () => {
     for (const o of [0, -1, 1.5]) expect(codes(withCells({ display_order: o }))).toContain('DISPLAY_ORDER_INVALID');

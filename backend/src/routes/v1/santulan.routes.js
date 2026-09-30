@@ -51,9 +51,13 @@ router.post('/registrations/institutional', requireActiveSuperAdmin, validate(re
 router.post('/participants/age-declaration', registrationThrottle, validate(registration.ageDeclarationSchema), registration.ageDeclaration);
 router.get('/registration/state', requireParticipantToken, registration.state);
 // ASSUMED addition (Student Demographic & Research Profile Capture Form v1.0): the recommended validation-profile
-// extension, captured once at registration, never edited.
+// extension, first captured at registration and editable afterwards (Tier A: an edit is a new row, latest wins).
 router.post('/participants/profile', requireParticipantToken, validate(registration.profileSchema), registration.submitProfile);
 router.get('/participants/profile', requireParticipantToken, registration.profile);
+// ASSUMED addition, explicit override of that same form's own "exclude full name/DOB/religion" list - see
+// participantPilotDetailsRules.js. Same editable, Tier A pattern as the profile above.
+router.post('/participants/pilot-details', requireParticipantToken, validate(registration.pilotDetailsSchema), registration.submitPilotDetails);
+router.get('/participants/pilot-details', requireParticipantToken, registration.pilotDetails);
 
 // --- Roster import + one-time credential export (BUILD 03 §9 / US4). Super admin; validates before it ever writes.
 router.post('/cohorts/import', requireActiveSuperAdmin, rosterUpload, roster.importRoster);
@@ -61,6 +65,9 @@ router.get('/admin/credentials/export/:importId', requireActiveSuperAdmin, roste
 
 // --- Question sets (feature 006): spreadsheet upload into draft sets. Active SUPER_ADMIN only.
 router.get('/admin/question-sets/template', requireActiveSuperAdmin, questionSets.template);
+// ASSUMED addition: preview validates a workbook without saving it, so the admin can review and confirm before the
+// real upload below actually commits it.
+router.post('/admin/question-sets/preview', requireActiveSuperAdmin, questionSets.receiveUpload, questionSets.previewUpload);
 router.post('/admin/question-sets', requireActiveSuperAdmin, questionSets.receiveUpload, questionSets.upload);
 router.get('/admin/question-sets', requireActiveSuperAdmin, questionSets.list);
 router.get('/admin/question-sets/:id', requireActiveSuperAdmin, questionSets.get);
@@ -120,6 +127,8 @@ router.patch('/admin/cohorts/:id', requireActiveSuperAdmin, validate(admin.cohor
 router.get('/admin/participants', requireActiveSuperAdmin, admin.listParticipants);
 router.post('/admin/participants/:id/status', requireActiveSuperAdmin, validate(admin.participantStatusSchema), admin.setParticipantStatus);
 router.get('/admin/monitoring/summary', requireActiveSuperAdmin, admin.monitoringSummary);
+// ASSUMED addition (docs/Santulan 2.0/Dashboard.jpeg): the dashboard page's one consolidated read.
+router.get('/admin/dashboard', requireActiveSuperAdmin, admin.dashboardSummary);
 router.get('/admin/quality-flags', requireActiveSuperAdmin, admin.listQualityFlags);
 router.patch('/admin/quality-flags/:id', requireActiveSuperAdmin, validate(admin.flagReviewSchema), admin.reviewQualityFlag);
 router.get('/admin/audit-logs', requireActiveSuperAdmin, admin.listAuditLogs);

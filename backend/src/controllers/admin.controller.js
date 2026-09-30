@@ -11,6 +11,7 @@ const institutions = require('../services/admin/institutionService');
 const cohorts = require('../services/admin/cohortService');
 const participantAdmin = require('../services/admin/participantAdminService');
 const monitoring = require('../services/admin/monitoringService');
+const dashboard = require('../services/admin/dashboardService');
 const qualityReview = require('../services/admin/qualityReviewService');
 const auditLog = require('../services/admin/auditLogService');
 const submissions = require('../services/admin/submissionService');
@@ -42,6 +43,11 @@ const cohortUpdateSchema = strictObject({
   educationStage: z.string().trim().max(60).nullable().optional(), status: z.enum(rules.ENTITY_STATUSES).optional(),
 }).refine((b) => Object.keys(b).length > 0, { message: 'nothing to change' });
 const participantStatusSchema = strictObject({ status: z.enum(['ACTIVE', 'SUSPENDED']), reason: z.string().max(400) });
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const dashboardQuerySchema = z.object({
+  assessmentVersionId: uuid.optional(), institutionId: uuid.optional(), cohortId: uuid.optional(),
+  dateFrom: isoDate.optional(), dateTo: isoDate.optional(), days: z.string().regex(/^\d+$/).optional(),
+});
 const flagReviewSchema = strictObject({ disposition: z.enum(['DISMISSED', 'CONFIRMED', 'ESCALATED']), note: z.string().trim().max(500).optional() });
 
 module.exports = {
@@ -57,6 +63,7 @@ module.exports = {
   listParticipants: wrap((req) => participantAdmin.list(actor(req), req.query)),
   setParticipantStatus: wrap((req) => participantAdmin.setStatus(actor(req), idParam(req, 'Participant'), req.body, req.correlationId)),
   monitoringSummary: wrap((req) => monitoring.summary(actor(req))),
+  dashboardSummary: wrap((req) => dashboard.dashboard(actor(req), dashboardQuerySchema.parse(req.query))),
   listQualityFlags: wrap((req) => qualityReview.list(actor(req), req.query)),
   reviewQualityFlag: wrap((req) => qualityReview.review(actor(req), idParam(req, 'Quality flag'), req.body, req.correlationId)),
   listAuditLogs: wrap((req) => auditLog.list(actor(req), req.query)),

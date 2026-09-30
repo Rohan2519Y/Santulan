@@ -26,12 +26,19 @@ const sample = {
     broad_region_mode: null, broad_region_detail: null, urbanicity: null, accessibility_accommodation: null,
     accessibility_accommodation_detail: null, created_at: new Date(),
   }),
+  // "Santulan Pilot Study Details" PART A - full_name is the one required field beyond participant_id/capture_version/created_at.
+  participant_pilot_details: () => ({
+    _id: F.versionDoc()._id, participant_id: F.participant()._id, capture_version: 'PILOT_STUDY_DETAILS_v1.0', full_name: 'Fixture Name',
+    date_of_birth: null, class_name: null, gender: null, birth_order: null, sibling_count: null, religion: null,
+    family_type: null, residence_type: null, state: null, school_type: null, study_medium: null, board: null, academic_stream: null,
+    created_at: new Date(),
+  }),
 };
 
 describe('G-13 Tier A collections are append-only for the runtime credential', () => {
-  test('G-13 the nine Tier A collections are the ones the contract names', () => {
+  test('G-13 the ten Tier A collections are the ones the contract names', () => {
     expect([...COLLECTIONS_BY_TIER.A].sort()).toEqual(
-      ['audit_logs', 'growth_reviews', 'items', 'participant_cohort_history', 'participant_profiles', 'pathway_decisions', 'pathway_reviews', 'response_events', 'score_results'],
+      ['audit_logs', 'growth_reviews', 'items', 'participant_cohort_history', 'participant_pilot_details', 'participant_profiles', 'pathway_decisions', 'pathway_reviews', 'response_events', 'score_results'],
     );
   });
 

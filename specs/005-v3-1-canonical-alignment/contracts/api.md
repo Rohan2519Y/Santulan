@@ -145,16 +145,32 @@ rules as the table above.
 Built after this contract was written (D-M20), for the recommended validation-profile extension of the Student
 Demographic & Research Profile Capture Form v1.0 — education, language, gender, region and accessibility context for
 sampling/fairness/DIF research only, **never referenced by C1-C7 scoring**. Every question is individually optional
-("Prefer not to say" is a real value for several; omitting the key entirely leaves it unanswered). Captured **once**,
-right after registration (the frontend's own "Go to Dashboard" step); there is no endpoint to edit it afterwards.
+("Prefer not to say" is a real value for several; omitting the key entirely leaves it unanswered). First captured
+right after registration (the frontend's own "Go to Dashboard" step) and **editable afterwards** from the profile
+tabs — an edit is a new row, never an in-place update (Tier A); reads always return the latest by `created_at`.
 
 | Method & path | Purpose | Audit |
 |---------------|---------|-------|
-| `POST /participants/profile` | submit the validation profile | body: `educationStage?, currentClassYear?, primaryLanguageMode?, primaryLanguageDetail?, mediumOfInstruction?, mediumOfInstructionDetail?, genderResearch?, genderSelfDescription?, broadRegionMode?, broadRegionDetail?, urbanicity?, accessibilityAccommodation?, accessibilityAccommodationDetail?` (enum values per `enums.js` `EDUCATION_STAGE`/`CURRENT_CLASS_YEAR`/`LANGUAGE_MODE`/`MEDIUM_OF_INSTRUCTION`/`GENDER_RESEARCH`/`REGION_MODE`/`URBANICITY`/`ACCESSIBILITY_ACCOMMODATION`); a `*_detail` field is required only when its paired mode/value demands text (`422` `VALIDATION_ERROR`/`400` otherwise); `currentClassYear` must belong to the chosen `educationStage` (`422 CLASS_YEAR_INVALID_FOR_STAGE`); `broadRegionMode`/`urbanicity` are refused for an INSTITUTIONAL participant (`422 FIELD_NOT_APPLICABLE` — their institution/cohort already carries that context); a second submission is `409 PROFILE_ALREADY_SUBMITTED` | yes (`PARTICIPANT_PROFILE_SUBMITTED`) |
-| `GET /participants/profile` | read back the caller's own submitted profile (`404` before one exists) | — |
+| `POST /participants/profile` | submit or edit the validation profile | body: `educationStage?, currentClassYear?, primaryLanguageMode?, primaryLanguageDetail?, mediumOfInstruction?, mediumOfInstructionDetail?, genderResearch?, genderSelfDescription?, broadRegionMode?, broadRegionDetail?, urbanicity?, accessibilityAccommodation?, accessibilityAccommodationDetail?` (enum values per `enums.js` `EDUCATION_STAGE`/`CURRENT_CLASS_YEAR`/`LANGUAGE_MODE`/`MEDIUM_OF_INSTRUCTION`/`GENDER_RESEARCH`/`REGION_MODE`/`URBANICITY`/`ACCESSIBILITY_ACCOMMODATION`); a `*_detail` field is required only when its paired mode/value demands text (`422` `VALIDATION_ERROR`/`400` otherwise); `currentClassYear` must belong to the chosen `educationStage` (`422 CLASS_YEAR_INVALID_FOR_STAGE`); `broadRegionMode`/`urbanicity` are refused for an INSTITUTIONAL participant (`422 FIELD_NOT_APPLICABLE` — their institution/cohort already carries that context) | yes (`PARTICIPANT_PROFILE_SUBMITTED` first time, `PARTICIPANT_PROFILE_EDITED` afterwards) |
+| `GET /participants/profile` | read back the caller's own latest profile (`404` before one exists) | — |
 
 `GET /registration/state` gains **`profileCompleted`** (boolean) alongside the shape below, so the frontend shows this
-step at most once.
+step at most once during registration; it is unaffected by later edits.
+
+#### "Santulan Pilot Study Details" (ASSUMED, explicit override of this same form's own exclusion list)
+
+The profile form above explicitly lists `full_name`/`date_of_birth`/`religion` (among others) under "Fields to
+EXCLUDE from the basic demographic form", and its "Current pilot identity rule" states in writing: "Do not add DOB,
+full name, phone, email, Aadhaar or exact address to the canonical assessment profile unless a separately approved
+operational/legal change requires it." The endpoints below exist only because that exclusion was explicitly
+overridden by direction — not because either source document (this form, or the older superseded "Santulan Pilot
+Study Details" draft) calls for it. Same Tier A / editable / latest-wins pattern as the profile above. Never joined
+into any research export.
+
+| Method & path | Purpose | Audit |
+|---------------|---------|-------|
+| `POST /participants/pilot-details` | submit or edit pilot study details | body: `fullName` (required), `dateOfBirth?, className?, gender?, birthOrder?, siblingCount?, religion?, familyType?, residenceType?, state?, schoolType?, studyMedium?, board?, academicStream?` (enum values per `enums.js` `BIRTH_ORDER`/`RELIGION`/`FAMILY_TYPE`/`RESIDENCE_TYPE`/`SCHOOL_TYPE`/`STUDY_MEDIUM`/`BOARD`/`ACADEMIC_STREAM`; `className`/`gender` are free text — neither source document gives them a fixed option list) | yes (`PARTICIPANT_PILOT_DETAILS_SUBMITTED` first time, `PARTICIPANT_PILOT_DETAILS_EDITED` afterwards) |
+| `GET /participants/pilot-details` | read back the caller's own latest submission (`404` before one exists) | — |
 
 ## 7. Response shapes that matter
 

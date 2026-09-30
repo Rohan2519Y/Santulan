@@ -33,6 +33,7 @@ const STATUS = { PENDING: 'Waiting', GRANTED: 'Given, waiting to be verified', V
 const TABS = [
   { to: '/student/profile', label: 'Personal information' },
   { to: '/student/validation-profile', label: 'Research profile' },
+  { to: '/student/pilot-study-details', label: 'Pilot study details' },
   { to: '/student/profile/preferences', label: 'Preferences' },
   { to: '/student/privacy', label: 'Privacy' },
 ];

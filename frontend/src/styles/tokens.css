@@ -51,6 +51,17 @@
   --c-status-soft-error: var(--c-tint-pink);
   --c-status-soft-neutral: #eceeef;
 
+  /* Bright accents (Dashboard KPI icons and charts only - a lighter, more vivid palette than the status colours
+     above, which are tuned for AA text contrast elsewhere; these are decorative fills, not body text). */
+  --c-bright-blue: #2f7dea;
+  --c-bright-blue-soft: #eaf2ff;
+  --c-bright-green: #22b573;
+  --c-bright-green-soft: #e9fbf1;
+  --c-bright-purple: #8b5cf6;
+  --c-bright-purple-soft: #f2ecfe;
+  --c-bright-orange: #f5a623;
+  --c-bright-orange-soft: #fff4e0;
+
   /* Eyebrow colours (§1.4: the sampled teal fails AA, so the replacement is used) */
   --c-eyebrow-open: #1f6f7a;
   --c-eyebrow-institution: #1f65a6; /* measured #2875b9 is 4.38:1 on --c-tint-blue, so darkened to pass AA */
@@ -177,6 +188,15 @@
   --c-status-error: #ff9b8f;
   --c-status-neutral: #b8bcc4;
   --c-status-soft-neutral: #23283a;
+
+  --c-bright-blue: #7db3f7;
+  --c-bright-blue-soft: #1c2f52;
+  --c-bright-green: #6fe3ae;
+  --c-bright-green-soft: #163829;
+  --c-bright-purple: #b79bfa;
+  --c-bright-purple-soft: #2b2050;
+  --c-bright-orange: #f7c15c;
+  --c-bright-orange-soft: #3a2c12;
 
   --c-eyebrow-open: #7fd1c2;
   --c-eyebrow-institution: #8db8f5;

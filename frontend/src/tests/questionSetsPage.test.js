@@ -8,7 +8,7 @@ import { renderPage } from './testUtils';
 
 jest.mock('../services/santulanApi', () => ({
   ...jest.requireActual('../services/santulanApi'),
-  questionSetApi: { upload: jest.fn(), list: jest.fn(), get: jest.fn(), freeze: jest.fn(), open: jest.fn(), close: jest.fn(), delete: jest.fn(), setItemStatus: jest.fn(), downloadTemplate: jest.fn() },
+  questionSetApi: { upload: jest.fn(), previewUpload: jest.fn(), list: jest.fn(), get: jest.fn(), freeze: jest.fn(), open: jest.fn(), close: jest.fn(), delete: jest.fn(), setItemStatus: jest.fn(), downloadTemplate: jest.fn() },
 }));
 
 const SET = (over = {}) => ({
@@ -24,6 +24,8 @@ const file = (name = 'questions.xlsx', size = 1000) => {
 
 const renderIt = () => renderPage(<ToastProvider><QuestionSetsPage /></ToastProvider>);
 const upload = async (f) => userEvent.upload(document.querySelector('input[type="file"]'), f);
+const previewOk = (over = {}) => ({ ok: true, totalProblems: 0, problems: [], warnings: [], versionLabel: 'fx-preview-v1', questionCount: 10, activeCount: 10, hiddenCount: 0, domains: ['C1'], ...over });
+const previewBad = (problems, over = {}) => ({ ok: false, totalProblems: problems.length, problems, warnings: [], versionLabel: null, questionCount: 0, activeCount: 0, hiddenCount: 0, domains: [], ...over });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -39,28 +41,30 @@ describe('question sets page (T082/T083)', () => {
     expect(screen.getByRole('button', { name: /download template/i })).toBeInTheDocument();
   });
 
-  test('uploading shows the accepted counts, the status and any warnings, and sends the chosen age group', async () => {
+  test('previewing shows the summary and sends the chosen age group, and only Confirm and add actually saves', async () => {
+    questionSetApi.previewUpload.mockResolvedValue(previewOk({ versionLabel: 'fx-preview-v1', questionCount: 10, activeCount: 10, domains: ['C1', 'C3'] }));
     questionSetApi.upload.mockResolvedValue({ ...SET(), created: true, supersededRevision: null, warnings: [{ code: 'DOMAIN_WITHOUT_QUESTIONS', message: 'No question covers C3 Relational & Social Capability', row: null, column: null }] });
     renderIt();
     await screen.findByText(/no question sets yet/i);
     await userEvent.click(screen.getByLabelText(/emerging adult/i));
     await upload(file());
-    expect((await screen.findAllByText(/saved as a draft/i)).length).toBeGreaterThan(0);
+    expect(await screen.findByText('fx-preview-v1')).toBeInTheDocument();
+    expect(questionSetApi.previewUpload).toHaveBeenCalledWith(expect.any(File), 'EMERGING_ADULT');
+    expect(questionSetApi.upload).not.toHaveBeenCalled(); // nothing saved yet - only previewed
+
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm and add' }));
     expect(questionSetApi.upload).toHaveBeenCalledWith(expect.any(File), 'EMERGING_ADULT');
-    expect(screen.getByText('50')).toBeInTheDocument();
+    expect((await screen.findAllByText(/saved as a draft/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/no question covers c3/i)).toBeInTheDocument();
     await waitFor(() => expect(questionSetApi.list).toHaveBeenCalledTimes(2));
   });
 
-  test('a 422 renders every problem with its row and column and says nothing was saved', async () => {
-    questionSetApi.upload.mockRejectedValue(new ApiError('The file has 3 problems; nothing was saved.', {
-      status: 422, code: 'UPLOAD_VALIDATION_FAILED', totalProblems: 3,
-      details: [
-        { row: 2, column: 'keying', code: 'KEYING_NOT_SUPPORTED', message: 'Only Positive keying is supported' },
-        { row: 3, column: 'item_code', code: 'ITEM_CODE_DUPLICATE', message: 'item_code C1-01 already appears in row 2' },
-        { row: null, column: null, code: 'FILE_UNREADABLE', message: 'The file could not be read' },
-      ],
-    }));
+  test('a preview with problems renders every one with its row and column, says nothing was saved, and offers no confirm button', async () => {
+    questionSetApi.previewUpload.mockResolvedValue(previewBad([
+      { row: 2, column: 'keying', code: 'KEYING_NOT_SUPPORTED', message: 'Only Positive keying is supported' },
+      { row: 3, column: 'item_code', code: 'ITEM_CODE_DUPLICATE', message: 'item_code C1-01 already appears in row 2' },
+      { row: null, column: null, code: 'FILE_UNREADABLE', message: 'The file could not be read' },
+    ]));
     renderIt();
     await screen.findByText(/no question sets yet/i);
     await upload(file());
@@ -69,16 +73,36 @@ describe('question sets page (T082/T083)', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(4);
     expect(within(table).getByText('KEYING_NOT_SUPPORTED')).toBeInTheDocument();
     expect(within(table).getByText('item_code')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm and add' })).not.toBeInTheDocument();
+    expect(questionSetApi.upload).not.toHaveBeenCalled();
   });
 
   test('the old-format message points to the template', async () => {
-    questionSetApi.upload.mockRejectedValue(new ApiError('The file has 1 problem; nothing was saved.', {
-      status: 422, code: 'UPLOAD_VALIDATION_FAILED', totalProblems: 1, details: [{ row: null, column: null, code: 'OLD_FORMAT_NOT_SUPPORTED', message: 'This file has no option columns.' }],
-    }));
+    questionSetApi.previewUpload.mockResolvedValue(previewBad([{ row: null, column: null, code: 'OLD_FORMAT_NOT_SUPPORTED', message: 'This file has no option columns.' }]));
     renderIt();
     await screen.findByText(/no question sets yet/i);
     await upload(file());
     expect(await screen.findByText(/use the template/i)).toBeInTheDocument();
+  });
+
+  test('a question whose status was not READY previews as hidden, not a problem', async () => {
+    questionSetApi.previewUpload.mockResolvedValue(previewOk({ questionCount: 10, activeCount: 9, hiddenCount: 1 }));
+    renderIt();
+    await screen.findByText(/no question sets yet/i);
+    await upload(file());
+    expect(await screen.findByText(/will be added hidden from participants/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirm and add' })).toBeInTheDocument(); // hidden questions still allow confirming
+  });
+
+  test('Cancel after a clean preview discards it without saving anything', async () => {
+    questionSetApi.previewUpload.mockResolvedValue(previewOk());
+    renderIt();
+    await screen.findByText(/no question sets yet/i);
+    await upload(file());
+    await screen.findByText('fx-preview-v1');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('fx-preview-v1')).not.toBeInTheDocument();
+    expect(questionSetApi.upload).not.toHaveBeenCalled();
   });
 
   test('a wrong file type or an oversized file is refused before any request', async () => {
@@ -88,6 +112,7 @@ describe('question sets page (T082/T083)', () => {
     expect(await screen.findByText(/must be an \.xlsx workbook/i)).toBeInTheDocument();
     await upload(file('big.xlsx', 3 * 1024 * 1024));
     expect(await screen.findByText(/larger than 2 MB/i)).toBeInTheDocument();
+    expect(questionSetApi.previewUpload).not.toHaveBeenCalled();
     expect(questionSetApi.upload).not.toHaveBeenCalled();
   });
 

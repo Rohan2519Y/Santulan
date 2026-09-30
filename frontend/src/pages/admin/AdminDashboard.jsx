@@ -2,7 +2,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useSession } from '../../services/SessionContext';
 import AdminLayout from '../../components/AdminLayout/AdminLayout';
 import { ToastProvider } from '../../components/Toast/Toast';
-import OverviewPage from './OverviewPage';
+import DashboardPage from './DashboardPage';
 import ParticipantsPage from './ParticipantsPage';
 import InstitutionsPage from './InstitutionsPage';
 import RosterImportPage from './RosterImportPage';
@@ -32,7 +32,7 @@ export default function AdminDashboard() {
     <ToastProvider>
       <AdminLayout user={{ name: 'Administrator' }} onSignOut={signOut}>
         <Routes>
-          <Route index element={<OverviewPage />} />
+          <Route index element={<DashboardPage />} />
           <Route path="participants" element={<ParticipantsPage />} />
           <Route path="institutions" element={<InstitutionsPage />} />
           <Route path="roster-import" element={<RosterImportPage />} />

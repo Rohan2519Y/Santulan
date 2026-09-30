@@ -54,7 +54,7 @@ function workbook(rows, { header = HEADER, optionColumns, sheetName = '01_Items'
 }
 
 const docs = (name) => fs.readFileSync(path.resolve(__dirname, '..', '..', '..', '..', 'docs', name));
-const sampleFile = () => docs('Santulan_Sample_Questions.xlsx');
+const sampleFile = () => docs('Questions/Santulan_Sample_Questions.xlsx'); // moved under docs/Questions/ at some point outside git tracking
 const oldFormatFile = () => docs('Santulan_Adolescent_Items_TECH_READY.xlsx');
 
 module.exports = { HEADER, STANDARD, EN, row, validRows, workbook, sampleFile, oldFormatFile };
