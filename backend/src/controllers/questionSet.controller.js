@@ -9,6 +9,7 @@ const schemas = require('../services/questionsets/questionSet.schemas');
 const { buildTemplate, TEMPLATE_FILE_NAME } = require('../services/questionsets/template');
 const { buildResponseDistributionWorkbook } = require('../services/questionsets/responseDistributionWorkbook');
 const { MAX_BYTES } = require('../services/questionsets/questionSetParser');
+const unifiedExport = require('../services/research/unifiedExportService');
 
 const uploadFile = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES, files: 1 } }).single('file');
 
@@ -71,6 +72,25 @@ module.exports = {
       res.setHeader('Content-Disposition', `attachment; filename="santulan-response-distribution-${fileTag}.xlsx"`);
       res.send(await buildResponseDistributionWorkbook(distribution));
     } catch (err) { next(err); }
+  },
+  /** The unified report+research workbook (TECH_TEAM_GUIDE.md format) for every attempt of this set. Real names, real
+   * scores - a separate, restricted export from response-distribution above. */
+  exportUnified: async (req, res, next) => {
+    let file = null;
+    try {
+      const result = await unifiedExport.generateForSet(req.actor, setId(req));
+      file = result.file;
+      const fileTag = `${result.versionLabel}-r${result.revision}`.replace(/[^A-Za-z0-9_-]/g, '');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="santulan-unified-report-export-${fileTag}.xlsx"`);
+      res.sendFile(file, (err) => {
+        unifiedExport.cleanup(file);
+        if (err && !res.headersSent) next(err);
+      });
+    } catch (err) {
+      if (file) unifiedExport.cleanup(file);
+      next(err);
+    }
   },
   setId,
   itemId,

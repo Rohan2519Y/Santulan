@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, ClipboardList, ShieldAlert, FileText, ListChecks, SlidersHorizontal, Download, ScrollText, ToggleRight, LogOut, Menu, X, ChartBarBig } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, ClipboardList, ShieldAlert, FileText, ListChecks, SlidersHorizontal, Download, ScrollText, ToggleRight, LogOut, Menu, X, ChartBarBig, MessageSquareText } from 'lucide-react';
 import styles from './AdminLayout.module.css';
 
 export const NAV_ITEMS = [
@@ -10,6 +10,7 @@ export const NAV_ITEMS = [
   { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList },
   { to: '/admin/quality-review', label: 'Quality review', icon: ShieldAlert },
   { to: '/admin/reports', label: 'Reports', icon: FileText },
+  { to: '/admin/report-wording', label: 'Report wording', icon: MessageSquareText },
   { to: '/admin/question-sets', label: 'Question sets', icon: ListChecks },
   { to: '/admin/response-distribution', label: 'Response distribution', icon: ChartBarBig },
   { to: '/admin/participation', label: 'Assessment control', icon: SlidersHorizontal },

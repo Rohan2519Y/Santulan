@@ -18,6 +18,7 @@ const registration = require('../../controllers/registration.controller');
 const roster = require('../../controllers/roster.controller');
 const questionSets = require('../../controllers/questionSet.controller');
 const releaseFlags = require('../../controllers/releaseFlags.controller');
+const wording = require('../../controllers/wording.controller');
 const admin = require('../../controllers/admin.controller');
 const researchExports = require('../../controllers/export.controller');
 const reports = require('../../controllers/reporting.controller');
@@ -78,10 +79,16 @@ router.post('/admin/question-sets/:id/delete', requireActiveSuperAdmin, validate
 router.post('/admin/question-sets/:id/items/:itemId/status', requireActiveSuperAdmin, validate(questionSets.schemas.itemStatusSchema), questionSets.setItemStatus);
 router.get('/admin/question-sets/:id/response-distribution', requireActiveSuperAdmin, questionSets.responseDistribution);
 router.get('/admin/question-sets/:id/response-distribution/export', requireActiveSuperAdmin, questionSets.exportResponseDistribution);
+router.get('/admin/question-sets/:id/unified-export', requireActiveSuperAdmin, questionSets.exportUnified);
 
 // --- Release switches (scoring master section 15): four audited switches, all OFF by default. Active SUPER_ADMIN only.
 router.get('/admin/release-flags', requireActiveSuperAdmin, releaseFlags.list);
 router.post('/admin/release-flags/:flag', requireActiveSuperAdmin, validate(releaseFlags.setSchema), releaseFlags.set);
+
+// --- Report wording (interpretation_rules): the admin UI path alongside scripts/wording-load.js. Active SUPER_ADMIN only.
+router.get('/admin/wording', requireActiveSuperAdmin, wording.list);
+router.post('/admin/wording', requireActiveSuperAdmin, validate(wording.addSchema), wording.add);
+router.post('/admin/wording/:id/approve', requireActiveSuperAdmin, validate(wording.approveSchema), wording.approve);
 
 // --- Consent, assent and the verification gate (BUILD 04). Consent never creates an attempt.
 router.get('/consents/requirements', requireParticipantToken, consent.requirements);

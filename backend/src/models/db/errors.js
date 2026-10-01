@@ -25,6 +25,8 @@ const BY_INDEX = {
   uq_reports_attempt: [409, 'INVALID_STATE'],
   uq_institutions_code: [409, 'DUPLICATE_CODE'],
   uq_cohorts_institution_code: [409, 'DUPLICATE_CODE'],
+  uq_interpretation_rules_key: [409, 'WORDING_VERSION_CONFLICT'],
+  uq_one_approved_rule_per_dimension: [409, 'WORDING_ALREADY_APPROVED'],
 };
 
 // Collections whose validator failures mean "the requested state change is not allowed" rather than "bad input".

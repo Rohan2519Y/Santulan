@@ -22,6 +22,8 @@ export default function ResponseDistributionPage() {
   const [setId, setSetId] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
+  const [unifiedExporting, setUnifiedExporting] = useState(false);
+  const [unifiedExportError, setUnifiedExportError] = useState(null);
   const sets = useAdminData(() => questionSetApi.list(), []);
   const distribution = useAdminData(() => (setId ? questionSetApi.responseDistribution(setId) : Promise.resolve(null)), [setId]);
 
@@ -47,6 +49,14 @@ export default function ResponseDistributionPage() {
       else if (current === 'FAILED') throw new Error('The export failed to generate. Please try again.');
       else throw new Error('The export is taking longer than expected. Check the Research exports page shortly.');
     } catch (err) { setExportError(err.message); } finally { setExporting(false); }
+  };
+
+  /** Downloads the unified report+research workbook (names + scores) for every attempt of this assessment - the format
+   * the Santulan pilot kit's report generator reads. A separate, synchronous export from the research workbook above. */
+  const downloadUnifiedExport = async () => {
+    setUnifiedExporting(true);
+    setUnifiedExportError(null);
+    try { await questionSetApi.downloadUnifiedExport(setId); } catch (err) { setUnifiedExportError(err.message); } finally { setUnifiedExporting(false); }
   };
 
   return (
@@ -86,12 +96,18 @@ export default function ResponseDistributionPage() {
               title={`${d.versionLabel} · revision ${d.revision}`}
               subtitle={`${d.totalAttempts} completed attempt${d.totalAttempts === 1 ? '' : 's'} · ${d.questionCount} questions`}
               actions={(
-                <Button type="button" variant="secondary" onClick={downloadWorkbook} disabled={exporting}>
-                  <Download size={16} aria-hidden="true" /> {exporting ? 'Exporting…' : 'Download Excel'}
-                </Button>
+                <div className={styles.filters}>
+                  <Button type="button" variant="secondary" onClick={downloadWorkbook} disabled={exporting}>
+                    <Download size={16} aria-hidden="true" /> {exporting ? 'Exporting…' : 'Download Excel'}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={downloadUnifiedExport} disabled={unifiedExporting}>
+                    <Download size={16} aria-hidden="true" /> {unifiedExporting ? 'Exporting…' : 'Report engine export'}
+                  </Button>
+                </div>
               )}
             >
               {exportError && <StatusMessage type="error" message={exportError} />}
+              {unifiedExportError && <StatusMessage type="error" message={unifiedExportError} />}
               {d.totalAttempts === 0 && <p className={styles.muted}>No completed attempts yet for this assessment.</p>}
             </Panel>
 

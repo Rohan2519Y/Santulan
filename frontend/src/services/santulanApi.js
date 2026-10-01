@@ -133,6 +133,14 @@ export const releaseFlagApi = {
   set: (flag, value, reason) => call(`/admin/release-flags/${flag}`, { method: 'POST', body: { value, reason } }),
 };
 
+// ---------------------------------------------------------------------------------------------- report wording (Super Admin)
+export const wordingApi = {
+  /** { set: { setId, versionLabel, revision }, rules: [{ ruleId, domainCode, band, evidenceState, locale, layer, ruleCode, text, version, status, createdAt }] } */
+  list: (assessmentVersionId) => call(`/admin/wording?assessmentVersionId=${assessmentVersionId}`),
+  add: (payload) => call('/admin/wording', { method: 'POST', body: payload }),
+  approve: (ruleId, reason) => call(`/admin/wording/${ruleId}/approve`, { method: 'POST', body: { reason } }),
+};
+
 // ---------------------------------------------------------------------------------------------- question sets (Super Admin)
 export const questionSetApi = {
   /** Uploads a workbook as a draft set. Only the file and the age group are sent; everything else is decided by the server. */
@@ -166,6 +174,7 @@ export const questionSetApi = {
   responseDistribution: (setId) => call(`/admin/question-sets/${setId}/response-distribution`),
   /** The same data as an .xlsx workbook (needs the bearer token, so it is fetched and saved rather than linked). */
   downloadResponseDistribution: (setId) => saveFile(`/admin/question-sets/${setId}/response-distribution/export`, 'santulan-response-distribution.xlsx', 'The response distribution could not be exported.'),
+  downloadUnifiedExport: (setId) => saveFile(`/admin/question-sets/${setId}/unified-export`, 'santulan-unified-report-export.xlsx', 'The report engine export could not be generated.'),
   /** Downloads the blank template (needs the bearer token, so it is fetched and saved rather than linked). */
   downloadTemplate: async () => {
     let res;
