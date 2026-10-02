@@ -1,0 +1,9 @@
+<svg viewBox="0 0 150 200" width="150" height="200" style="position:absolute; left:590px; top:250px;" aria-label="Illustration of a person with a backpack climbing steps">
+    <path d="M40 150 Q38 110 66 104 Q94 110 92 150Z" fill="#1E2350"/>
+    <path d="M50 150l-6 40M84 130l10 28" stroke="#1E2350" stroke-width="10" stroke-linecap="round"/>
+    <rect x="30" y="76" width="20" height="36" rx="10" fill="#FFFFFF" stroke="#1E2350" stroke-width="3"/>
+    <path d="M52 84 Q72 74 88 84 L90 112 Q70 120 52 112Z" fill="#FFFFFF" stroke="#1E2350" stroke-width="3"/>
+    <circle cx="70" cy="62" r="18" fill="#F5D8C4"/>
+    <path d="M52 60 Q54 40 72 40 Q90 40 88 60 Q80 50 70 52 Q60 50 52 60Z" fill="#1E2350"/>
+    <circle cx="66" cy="38" r="12" fill="#1E2350"/>
+  </svg>

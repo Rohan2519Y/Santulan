@@ -33,7 +33,8 @@ async function replaceTemporary(tx, provider, subjectId, secretHash) {
   return { ok: r.modified === 1, updatedAt: r.modified === 1 ? now : null };
 }
 
-/** Seeds or overwrites a permanent credential (development seeder only). */
+/** Seeds or overwrites a permanent (must_change = false) credential. Used by the dev seeder, and by OPEN registration
+ * (the participant chooses their own password up front - no temporary-password step). */
 async function upsertPermanent(tx, provider, subjectId, secretHash) {
   const now = new Date();
   const existing = await tx.c.dev_identity_credentials.findOne({ provider, subject_id: subjectId });
@@ -42,6 +43,7 @@ async function upsertPermanent(tx, provider, subjectId, secretHash) {
   } else {
     await tx.c.dev_identity_credentials.updateOne({ _id: existing._id }, { $set: { secret_hash: secretHash, must_change: false, status: 'active', updated_at: now } });
   }
+  return { updatedAt: now };
 }
 
 async function disableCredential(tx, provider, subjectId) {

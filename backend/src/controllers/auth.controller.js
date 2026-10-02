@@ -1,6 +1,9 @@
 /*
- * Authentication endpoints (contracts/api.md §2). OPEN participants authenticate by OTP; institutional participants and
- * admins by Santulan ID / login + password with a forced change of a temporary credential. A token is issued only after the
+ * Authentication endpoints (contracts/api.md §2). Every participant (OPEN and institutional) and every admin
+ * authenticates by Santulan ID / login + password with a forced change of a temporary credential (AT-27) - OPEN
+ * participants switched from OTP to this same pattern (see registerOpen in registration.controller.js); the OTP
+ * endpoints below (requestOtp/verifyOtp) are kept but unused (routes commented out in santulan.routes.js) for when a
+ * real OTP/SMS provider is integrated, since no real one exists today either way. A token is issued only after the
  * provider authenticates; the participant/admin is then resolved from the (provider, subject) pair stored canonically.
  */
 const { z } = require('zod');
@@ -19,6 +22,7 @@ const requestOtpSchema = strictObject({ channel, identity: z.string().min(3).max
 const verifyOtpSchema = strictObject({ channel, identity: z.string().min(3).max(254), code: z.string().regex(/^[0-9]{6}$/) });
 const loginSchema = strictObject({ subject: z.string().min(1).max(128), password: z.string().min(1).max(200) });
 const setPasswordSchema = strictObject({ newPassword: z.string().min(1).max(200) });
+const forgotPasswordSchema = strictObject({ email: z.string().trim().toLowerCase().email() });
 
 // Credential-version claim (SEC-29): a session token records the dev credential's updated_at (millisecond-precise) as a
 // hash; the middleware re-checks it, so even an immediate password reset revokes every earlier session.
@@ -99,6 +103,28 @@ async function setPassword(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/**
+ * OPEN participants only: self-service "forgot password", by email - email is literally the provider subject OPEN
+ * participants register and log in with (registerOpen in registration.controller.js), so this is a direct
+ * findParticipantByAuthSubject lookup, no Santulan-ID indirection needed. Always responds 202/{sent: true} whether or
+ * not the email matches an OPEN participant - same "never reveal" pattern as requestOtp above. No real email provider
+ * exists (services/identity/index.js): the dev provider logs the reset link instead of sending it. Institutional
+ * participants and admins are unaffected; they keep the existing admin-mediated credential reset.
+ */
+async function forgotPassword(req, res, next) {
+  try {
+    const provider = getProvider();
+    const email = req.body.email; // already trimmed/lowercased by forgotPasswordSchema
+    const participant = await store.withScope(store.systemScope(), (tx) => identity.findParticipantByAuthSubject(tx, provider.PROVIDER, email));
+    if (participant && participant.participationRoute === 'OPEN' && participant.status === 'ACTIVE') {
+      const token = signToken({ sub: email, purpose: 'set-password', subject: email }, '15m');
+      const link = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+      await provider.requestPasswordReset(email, link);
+    }
+    res.status(202).json({ sent: true });
+  } catch (err) { next(err); }
+}
+
 /** Admin: issue a new temporary credential; the previous secret stops working at once (AT-27). Audited, never logs the secret. */
 async function credentialReset(req, res, next) {
   try {
@@ -114,4 +140,4 @@ async function credentialReset(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { requestOtpSchema, verifyOtpSchema, loginSchema, setPasswordSchema, requestOtp, verifyOtp, login, setPassword, credentialReset };
+module.exports = { requestOtpSchema, verifyOtpSchema, loginSchema, setPasswordSchema, forgotPasswordSchema, requestOtp, verifyOtp, login, setPassword, forgotPassword, credentialReset };

@@ -64,7 +64,11 @@ async function call(path, { method = 'GET', body, token, headers = {} } = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const e = data && data.error ? data.error : {};
-    throw new ApiError(e.message || 'Something went wrong. Please try again.', { status: res.status, code: e.code || 'ERROR', details: e.details || {}, totalProblems: e.totalProblems });
+    // VALIDATION_ERROR's own message is always the same generic string ("Request validation failed"); the useful part
+    // is in details.issues (one per bad field) - surface the first one instead of the generic string when present.
+    const firstIssue = e.code === 'VALIDATION_ERROR' && e.details && Array.isArray(e.details.issues) && e.details.issues[0];
+    const message = (firstIssue && `${firstIssue.path ? `${firstIssue.path}: ` : ''}${firstIssue.message}`) || e.message || 'Something went wrong. Please try again.';
+    throw new ApiError(message, { status: res.status, code: e.code || 'ERROR', details: e.details || {}, totalProblems: e.totalProblems });
   }
   return data;
 }
@@ -78,13 +82,21 @@ export const newKey = (prefix = 'k') => {
 // ---------------------------------------------------------------------------------------------- identity and registration
 export const api = {
   routeAge: (age) => call('/registration/route', { method: 'POST', body: { age }, token: null }),
+  // requestOtp/verifyOtp/declareAge are unused (no real OTP/SMS provider exists): OPEN registration now goes straight
+  // to registerOpen below, which returns a Santulan ID + one-time temporary password instead - same pattern as
+  // institutional registration. Kept defined, not deleted, for when a real provider is integrated.
   requestOtp: (channel, identity) => call('/auth/request-otp', { method: 'POST', body: { channel, identity }, token: null }),
   verifyOtp: (channel, identity, code) => call('/auth/verify-otp', { method: 'POST', body: { channel, identity, code }, token: null }),
-  /** The registration (purpose) token comes from verifyOtp; the age is the ONLY personal value sent. */
   declareAge: (registrationToken, age, idempotencyKey) =>
     call('/participants/age-declaration', { method: 'POST', body: { age }, token: registrationToken, headers: { 'Idempotency-Key': idempotencyKey } }),
+  /** OPEN registration: the participant chooses their own email + password up front - no temporary password, no forced
+   * change. Returns { santulanId, isMinor, requiredConsents, accessToken, ... } - already signed in. */
+  registerOpen: (age, language, email, password, idempotencyKey) =>
+    call('/registrations/open', { method: 'POST', body: { age, language, email, password }, token: null, headers: { 'Idempotency-Key': idempotencyKey } }),
   login: (subject, password) => call('/auth/login', { method: 'POST', body: { subject, password }, token: null }),
   setPassword: (setPasswordToken, newPassword) => call('/auth/set-password', { method: 'POST', body: { newPassword }, token: setPasswordToken }),
+  /** OPEN participants only, by email (the email IS their login subject); always resolves (never reveals whether it matched anything), same pattern as the old requestOtp. */
+  forgotPassword: (email) => call('/auth/forgot-password', { method: 'POST', body: { email }, token: null }),
 
   registrationState: () => call('/registration/state'),
 
@@ -254,6 +266,8 @@ export const adminApi = {
   submission: (attemptId) => call(`/admin/submissions/${attemptId}`),
   submissionResponses: (attemptId) => call(`/admin/submissions/${attemptId}/responses`),
   downloadSubmissionResponses: (attemptId) => saveFile(`/admin/submissions/${attemptId}/responses/export`, `santulan-answers-${attemptId}.csv`, 'The answers could not be exported.'),
+  /** Draft PDF from the ported pilot-kit report engine (separate from the platform's own in-app report). */
+  downloadPilotReportPdf: (attemptId) => saveFile(`/admin/attempts/${attemptId}/pilot-report`, `santulan-pilot-report-${attemptId}.pdf`, 'The pilot report could not be generated.'),
   qualityFlags: (filters) => call(`/admin/quality-flags${qs(filters)}`),
   reviewFlag: (flagId, disposition, note) => call(`/admin/quality-flags/${flagId}`, { method: 'PATCH', body: { disposition, ...(note ? { note } : {}) } }),
   retryReport: (reportId) => call(`/internal/reports/${reportId}/retry`, { method: 'POST', body: {} }),

@@ -1,0 +1,11 @@
+<svg viewBox="0 0 220 200" width="220" height="200" style="position:absolute; right:50px; top:70px;" aria-label="Illustration of a person sitting cross-legged with arms open">
+    <ellipse cx="110" cy="186" rx="80" ry="8" fill="#000" opacity="0.07"/>
+    <path d="M40 180 Q60 130 110 126 Q160 130 180 180 Q110 196 40 180Z" fill="#1E2350"/>
+    <path d="M78 130 Q110 100 142 130 L138 160 Q110 170 82 160Z" fill="#E7E36B"/>
+    <circle cx="110" cy="80" r="26" fill="#F5D8C4"/>
+    <path d="M84 78 Q86 46 110 46 Q136 46 136 78 Q126 62 110 64 Q94 62 84 78Z" fill="#1E2350"/>
+    <path d="M100 82 Q104 85 108 82 M114 82 Q118 85 122 82" fill="none" stroke="#1E2350" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M78 134 Q52 126 44 104 M142 134 Q168 126 176 104" fill="none" stroke="#F5D8C4" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="44" cy="100" r="7" fill="#F5D8C4"/><circle cx="176" cy="100" r="7" fill="#F5D8C4"/>
+    <path d="M20 150l10-14 6 8-10 14z M186 148l8-14 8 6-8 14z" fill="#F0946B" opacity="0.8"/>
+  </svg>

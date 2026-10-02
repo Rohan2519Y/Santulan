@@ -15,6 +15,7 @@ const dashboard = require('../services/admin/dashboardService');
 const qualityReview = require('../services/admin/qualityReviewService');
 const auditLog = require('../services/admin/auditLogService');
 const submissions = require('../services/admin/submissionService');
+const pilotReport = require('../services/reporting/pilotReport/pilotReportService');
 const rules = require('../services/domain/adminRules');
 
 const wrap = (fn) => async (req, res, next) => { try { res.json(await fn(req)); } catch (err) { next(err); } };
@@ -50,8 +51,25 @@ const dashboardQuerySchema = z.object({
 });
 const flagReviewSchema = strictObject({ disposition: z.enum(['DISMISSED', 'CONFIRMED', 'ESCALATED']), note: z.string().trim().max(500).optional() });
 
+/** Draft PDF from the ported pilot-kit engine (santulan_pilot_kit's own report generator, reimplemented in
+ * src/services/reporting/pilotReport/), for one attempt. Separate from our own in-app report pipeline. */
+const pilotReportPdf = async (req, res, next) => {
+  let file = null;
+  try {
+    const result = await pilotReport.generateForAttempt(actor(req), idParam(req, 'Attempt'));
+    file = result.file;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${result.reportId}.pdf"`);
+    res.sendFile(file, (err) => { pilotReport.cleanup(file); if (err && !res.headersSent) next(err); });
+  } catch (err) {
+    if (file) pilotReport.cleanup(file);
+    next(err);
+  }
+};
+
 module.exports = {
   controlSchema, institutionCreateSchema, institutionUpdateSchema, cohortCreateSchema, cohortUpdateSchema, participantStatusSchema, flagReviewSchema,
+  pilotReportPdf,
   getControl: wrap((req) => control.read(actor(req))),
   setControl: wrap((req) => control.setState(actor(req), req.body, req.correlationId)),
   listInstitutions: wrap((req) => institutions.list(actor(req))),

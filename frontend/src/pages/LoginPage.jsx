@@ -1,8 +1,11 @@
 /*
- * Sign-in (screen 09). Santulan ID + password. A temporary password never opens a session: the server answers
- * `mustSetPassword` and this page moves to a set-password step; only after the new password is set does a session exist.
- * The ID placeholder is an opaque example - never a school or college code. There is no self-service password reset: the
- * "Forgot your password?" control explains that a coordinator issues a new temporary password.
+ * Sign-in (screen 09). One ID field that takes either a Santulan ID (institutional participants and admins) or an email
+ * address (OPEN participants - they register with email + their own password, see RegisterPage.jsx, and the email IS
+ * their login subject). A temporary password (institutional only - OPEN participants never get one) never opens a
+ * session: the server answers `mustSetPassword` and this page moves to a set-password step; only after the new password
+ * is set does a session exist. "Forgot your password?" self-service (email only, POST /auth/forgot-password) only
+ * actually does anything for OPEN participants - the server silently no-ops for anyone else, same "never reveal"
+ * pattern the old OTP request used; institutional participants still go through their coordinator.
  */
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -33,6 +36,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const [setToken, setSetToken] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -49,10 +53,23 @@ export default function LoginPage() {
   const run = async (fn) => { setError(''); setBusy(true); try { await fn(); } catch (err) { setError(err.message); } finally { setBusy(false); } };
 
   const submitLogin = () => run(async () => {
-    if (!subject.trim() || !password) throw new Error('Please enter your Santulan ID and password.');
+    if (!subject.trim() || !password) throw new Error('Please enter your Santulan ID or email, and your password.');
     const res = await api.login(subject.trim(), password);
     if (res.mustSetPassword) { setSetToken(res.setPasswordToken); setPassword(''); return; }
     enter(res.accessToken);
+  });
+
+  /** OPEN participants only (self-registered, no coordinator) - their email IS their login subject, so this reuses
+   * whatever is typed in the ID field above. Always shows the same confirmation either way - the server never reveals
+   * whether it matched anything (same pattern as the old OTP request). Institutional participants (who sign in with a
+   * Santulan ID, not an email) still go through their coordinator; this quietly does nothing for them. */
+  const submitForgot = () => run(async () => {
+    const typed = subject.trim();
+    // The ID field is shared with institutional (Santulan ID) sign-in; catch a non-email value here with a clear
+    // message instead of letting the server's generic "Request validation failed" through (it validates email shape).
+    if (!typed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed)) throw new Error('Please enter your email address (not a Santulan ID) in the field above, then try again.');
+    await api.forgotPassword(typed);
+    setForgotSent(true);
   });
 
   const submitNew = () => run(async () => {
@@ -91,27 +108,37 @@ export default function LoginPage() {
 
           <div className={s.authCard}>
             <p className={`${styles.muted} ${styles.rowBetween}`} style={{ justifyContent: 'flex-end', margin: '0 0 var(--sp-3)', gap: 'var(--sp-2)' }}>
-              Registered on your own, not through a school? <Link className={styles.pageLink} to="/register">Sign in with a code instead</Link>
+              New here, not through a school? <Link className={styles.pageLink} to="/register">Register on your own</Link>
             </p>
             {error && <div style={{ marginBottom: 'var(--sp-4)' }}><StatusMessage type="error" message={error} /></div>}
             {!setToken ? (
               <form className={s.authForm} onSubmit={(e) => { e.preventDefault(); submitLogin(); }}>
                 <div>
                   <h1 className={s.authTitle}>Sign in</h1>
-                  <p className={s.authSub}>Sign in using your Santulan ID.</p>
+                  <p className={s.authSub}>Registered on your own? Use your email. Registered through a school or college? Use your Santulan ID.</p>
                 </div>
-                <Field size="lg" icon={UserRound} label="Santulan ID" name="subject" autoComplete="username" placeholder="Enter your Santulan ID (e.g., STN-XXXXXXXXXXXXXXXXXXXX)" value={subject} onChange={(e) => setSubject(e.target.value)} />
+                <Field size="lg" icon={UserRound} label="Santulan ID or email" name="subject" autoComplete="username" placeholder="Your Santulan ID or email address" value={subject} onChange={(e) => setSubject(e.target.value)} />
                 <Field size="lg" icon={Lock} trailing={eye} label="Password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                <button type="button" className={`${styles.linkButton} ${s.forgot}`} aria-expanded={showForgot} onClick={() => setShowForgot((v) => !v)} style={{ textDecoration: 'none' }}>Forgot your password?</button>
-                {showForgot && <StatusMessage type="info" message="Please ask your coordinator to issue a new temporary password." />}
+                <button type="button" className={`${styles.linkButton} ${s.forgot}`} aria-expanded={showForgot} onClick={() => { setShowForgot((v) => !v); setForgotSent(false); }} style={{ textDecoration: 'none' }}>Forgot your password?</button>
+                {showForgot && (
+                  forgotSent ? (
+                    <StatusMessage type="info" message="If that's a self-registered account's email, we've sent a reset link to it. If you registered through a school or college instead, please ask your coordinator to issue a new temporary password." />
+                  ) : (
+                    <div className={styles.stack} style={{ gap: 'var(--sp-2)' }}>
+                      <p className={styles.muted} style={{ margin: 0 }}>Self-registered (not through a school)? Enter your email address above, then click below and we'll send a reset link.</p>
+                      <Button type="button" variant="secondary" size="md" onClick={submitForgot} disabled={busy}>Send reset link</Button>
+                      <p className={styles.muted} style={{ margin: 0 }}>Registered through a school or college instead? Please ask your coordinator to issue a new temporary password.</p>
+                    </div>
+                  )
+                )}
                 <Button type="submit" size="lg" block disabled={busy}>Sign In <ArrowRight size={20} aria-hidden="true" /></Button>
                 <div className={s.orRule} aria-hidden="true">OR</div>
-                <Button type="submit" variant="secondary" size="lg" block disabled={busy}><Landmark size={20} aria-hidden="true" /> Login with Temporary Password <ArrowRight size={20} aria-hidden="true" /></Button>
+                <Button type="submit" variant="secondary" size="lg" block disabled={busy}><Landmark size={20} aria-hidden="true" /> Institution Login with Temporary Password <ArrowRight size={20} aria-hidden="true" /></Button>
                 <div className={`${styles.railCard} ${styles.toneSky}`}>
                   <IconBadge icon={Info} tone="blue" size="sm" />
                   <div className={styles.railBody}>
                     <p className={styles.h4}>First time here?</p>
-                    <p>If you have received a temporary password from your institution, use the option above to set your new password. If you registered on your own, sign in with the code we send you on the registration page.</p>
+                    <p>Received a temporary password from your institution? Enter your Santulan ID and that temporary password above, then use the institution button to set your own password. If you registered on your own, sign in with the email and password you chose on the registration page.</p>
                   </div>
                 </div>
               </form>

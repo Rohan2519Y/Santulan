@@ -39,17 +39,21 @@ const rosterUpload = multer({ storage: multer.memoryStorage(), limits: { fileSiz
 // The OPEN-registration throttle protects the OTP flow only (throttle.js §7); institutional/participant login uses a
 // password + bcrypt (per-identity limits), never this middleware (SEC-17).
 const authThrottle = createRegistrationThrottle(config.registrationThrottle);
-router.post('/auth/request-otp', authThrottle, validate(auth.requestOtpSchema), auth.requestOtp);
-router.post('/auth/verify-otp', authThrottle, validate(auth.verifyOtpSchema), auth.verifyOtp);
+// OTP login/registration is commented out, not removed: OPEN participants now use Santulan ID + password like
+// institutional participants (registerOpen in registration.controller.js), since no real OTP/SMS provider exists to
+// integrate with yet. Re-enable these two lines (and /participants/age-declaration below) once one is.
+// router.post('/auth/request-otp', authThrottle, validate(auth.requestOtpSchema), auth.requestOtp);
+// router.post('/auth/verify-otp', authThrottle, validate(auth.verifyOtpSchema), auth.verifyOtp);
 router.post('/auth/login', validate(auth.loginSchema), auth.login);
 router.post('/auth/set-password', validate(auth.setPasswordSchema), auth.setPassword);
+router.post('/auth/forgot-password', authThrottle, validate(auth.forgotPasswordSchema), auth.forgotPassword);
 router.post('/admin/participants/:id/credential-reset', requireActiveSuperAdmin, auth.credentialReset);
 
 // --- Identity, registration and age routing (BUILD 03)
 router.post('/registration/route', validate(registration.routeSchema), registration.resolveRoute);
 router.post('/registrations/open', registrationThrottle, validate(registration.openSchema), registration.registerOpen);
 router.post('/registrations/institutional', requireActiveSuperAdmin, validate(registration.institutionalSchema), registration.registerInstitutional);
-router.post('/participants/age-declaration', registrationThrottle, validate(registration.ageDeclarationSchema), registration.ageDeclaration);
+// router.post('/participants/age-declaration', registrationThrottle, validate(registration.ageDeclarationSchema), registration.ageDeclaration); // OTP-only completion step; see note above
 router.get('/registration/state', requireParticipantToken, registration.state);
 // ASSUMED addition (Student Demographic & Research Profile Capture Form v1.0): the recommended validation-profile
 // extension, first captured at registration and editable afterwards (Tier A: an edit is a new row, latest wins).
@@ -143,6 +147,7 @@ router.get('/admin/submissions', requireActiveSuperAdmin, admin.listSubmissions)
 router.get('/admin/submissions/:id', requireActiveSuperAdmin, admin.submissionDetail);
 router.get('/admin/submissions/:id/responses', requireActiveSuperAdmin, admin.submissionResponses);
 router.get('/admin/submissions/:id/responses/export', requireActiveSuperAdmin, admin.exportSubmissionResponses);
+router.get('/admin/attempts/:id/pilot-report', requireActiveSuperAdmin, admin.pilotReportPdf);
 
 // --- Research export (BUILD 08 section 10)
 router.post('/research-exports', requireActiveSuperAdmin, validate(researchExports.requestSchema), researchExports.request);

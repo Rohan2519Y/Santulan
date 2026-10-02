@@ -9,6 +9,7 @@ const { submitProfile, getOwnProfile } = require('../services/registration/parti
 const { submitPilotDetails, getOwnPilotDetails } = require('../services/registration/participantPilotDetailsService');
 const { resolveAgeRoute } = require('../services/registration/routing');
 const { verifyPurposeToken, signToken } = require('../middleware/auth');
+const { credentialVersion } = require('../services/identity/devProvider');
 const E = require('../models/schema/enums');
 
 const age = z.number().int();
@@ -16,7 +17,7 @@ const language = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/).optional();
 
 // Strict: unknown keys (santulanId, participantId, scores, DB context, ...) are rejected, never ignored.
 const routeSchema = strictObject({ age });
-const openSchema = strictObject({ age, language });
+const openSchema = strictObject({ age, language, email: z.string().trim().toLowerCase().email(), password: z.string().min(1).max(200) });
 const institutionalSchema = strictObject({
   age, language,
   institutionId: z.string().uuid(),
@@ -84,10 +85,33 @@ async function resolveRoute(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/** OPEN participants sign in with email + a password they choose themselves at registration - no temporary password, no
+ * forced change, no OTP (no real OTP/SMS provider exists: services/identity/index.js). The email itself is the
+ * provider subject: it is what the participant actually types back at /auth/login, so no Santulan-ID-style lookup is
+ * needed there (login.js's credentialSubject() already falls through to using the typed value directly when it is not
+ * shaped like a Santulan ID). Registering twice with the same email collides on dev_identity_credentials' unique
+ * (provider, subject) index, surfaced as the generic insert-conflict error. */
 async function registerOpen(req, res, next) {
   try {
-    const result = await register({ route: 'OPEN', age: req.body.age, language: req.body.language, idempotencyKey: idempotencyKey(req), requestCorrelationId: req.correlationId });
-    send(res, result);
+    const key = idempotencyKey(req);
+    const provider = config.identityProvider === 'dev' ? getProvider() : null;
+    const email = req.body.email; // already trimmed/lowercased by openSchema
+    if (provider) {
+      const weak = provider.passwordProblem(req.body.password);
+      if (weak) throw new HttpError(400, 'VALIDATION_ERROR', `The password needs ${weak}`);
+    }
+    const result = await register({
+      route: 'OPEN', age: req.body.age, language: req.body.language,
+      authProvider: provider ? provider.PROVIDER : null, authProviderSubjectId: provider ? email : null,
+      idempotencyKey: key, requestCorrelationId: req.correlationId,
+    });
+    let extra = {};
+    if (provider && !result.replay) {
+      const created = await provider.createOwnPassword(email, req.body.password);
+      if (!created.ok) throw new HttpError(400, 'VALIDATION_ERROR', `The password needs ${created.problem}`);
+      extra = { accessToken: signToken({ sub: result.participantId, role: 'participant', participantId: result.participantId, pv: credentialVersion(created.updatedAt) }) };
+    }
+    send(res, result, extra);
   } catch (err) { next(err); }
 }
 

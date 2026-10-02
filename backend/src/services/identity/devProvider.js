@@ -94,6 +94,17 @@ function createDevProvider({ now = () => Date.now(), otpTtlMs = 10 * 60 * 1000, 
       return temp;
     },
 
+    /** OPEN registration only: the participant's own chosen password, active immediately - no temporary credential, no
+     * forced change. Overwrites any existing credential for this subject (registration already guarantees the subject
+     * - the participant's own email - is new via the unique (provider, subject) index on dev_identity_credentials). */
+    async createOwnPassword(subjectId, password) {
+      const problem = passwordProblem(password);
+      if (problem) return { ok: false, problem };
+      const hash = await bcrypt.hash(password, 10);
+      const { updatedAt } = await asSystem((tx) => devIdentity.upsertPermanent(tx, PROVIDER, subjectId, hash));
+      return { ok: true, updatedAt };
+    },
+
     /** Replaces a TEMPORARY credential only (must_change = true), so a set-password token is effectively single use. */
     async setPassword(subjectId, newPassword) {
       const problem = passwordProblem(newPassword);
@@ -105,6 +116,15 @@ function createDevProvider({ now = () => Date.now(), otpTtlMs = 10 * 60 * 1000, 
 
     async revoke(subjectId) {
       await asSystem((tx) => devIdentity.disableCredential(tx, PROVIDER, subjectId));
+    },
+
+    /** Dev-only "forgot password" email: issues a new temporary credential (same as an admin credential-reset) and logs
+     * the reset link instead of actually sending it - no real email provider exists yet (see services/identity/index.js).
+     * The link's token is the same set-password purpose token a forced password change already uses, so the existing
+     * POST /auth/set-password endpoint completes the reset unchanged. */
+    async requestPasswordReset(subjectId, link) {
+      await this.issueTemporaryCredential(subjectId);
+      log('email', link);
     },
   };
 }
