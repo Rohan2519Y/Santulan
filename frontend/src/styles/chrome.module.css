@@ -61,26 +61,28 @@
 .appAccount { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); }
 .appAccount button { white-space: nowrap; }
 .accountLink { display: inline-flex; align-items: center; gap: var(--sp-3); min-height: 44px; text-decoration: none; color: var(--c-ink-strong); font-weight: var(--fw-medium); }
+.accountText { display: inline-block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .avatar { width: 40px; height: 40px; border-radius: var(--radius-pill); background: var(--c-brand); color: var(--c-bg-white); display: inline-flex; align-items: center; justify-content: center; }
 :root[data-theme='dark'] .avatar { color: #0a1a47; }
 
 .appBody { position: relative; flex: 1; display: grid; grid-template-columns: var(--sidebar-w-participant) minmax(0, 1fr); background: linear-gradient(180deg, var(--c-tint-sky) 0%, var(--c-bg) 60%); }
-.sidebar { display: flex; flex-direction: column; justify-content: space-between; padding: var(--sp-5) var(--sp-4) 0; background: var(--c-bg-white); border-right: 1px solid var(--c-line); min-height: 100%; }
-.sideNav { display: flex; flex-direction: column; gap: var(--sp-2); }
-.sideLink { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 0 18px; border-radius: var(--radius-md); color: var(--c-ink); text-decoration: none; font-size: 17px; font-weight: var(--fw-medium); }
+.sidebar { position: sticky; top: calc(var(--header-h) + var(--sp-3)); align-self: start; display: flex; flex-direction: column; justify-content: space-between; height: calc(100vh - var(--header-h) - (var(--sp-3) * 2)); min-height: 0; margin: var(--sp-3) 0 var(--sp-3) var(--sp-3); padding: var(--sp-4) var(--sp-3) 0; overflow-y: auto; background: var(--c-bg-white); border: 1px solid var(--c-line); border-radius: var(--radius-md); box-shadow: var(--shadow-1); }
+.sideNav { display: flex; flex-direction: column; gap: var(--sp-1); }
+.sideLink { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; border-radius: var(--radius-md); color: var(--c-ink); text-decoration: none; font-size: 15px; font-weight: var(--fw-medium); }
 .sideLink:hover { background: var(--c-tint-blue); }
 .sideLinkActive { background: var(--c-nav-active); color: var(--c-brand); font-weight: var(--fw-semibold); }
-.sideArt { position: relative; padding: var(--sp-6) var(--sp-3) 0; }
-.sideScript { font-family: var(--font-script); font-size: 26px; line-height: 1.15; color: var(--c-brand); margin: 0 0 var(--sp-3); position: relative; z-index: 1; }
-.leaf { height: 150px; margin: 0 calc(var(--sp-4) * -1); }
+.sideArt { position: relative; padding: var(--sp-4) var(--sp-2) 0; }
+.sideScript { font-family: var(--font-script); font-size: 22px; line-height: 1.15; color: var(--c-brand); margin: 0 0 var(--sp-2); position: relative; z-index: 1; }
+.leaf { height: 104px; margin: 0 calc(var(--sp-3) * -1); }
 .appContent { min-width: 0; padding: var(--sp-5) clamp(16px, 3vw, 48px) var(--sp-6); }
 .scrim { display: none; }
 
 @media (max-width: 1023px) {
   .appMenu { display: inline-flex; }
   .appBody { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { position: fixed; top: var(--header-h); bottom: 0; left: 0; z-index: 60; width: min(320px, 86vw); transform: translateX(-102%); visibility: hidden; transition: transform var(--motion-base) var(--ease), visibility 0s linear var(--motion-base); overflow-y: auto; box-shadow: var(--shadow-2); }
+  .sidebar { position: fixed; top: var(--header-h); bottom: auto; left: 0; z-index: 60; width: min(320px, 86vw); height: auto; max-height: calc(100vh - var(--header-h) - var(--sp-3)); max-height: calc(100dvh - var(--header-h) - var(--sp-3)); margin: 0; padding: var(--sp-3); transform: translateX(-102%); visibility: hidden; transition: transform var(--motion-base) var(--ease), visibility 0s linear var(--motion-base); overflow-y: auto; overscroll-behavior: contain; border: 0; border-right: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); border-radius: 0 0 var(--radius-md) 0; box-shadow: var(--shadow-2); }
   .sidebarOpen { transform: none; visibility: visible; transition-delay: 0s; }
+  .sideArt { display: none; }
   .scrim { display: block; position: fixed; inset: var(--header-h) 0 0 0; z-index: 50; border: 0; background: rgba(10, 26, 71, 0.4); cursor: pointer; }
   .accountText { display: none; }
 }

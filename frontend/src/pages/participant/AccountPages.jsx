@@ -1,14 +1,11 @@
 /*
- * Profile, Privacy, Preferences and Thanks (screens 19, 20, 22, 24). The profile shows ONLY what the canonical schema holds:
- * Santulan ID, route, track / age band and language. There is no name, photo, date of birth, interests or goals, and no
- * completion ring. Privacy lists every consent record with a Withdraw action (confirmed first); requests about data are static
- * text (approved contact details pending: TODO(copy)). Preferences: Language, Theme and Reduce motion, stored on this device only.
- * The sample tabs are Personal information, Preferences and Privacy; Research profile (ValidationProfilePage) is an
- * ASSUMED fourth tab added so a participant can revisit/edit the demographic and research profile form later.
+ * Profile, Privacy, Preferences and Thanks (screens 19, 20, 22, 24). Personal information combines the former research-profile
+ * and pilot-study forms in one place. Privacy lists every consent record with a Withdraw action (confirmed first); requests about
+ * data are static text (approved contact details pending: TODO(copy)). Preferences are stored on this device only.
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, FileText, Globe, Info, Lock, ShieldCheck, UserRound, Users } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, FileText, Globe, Info, Lock, ShieldCheck, Users } from 'lucide-react';
 import styles from '../../styles/ui.module.css';
 import p from '../../styles/portal.module.css';
 import ImageSlot from '../../components/ImageSlot/ImageSlot';
@@ -24,6 +21,7 @@ import { SupportPage } from '../public/PublicPages';
 import { CONSENT_TEXT } from '../register/consentText';
 import ConsentSections from '../register/ConsentSections';
 import cs from '../register/ConsentFormModal.module.css';
+import PersonalInformationForm from './PersonalInformationForm';
 
 const TRACK = { ADOLESCENT: 'Ages 13 to 17', EMERGING_ADULT: 'Ages 18 to 25' };
 const ROUTE = { OPEN: 'Registered on my own', INSTITUTIONAL: 'Registered by my school or college' };
@@ -32,8 +30,6 @@ const STATUS = { PENDING: 'Waiting', GRANTED: 'Given, waiting to be verified', V
 
 const TABS = [
   { to: '/student/profile', label: 'Personal information' },
-  { to: '/student/validation-profile', label: 'Research profile' },
-  { to: '/student/pilot-study-details', label: 'Pilot study details' },
   { to: '/student/profile/preferences', label: 'Preferences' },
   { to: '/student/privacy', label: 'Privacy' },
 ];
@@ -54,13 +50,15 @@ function ProfileRail({ slot }) {
   return (
     <div className={styles.rail}>
       <ImageSlot slot={slot} className={styles.railPicture} />
-      <RailCard tone="safe" title="Your information is safe" icon={ShieldCheck}><p>We only keep what is needed for your participation. Your profile holds no name and no photo.</p></RailCard>
+      <RailCard tone="safe" title="Your information is safe" icon={ShieldCheck}><p>Your information is protected and used only for participation and approved research purposes.</p></RailCard>
       <RailCard tone="help" title="Need Help?" icon={Users}><p>If you have any questions or need assistance, feel free to reach out to our support team.</p><Link className={styles.pageLink} to="/student/support">Contact Support</Link></RailCard>
     </div>
   );
 }
 
 export function ProfilePage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [reg, setReg] = useState(null);
   const [error, setError] = useState('');
   useEffect(() => { api.registrationState().then(setReg).catch((e) => setError(e.message)); }, []);
@@ -72,25 +70,26 @@ export function ProfilePage() {
         <Breadcrumb items={[{ label: 'Home', to: '/student' }, { label: 'My profile' }]} />
         <div>
           <h1 className={p.pageTitle}>My profile</h1>
-          <p className={p.pageLead}>These are the details that come with your participation.</p>
+          <p className={p.pageLead}>Review and keep your personal information in one place.</p>
         </div>
         <ProfileTabs current="/student/profile" />
         <section className={p.panel}>
-          <h2 className={p.panelTitle}>Personal information</h2>
-          <p className={styles.muted} style={{ margin: '0 0 var(--sp-5)' }}>This information helps us keep your participation on track.</p>
-          <div className={p.profileGrid}>
-            <span className={p.bigAvatar} aria-hidden="true"><UserRound size={56} strokeWidth={1.5} /></span>
-            <div className={styles.stack}>
-              <CopyField label="Santulan ID" value={reg.santulanId} hint="Keep this ID safe. You need it to sign in." />
-              <dl className={p.fieldGrid}>
-                <div className={p.readField}><dt>How I registered</dt><dd>{ROUTE[reg.participationRoute]}</dd></div>
-                <div className={p.readField}><dt>Age range</dt><dd>{TRACK[reg.assessmentTrack]}</dd></div>
-                <div className={p.readField}><dt>Language</dt><dd>English</dd></div>
-              </dl>
-              <InfoNote icon={Info}>Your information is safe with us. We only use it to run your participation.</InfoNote>
-            </div>
+          <h2 className={p.panelTitle}>Account information</h2>
+          <div className={styles.stack}>
+            <CopyField label="Santulan ID" value={reg.santulanId} hint="Keep this ID safe. You may need it to sign in." />
+            <dl className={p.fieldGrid}>
+              <div className={p.readField}><dt>How I registered</dt><dd>{ROUTE[reg.participationRoute]}</dd></div>
+              <div className={p.readField}><dt>Age range</dt><dd>{TRACK[reg.assessmentTrack]}</dd></div>
+              <div className={p.readField}><dt>Language</dt><dd>English</dd></div>
+            </dl>
           </div>
         </section>
+        <PersonalInformationForm
+          registration={reg}
+          onSaved={() => {
+            if (location.state && location.state.profileRequired) navigate('/student', { replace: true });
+          }}
+        />
       </div>
       <ProfileRail slot="profileHero" />
     </div>

@@ -13,6 +13,7 @@ import Button from './Button/Button';
 import Logo from './Logo/Logo';
 import ImageSlot from './ImageSlot/ImageSlot';
 import { useSession } from '../services/SessionContext';
+import { api } from '../services/santulanApi';
 
 export function BrandMark({ to = '/' }) {
   return <Logo to={to} />;
@@ -110,7 +111,25 @@ export function ParticipantShell({ children }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [accountLabel, setAccountLabel] = useState('My account');
   useEffect(() => { setOpen(false); }, [pathname]);
+  useEffect(() => {
+    let cancelled = false;
+    const loadAccountLabel = () => Promise.all([
+        api.registrationState(),
+        api.ownPilotDetails().catch((error) => (error.status === 404 ? null : Promise.reject(error))),
+      ]).then(([registration, details]) => {
+        if (cancelled) return;
+        const fullName = details && typeof details.fullName === 'string' ? details.fullName.trim() : '';
+        setAccountLabel(fullName || registration.santulanId || 'My account');
+      }).catch(() => {});
+    loadAccountLabel();
+    window.addEventListener('santulan:profile-updated', loadAccountLabel);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('santulan:profile-updated', loadAccountLabel);
+    };
+  }, [pathname]);
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
@@ -128,7 +147,7 @@ export function ParticipantShell({ children }) {
         <div className={styles.appAccount}>
           <Link className={styles.accountLink} to="/student/profile">
             <span className={styles.avatar} aria-hidden="true"><UserRound size={20} /></span>
-            <span className={styles.accountText}>My account</span>
+            <span className={styles.accountText} title={accountLabel}>{accountLabel}</span>
           </Link>
           <Button variant="quiet-link" onClick={() => { signOut(); navigate('/login', { replace: true }); }}>Sign out</Button>
         </div>

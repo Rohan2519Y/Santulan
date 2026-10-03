@@ -100,14 +100,11 @@ export const api = {
 
   registrationState: () => call('/registration/state'),
 
-  /** Student Demographic & Research Profile Capture Form v1.0 - first captured right after registration, editable
-   * afterwards from the profile tabs. Every field is optional; omit a key entirely to leave that question unanswered
-   * ("Prefer not to say" where offered is a real enum value, not the same as omitting the key). */
+  /** Research fields saved from the combined Personal information screen. */
   submitProfile: (body) => call('/participants/profile', { method: 'POST', body }),
   ownProfile: () => call('/participants/profile'),
 
-  /** "Santulan Pilot Study Details" PART A - an explicit override of the profile form's own "exclude full name/DOB/
-   * religion" list (see backend participantPilotDetailsRules.js). fullName is the one required field. */
+  /** Identification and background fields saved from the combined Personal information screen. */
   submitPilotDetails: (body) => call('/participants/pilot-details', { method: 'POST', body }),
   ownPilotDetails: () => call('/participants/pilot-details'),
 

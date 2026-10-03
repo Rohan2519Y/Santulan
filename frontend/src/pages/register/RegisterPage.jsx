@@ -217,7 +217,7 @@ export default function RegisterPage() {
                 <StatusMessage type="info" message={result.isMinor
                   ? 'You are signed in. We will wait for consent to be verified, including your parent or guardian, before you can start.'
                   : 'You are signed in. Your consent needs to be verified before you can start.'} />
-                <Button size="lg" block onClick={() => navigate('/student/validation-profile')}>Go to Dashboard <ArrowRight size={20} aria-hidden="true" /></Button>
+                <Button size="lg" block onClick={() => navigate('/student/profile', { state: { profileRequired: true } })}>Complete personal information <ArrowRight size={20} aria-hidden="true" /></Button>
               </div>
             )}
           </div>
