@@ -15,7 +15,7 @@
  */
 const CAPTURE_VERSION = 'PILOT_STUDY_DETAILS_v1.0';
 
-/** Builds the document from the validated request body. Every optional field defaults to null (the collection
+/** Builds the document from the validated request body. Optional background fields default to null (the collection
  * validator requires every field to be present, even when unanswered). */
 function buildPilotDetails({ _id, participantId, body }) {
   return {

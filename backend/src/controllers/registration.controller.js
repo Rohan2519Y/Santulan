@@ -47,14 +47,22 @@ const profileSchema = strictObject({
 });
 
 // "Santulan Pilot Study Details" PART A - an explicit override of the approved profile form's own exclusion list
-// (full_name/date_of_birth/religion etc.) - see participantPilotDetailsRules.js. fullName is the one required field;
-// class/gender are free text (neither source PDF gives them a fixed option list, unlike education_stage/gender_research above).
+// (full_name/date_of_birth/religion etc.) - see participantPilotDetailsRules.js. Identification is required;
+// class/gender remain free text because the source PDF does not define option lists for them.
 const freeText = z.string().trim().min(1).max(120);
+const dateOfBirth = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+    && date <= new Date();
+}, 'Date of birth must be a valid past date');
 const pilotDetailsSchema = strictObject({
   fullName: z.string().trim().min(1).max(200),
-  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  className: freeText.optional(),
-  gender: freeText.optional(),
+  dateOfBirth,
+  className: freeText,
+  gender: freeText,
   birthOrder: z.enum(E.BIRTH_ORDER).optional(),
   siblingCount: z.number().int().min(0).max(50).optional(),
   religion: z.enum(E.RELIGION).optional(),

@@ -25,7 +25,6 @@ const CLASS_YEAR_BY_STAGE = {
 const LANGUAGE_MODE = [['SAME_AS_ASSESSMENT', 'Same as assessment language'], ['DIFFERENT', 'A different language'], ['MULTILINGUAL', 'More than one / multilingual'], ['PREFER_NOT_TO_SAY', 'Prefer not to say']];
 const MEDIUM_OF_INSTRUCTION = [['ENGLISH', 'English'], ['HINDI', 'Hindi'], ['OTHER', 'Other'], ['MIXED', 'Mixed / bilingual'], ['NOT_APPLICABLE', 'Not applicable'], ['PREFER_NOT_TO_SAY', 'Prefer not to say']];
 const GENDER_RESEARCH = [['FEMALE', 'Female / girl / woman'], ['MALE', 'Male / boy / man'], ['NON_BINARY_OTHER', 'Non-binary / another gender'], ['SELF_DESCRIBE', 'Self-describe'], ['PREFER_NOT_TO_SAY', 'Prefer not to say']];
-const REGION_MODE = [['STATE_UT', 'State / UT'], ['BROADER', 'Broad region only'], ['PREFER_NOT_TO_SAY', 'Prefer not to say']];
 const URBANICITY = [['URBAN', 'Urban'], ['SEMI_URBAN', 'Semi-urban'], ['RURAL', 'Rural'], ['OTHER', 'Other / unsure'], ['PREFER_NOT_TO_SAY', 'Prefer not to say']];
 const ACCESSIBILITY = [
   ['NONE', 'None'], ['LARGE_TEXT', 'Larger text / display adjustment'], ['READER', 'Reader / assisted reading'],
@@ -34,9 +33,7 @@ const ACCESSIBILITY = [
 const BIRTH_ORDER = [['ONLY_CHILD', 'Only child'], ['FIRST_BORN', 'First-born'], ['MIDDLE_BORN', 'Middle-born'], ['YOUNGEST', 'Youngest'], ['OTHER', 'Other']];
 const RELIGION = [['HINDU', 'Hindu'], ['MUSLIM', 'Muslim'], ['CHRISTIAN', 'Christian'], ['SIKH', 'Sikh'], ['BUDDHIST', 'Buddhist'], ['JAIN', 'Jain'], ['OTHER', 'Other'], ['PREFER_NOT_TO_SAY', 'Prefer not to say']];
 const FAMILY_TYPE = [['NUCLEAR', 'Nuclear'], ['JOINT', 'Joint'], ['EXTENDED', 'Extended'], ['OTHER', 'Other']];
-const RESIDENCE_TYPE = [['URBAN', 'Urban'], ['SEMI_URBAN', 'Semi-urban'], ['RURAL', 'Rural']];
 const SCHOOL_TYPE = [['GOVERNMENT', 'Government'], ['PRIVATE', 'Private'], ['GOVERNMENT_AIDED', 'Government-aided'], ['OTHER', 'Other']];
-const STUDY_MEDIUM = [['HINDI', 'Hindi'], ['ENGLISH', 'English'], ['OTHER', 'Other']];
 const BOARD = [['CBSE', 'CBSE'], ['ICSE', 'ICSE'], ['STATE_BOARD', 'State Board'], ['OTHER', 'Other']];
 const ACADEMIC_STREAM = [['SCIENCE', 'Science'], ['COMMERCE', 'Commerce'], ['HUMANITIES_ARTS', 'Humanities / Arts'], ['OTHER', 'Other'], ['NOT_APPLICABLE', 'Not applicable']];
 
@@ -48,12 +45,12 @@ const Select = ({ label, value, onChange, options, hint, required = false }) => 
 );
 
 const BLANK = {
-  fullName: '', dateOfBirth: '', className: '', gender: '',
+  fullName: '', dateOfBirth: '', className: '',
   educationStage: '', currentClassYear: '', primaryLanguageMode: '', primaryLanguageDetail: '',
   mediumOfInstruction: '', mediumOfInstructionDetail: '', genderResearch: '', genderSelfDescription: '',
-  broadRegionMode: '', broadRegionDetail: '', urbanicity: '', accessibilityAccommodation: '', accessibilityAccommodationDetail: '',
+  broadRegionMode: '', accessibilityAccommodation: '', accessibilityAccommodationDetail: '',
   birthOrder: '', siblingCount: '', religion: '', familyType: '', residenceType: '', state: '',
-  schoolType: '', studyMedium: '', board: '', academicStream: '',
+  schoolType: '', board: '', academicStream: '',
 };
 
 export function hasRequiredIdentification(details) {
@@ -61,24 +58,72 @@ export function hasRequiredIdentification(details) {
 }
 
 function fromStored(profile, details) {
-  const form = { ...BLANK };
-  for (const key of Object.keys(form)) {
-    const source = Object.prototype.hasOwnProperty.call(details || {}, key) ? details : profile;
-    if (source && source[key] != null) form[key] = key === 'siblingCount' ? String(source[key]) : source[key];
-  }
+  const form = { ...BLANK, ...(profile || {}), ...(details || {}) };
+  form.siblingCount = form.siblingCount == null ? '' : String(form.siblingCount);
   if (form.dateOfBirth) form.dateOfBirth = String(form.dateOfBirth).slice(0, 10);
+
+  const storedGender = String(details?.gender || '').trim();
+  if (!profile?.genderResearch && storedGender) {
+    const normalized = storedGender.toLowerCase();
+    if (normalized === 'female' || normalized.includes('girl') || normalized.includes('woman')) form.genderResearch = 'FEMALE';
+    else if (normalized === 'male' || normalized.includes('boy') || normalized.includes('man')) form.genderResearch = 'MALE';
+    else if (normalized.includes('prefer not')) form.genderResearch = 'PREFER_NOT_TO_SAY';
+    else if (normalized.includes('non-binary') || normalized.includes('nonbinary')) form.genderResearch = 'NON_BINARY_OTHER';
+    else {
+      form.genderResearch = 'SELF_DESCRIBE';
+      form.genderSelfDescription = storedGender;
+    }
+  }
+  form.state = details?.state || profile?.broadRegionDetail || '';
+  form.residenceType = details?.residenceType || profile?.urbanicity || '';
+  form.mediumOfInstruction = profile?.mediumOfInstruction || details?.studyMedium || '';
   return form;
 }
 
-function profilePayload(form) {
+function inferredClassYear(form) {
+  const match = form.className.match(/\d+/);
+  if (match) {
+    const year = Number(match[0]);
+    if (form.educationStage === 'SCHOOL') {
+      if (year <= 7) return 'GRADE_7_OR_BELOW';
+      if (year >= 8 && year <= 12) return `GRADE_${year}`;
+    }
+    if (form.educationStage === 'DIPLOMA_VOCATIONAL' && year >= 1 && year <= 4) return `YEAR_${year}`;
+    if (form.educationStage === 'UNDERGRADUATE' && year >= 1 && year <= 5) return `UG_YEAR_${year}`;
+    if (form.educationStage === 'POSTGRADUATE' && year >= 1 && year <= 2) return `PG_YEAR_${year}`;
+  }
+
+  const existingOptions = CLASS_YEAR_BY_STAGE[form.educationStage] || [];
+  return existingOptions.some(([code]) => code === form.currentClassYear) ? form.currentClassYear : '';
+}
+
+function genderForIdentification(form) {
+  const labels = {
+    FEMALE: 'Female',
+    MALE: 'Male',
+    NON_BINARY_OTHER: 'Non-binary / another gender',
+    PREFER_NOT_TO_SAY: 'Prefer not to say',
+  };
+  return form.genderResearch === 'SELF_DESCRIBE'
+    ? form.genderSelfDescription.trim()
+    : labels[form.genderResearch] || '';
+}
+
+function profilePayload(form, isOpen) {
   const body = {};
   const copy = (key) => { if (form[key]) body[key] = form[key]; };
-  copy('educationStage'); copy('currentClassYear'); copy('primaryLanguageMode'); copy('mediumOfInstruction');
-  copy('genderResearch'); copy('broadRegionMode'); copy('urbanicity'); copy('accessibilityAccommodation');
+  copy('educationStage'); copy('primaryLanguageMode'); copy('mediumOfInstruction');
+  copy('genderResearch'); copy('accessibilityAccommodation');
+  const currentClassYear = inferredClassYear(form);
+  if (currentClassYear) body.currentClassYear = currentClassYear;
   if (['DIFFERENT', 'MULTILINGUAL'].includes(form.primaryLanguageMode)) body.primaryLanguageDetail = form.primaryLanguageDetail.trim();
   if (form.mediumOfInstruction === 'OTHER') body.mediumOfInstructionDetail = form.mediumOfInstructionDetail.trim();
   if (form.genderResearch === 'SELF_DESCRIBE') body.genderSelfDescription = form.genderSelfDescription.trim();
-  if (['STATE_UT', 'BROADER'].includes(form.broadRegionMode)) body.broadRegionDetail = form.broadRegionDetail.trim();
+  if (isOpen && form.state.trim()) {
+    body.broadRegionMode = ['STATE_UT', 'BROADER'].includes(form.broadRegionMode) ? form.broadRegionMode : 'STATE_UT';
+    body.broadRegionDetail = form.state.trim();
+  }
+  if (isOpen && form.residenceType) body.urbanicity = form.residenceType;
   if (form.accessibilityAccommodation === 'OTHER') body.accessibilityAccommodationDetail = form.accessibilityAccommodationDetail.trim();
   return body;
 }
@@ -88,24 +133,25 @@ function detailsPayload(form) {
     fullName: form.fullName.trim(),
     dateOfBirth: form.dateOfBirth,
     className: form.className.trim(),
-    gender: form.gender.trim(),
+    gender: genderForIdentification(form),
   };
   const text = ['state'];
-  const selected = ['birthOrder', 'religion', 'familyType', 'residenceType', 'schoolType', 'studyMedium', 'board', 'academicStream'];
+  const selected = ['birthOrder', 'religion', 'familyType', 'schoolType', 'board', 'academicStream'];
   text.forEach((key) => { if (form[key].trim()) body[key] = form[key].trim(); });
   selected.forEach((key) => { if (form[key]) body[key] = form[key]; });
+  if (['URBAN', 'SEMI_URBAN', 'RURAL'].includes(form.residenceType)) body.residenceType = form.residenceType;
+  if (['HINDI', 'ENGLISH', 'OTHER'].includes(form.mediumOfInstruction)) body.studyMedium = form.mediumOfInstruction;
   if (form.siblingCount !== '') body.siblingCount = Number(form.siblingCount);
   return body;
 }
 
 function validate(form) {
-  if (!form.fullName.trim() || !form.dateOfBirth || !form.className.trim() || !form.gender.trim()) {
+  if (!form.fullName.trim() || !form.dateOfBirth || !form.className.trim() || !form.genderResearch) {
     return 'Full name, date of birth, class, and gender are required.';
   }
   if (['DIFFERENT', 'MULTILINGUAL'].includes(form.primaryLanguageMode) && !form.primaryLanguageDetail.trim()) return 'Please enter the primary or home language.';
   if (form.mediumOfInstruction === 'OTHER' && !form.mediumOfInstructionDetail.trim()) return 'Please enter the medium of instruction.';
   if (form.genderResearch === 'SELF_DESCRIBE' && !form.genderSelfDescription.trim()) return 'Please enter the gender description.';
-  if (['STATE_UT', 'BROADER'].includes(form.broadRegionMode) && !form.broadRegionDetail.trim()) return 'Please enter the selected region.';
   if (form.accessibilityAccommodation === 'OTHER' && !form.accessibilityAccommodationDetail.trim()) return 'Please describe the accessibility support.';
   return '';
 }
@@ -129,11 +175,7 @@ export default function PersonalInformationForm({ registration, onSaved }) {
     return () => { cancelled = true; };
   }, []);
 
-  const set = (key) => (value) => setForm((current) => ({
-    ...current,
-    [key]: value,
-    ...(key === 'educationStage' ? { currentClassYear: '' } : {}),
-  }));
+  const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
 
   const submit = async (event) => {
     event.preventDefault();
@@ -141,7 +183,7 @@ export default function PersonalInformationForm({ registration, onSaved }) {
     if (validationError) { setError(validationError); setSaved(false); return; }
     setBusy(true); setError(''); setSaved(false);
     try {
-      await api.submitProfile(profilePayload(form));
+      await api.submitProfile(profilePayload(form, registration.participationRoute === 'OPEN'));
       await api.submitPilotDetails(detailsPayload(form));
       setSaved(true);
       window.dispatchEvent(new Event('santulan:profile-updated'));
@@ -153,7 +195,6 @@ export default function PersonalInformationForm({ registration, onSaved }) {
   if (!loaded) return <div aria-busy="true" className={styles.stack}><Skeleton /><Skeleton /></div>;
 
   const isOpen = registration.participationRoute === 'OPEN';
-  const classYearOptions = CLASS_YEAR_BY_STAGE[form.educationStage] || [];
 
   return (
     <form className={styles.stack} onSubmit={submit}>
@@ -172,7 +213,8 @@ export default function PersonalInformationForm({ registration, onSaved }) {
           <Field label="Full name" value={form.fullName} onChange={(e) => set('fullName')(e.target.value)} required maxLength={200} />
           <Field label="Date of birth" type="date" value={form.dateOfBirth} onChange={(e) => set('dateOfBirth')(e.target.value)} required />
           <Field label="Class" value={form.className} onChange={(e) => set('className')(e.target.value)} required maxLength={120} />
-          <Field label="Gender" value={form.gender} onChange={(e) => set('gender')(e.target.value)} required maxLength={120} />
+          <Select label="Gender" value={form.genderResearch} onChange={set('genderResearch')} options={GENDER_RESEARCH} required />
+          {form.genderResearch === 'SELF_DESCRIBE' && <Field label="Self-describe" value={form.genderSelfDescription} onChange={(e) => set('genderSelfDescription')(e.target.value)} required maxLength={120} />}
         </div>
       </section>
 
@@ -180,9 +222,7 @@ export default function PersonalInformationForm({ registration, onSaved }) {
         <h2 className={p.panelTitle}>Studies</h2>
         <div className={styles.grid2}>
           <Select label="Current education stage" value={form.educationStage} onChange={set('educationStage')} options={EDUCATION_STAGE} />
-          {classYearOptions.length > 0 && <Select label="Current class / year" value={form.currentClassYear} onChange={set('currentClassYear')} options={classYearOptions} />}
           <Select label="Type of school" value={form.schoolType} onChange={set('schoolType')} options={SCHOOL_TYPE} />
-          <Select label="Study medium" value={form.studyMedium} onChange={set('studyMedium')} options={STUDY_MEDIUM} />
           <Select label="Board" value={form.board} onChange={set('board')} options={BOARD} />
           <Select label="Academic stream (Class 11-12 only)" value={form.academicStream} onChange={set('academicStream')} options={ACADEMIC_STREAM} />
         </div>
@@ -205,19 +245,14 @@ export default function PersonalInformationForm({ registration, onSaved }) {
           <Field label="Number of siblings" type="number" min={0} max={50} value={form.siblingCount} onChange={(e) => set('siblingCount')(e.target.value)} />
           <Select label="Religion" value={form.religion} onChange={set('religion')} options={RELIGION} />
           <Select label="Type of family" value={form.familyType} onChange={set('familyType')} options={FAMILY_TYPE} />
-          <Select label="Place of residence" value={form.residenceType} onChange={set('residenceType')} options={RESIDENCE_TYPE} />
-          <Field label="State" value={form.state} onChange={(e) => set('state')(e.target.value)} maxLength={120} />
+          <Select label="Place of residence" value={form.residenceType} onChange={set('residenceType')} options={URBANICITY} />
+          <Field label="State / region" value={form.state} onChange={(e) => set('state')(e.target.value)} maxLength={120} hint="Do not enter an exact home address." />
         </div>
       </section>
 
       <section className={p.panel}>
         <h2 className={p.panelTitle}>Additional information</h2>
         <div className={styles.grid2}>
-          <Select label="Gender for research (optional)" value={form.genderResearch} onChange={set('genderResearch')} options={GENDER_RESEARCH} />
-          {form.genderResearch === 'SELF_DESCRIBE' && <Field label="Self-describe" value={form.genderSelfDescription} onChange={(e) => set('genderSelfDescription')(e.target.value)} maxLength={120} />}
-          {isOpen && <Select label="Broad region (optional)" value={form.broadRegionMode} onChange={set('broadRegionMode')} options={REGION_MODE} hint="Do not enter an exact home address." />}
-          {isOpen && ['STATE_UT', 'BROADER'].includes(form.broadRegionMode) && <Field label="Which region?" value={form.broadRegionDetail} onChange={(e) => set('broadRegionDetail')(e.target.value)} maxLength={120} />}
-          {isOpen && <Select label="Area (optional)" value={form.urbanicity} onChange={set('urbanicity')} options={URBANICITY} />}
           <Select label="Accessibility support used (optional)" value={form.accessibilityAccommodation} onChange={set('accessibilityAccommodation')} options={ACCESSIBILITY} />
           {form.accessibilityAccommodation === 'OTHER' && <Field label="Please describe" value={form.accessibilityAccommodationDetail} onChange={(e) => set('accessibilityAccommodationDetail')(e.target.value)} maxLength={120} />}
         </div>

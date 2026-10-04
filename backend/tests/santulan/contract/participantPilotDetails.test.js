@@ -12,6 +12,9 @@ const { closeClient } = require('../../../src/models/db/client');
 const api = () => request(app);
 const post = (p, who, body) => api().post(`/api/v1${p}`).set(who ? { Authorization: `Bearer ${who.token}` } : {}).send(body || {});
 const get = (p, who) => api().get(`/api/v1${p}`).set(who ? { Authorization: `Bearer ${who.token}` } : {});
+const identification = (overrides = {}) => ({
+  fullName: 'A. Sharma', dateOfBirth: '2010-03-14', className: 'Grade 10', gender: 'Female', ...overrides,
+});
 
 afterAll(async () => { await f.cleanupFixtures(); await closeClient(); await H.closeAll(); });
 
@@ -42,20 +45,20 @@ describe('submitting pilot study details', () => {
     expect(row).toMatchObject({ actor_type: 'PARTICIPANT', actor_id: p.participantId });
   });
 
-  test('only fullName is required; every other field defaults to null', async () => {
+  test('required identification is stored while optional background fields default to null', async () => {
     const p = await f.participant(18);
-    const res = await post('/participants/pilot-details', p, { fullName: 'Minimal Name' });
+    const res = await post('/participants/pilot-details', p, identification({ fullName: 'Minimal Name' }));
     expect(res.status).toBe(201);
     expect(res.body.fullName).toBe('Minimal Name');
-    expect(res.body.dateOfBirth).toBeNull();
+    expect(res.body.dateOfBirth.slice(0, 10)).toBe('2010-03-14');
     expect(res.body.religion).toBeNull();
   });
 
   test('a second submission edits the details: a new row is stored (Tier A, never an in-place update), and reads return the latest', async () => {
     const p = await f.participant(15);
-    const first = await post('/participants/pilot-details', p, { fullName: 'First Name', religion: 'HINDU' });
+    const first = await post('/participants/pilot-details', p, identification({ fullName: 'First Name', religion: 'HINDU' }));
     expect(first.status).toBe(201);
-    const second = await post('/participants/pilot-details', p, { fullName: 'Updated Name', religion: 'MUSLIM' });
+    const second = await post('/participants/pilot-details', p, identification({ fullName: 'Updated Name', religion: 'MUSLIM' }));
     expect(second.status).toBe(201);
     expect(second.body.detailsId).not.toBe(first.body.detailsId);
 
@@ -72,17 +75,21 @@ describe('submitting pilot study details', () => {
     expect(edited).toMatchObject({ actor_type: 'PARTICIPANT', actor_id: p.participantId });
   });
 
-  test('a missing full name is refused (400); a blank one is too - it is the one required field', async () => {
-    const p1 = await f.participant(19);
-    expect((await post('/participants/pilot-details', p1, {})).status).toBe(400);
-    const p2 = await f.participant(21);
-    expect((await post('/participants/pilot-details', p2, { fullName: '   ' })).status).toBe(400);
+  test('full name, date of birth, class and gender are all required', async () => {
+    const p = await f.participant(19);
+    for (const field of ['fullName', 'dateOfBirth', 'className', 'gender']) {
+      const body = identification();
+      delete body[field];
+      expect((await post('/participants/pilot-details', p, body)).status).toBe(400);
+    }
+    expect((await post('/participants/pilot-details', p, identification({ fullName: '   ' }))).status).toBe(400);
+    expect((await post('/participants/pilot-details', p, identification({ dateOfBirth: '2026-02-30' }))).status).toBe(400);
   });
 
   test('an unknown key and an invalid enum value are both 400', async () => {
     const p = await f.participant(17);
-    expect((await post('/participants/pilot-details', p, { fullName: 'X', notAField: true })).status).toBe(400);
-    const bad = await post('/participants/pilot-details', p, { fullName: 'X', religion: 'NOT_A_REAL_VALUE' });
+    expect((await post('/participants/pilot-details', p, identification({ notAField: true }))).status).toBe(400);
+    const bad = await post('/participants/pilot-details', p, identification({ religion: 'NOT_A_REAL_VALUE' }));
     expect(bad.status).toBe(400);
   });
 

@@ -257,7 +257,7 @@ export const adminApi = {
     form.append('roster', file);
     return call('/cohorts/import', { method: 'POST', body: form });
   },
-  downloadCredentials: (importId) => saveFile(`/admin/credentials/export/${importId}`, 'santulan-credentials.csv', 'The credential file is unavailable or was already downloaded.'),
+  downloadCredentials: (importId) => saveFile(`/admin/credentials/export/${importId}`, 'santulan-credentials.xlsx', 'The credential file is unavailable or was already downloaded.'),
 
   submissions: (filters) => call(`/admin/submissions${qs(filters)}`),
   submission: (attemptId) => call(`/admin/submissions/${attemptId}`),

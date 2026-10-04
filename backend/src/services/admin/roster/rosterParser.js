@@ -3,8 +3,8 @@
  * then one pupil per row. Header names are matched loosely (case/space-insensitive) so minor template edits do not break
  * the import. The workbook is parsed in this module but NOT validated; rosterValidator.js is the authority on rules.
  *
- * Returns rows with the RAW pupil attributes (name, gender, city, ... are kept here only so the validator can enforce
- * "no extra identifiers"; the committed rows below rosterValidator expose ONLY externalStudentId, age, className, section).
+ * Returns rows with the pupil attributes needed to create the account and its required identification details. Extra
+ * columns from older roster formats are parsed where known, but the validator controls what reaches the commit step.
  */
 const XLSX = require('xlsx');
 const { HttpError } = require('../../../errors');
@@ -16,7 +16,8 @@ const CANONICAL = {
   age: 'age',
   'current grade': 'className',
   'section/ course': 'section',
-  "student's name": 'name',
+  "student's name": 'fullName',
+  'date of birth': 'dateOfBirth',
   gender: 'gender',
   nationality: 'nationality',
   city: 'city',
@@ -31,6 +32,21 @@ function toInteger(cell) {
   if (raw === '') return null;
   const n = Number(raw);
   return Number.isInteger(n) ? n : NaN;
+}
+
+function pad(number) {
+  return String(number).padStart(2, '0');
+}
+
+function toDateText(cell) {
+  if (cell instanceof Date && !Number.isNaN(cell.getTime())) {
+    return `${cell.getUTCFullYear()}-${pad(cell.getUTCMonth() + 1)}-${pad(cell.getUTCDate())}`;
+  }
+  if (typeof cell === 'number') {
+    const parsed = XLSX.SSF.parse_date_code(cell);
+    if (parsed) return `${parsed.y}-${pad(parsed.m)}-${pad(parsed.d)}`;
+  }
+  return String(cell || '').trim();
 }
 
 function findHeader(aoa) {
@@ -69,7 +85,9 @@ function parseRoster(input) {
     const row = { row: i + 1 };
     for (let c = 0; c < found.map.length; c += 1) {
       if (!found.map[c]) continue;
-      row[found.map[c]] = found.map[c] === 'age' ? toInteger(line[c]) : String(line[c] || '').trim();
+      if (found.map[c] === 'age') row[found.map[c]] = toInteger(line[c]);
+      else if (found.map[c] === 'dateOfBirth') row[found.map[c]] = toDateText(line[c]);
+      else row[found.map[c]] = String(line[c] || '').trim();
     }
     rows.push(row);
   }

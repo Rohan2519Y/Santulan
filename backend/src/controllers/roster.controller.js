@@ -10,7 +10,7 @@ const { writeAudit } = require('../services/audit/auditService');
 const { parseRoster } = require('../services/admin/roster/rosterParser');
 const { validate: validateRows } = require('../services/admin/roster/rosterValidator');
 const { commitRoster } = require('../services/admin/roster/rosterCommitService');
-const { take, toCsv } = require('../services/admin/roster/credentialExport');
+const { take, toXlsx } = require('../services/admin/roster/credentialExport');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -62,9 +62,9 @@ async function exportCredentials(req, res, next) {
     }), { transaction: true });
     const rows = take(req.params.importId);
     if (!rows) throw new HttpError(404, 'NOT_FOUND', 'That credential export is unavailable or was already downloaded');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="santulan-credentials-${req.params.importId}.csv"`);
-    return res.send(toCsv(rows));
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="santulan-credentials-${req.params.importId}.xlsx"`);
+    return res.send(await toXlsx(rows));
   } catch (err) { next(err); }
 }
 

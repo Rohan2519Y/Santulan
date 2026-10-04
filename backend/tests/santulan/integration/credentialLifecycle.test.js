@@ -3,7 +3,8 @@
  * Commits REAL rows to the scratch database. Exercises the multipart import, the one-time credential export, the
  * temporary-credential login path, set-password activation, credential reset, all-or-nothing commits, the separated
  * login throttle boundary, and pv-based session revocation.
- * Ported to MongoDB (feature 006); the all-or-nothing commit is one transaction over participants, credentials and audit rows.
+ * Ported to MongoDB (feature 006); the all-or-nothing commit is one transaction over participants, identification,
+ * credentials and audit rows.
  */
 const request = require('supertest');
 const XLSX = require('xlsx');
@@ -16,7 +17,7 @@ const { canonical } = require('../../../src/models/schema');
 afterAll(async () => { await closeClient(); await H.closeAll(); });
 const col = async (name) => (await f.db()).collection(name);
 
-const HEADER = ['Student\'s Name', 'Gender ', 'Age ', 'Nationality ', 'Current Grade', 'Section/ Course', 'Reg. Number', 'Institution Name', 'City', 'State', 'Institute Govt. ID/UDISE Code'];
+const HEADER = ['Student\'s Name', 'Date of Birth', 'Gender ', 'Age ', 'Nationality ', 'Current Grade', 'Section/ Course', 'Reg. Number', 'Institution Name', 'City', 'State', 'Institute Govt. ID/UDISE Code'];
 
 function workbook(rows) {
   const aoa = [['Student Personal Details'], HEADER, ...rows];
@@ -26,7 +27,7 @@ function workbook(rows) {
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
 
-const pupil = ({ name = 'A PUPIL', age = 15, grade = '9th-A', section = '', reg = 'REG-1' } = {}) => [name, 'Male', String(age), 'Indian', grade, section, reg, 'Test School', 'City', 'State', 'UDISE'];
+const pupil = ({ name = 'A PUPIL', dob = '2011-06-15', gender = 'Male', age = 15, grade = '9th-A', section = '', reg = 'REG-1' } = {}) => [name, dob, gender, String(age), 'Indian', grade, section, reg, 'Test School', 'City', 'State', 'UDISE'];
 
 const ROOKIE = [pupil({ name: 'ONE', reg: 'R-101', age: 15 }), pupil({ name: 'TWO', reg: 'R-102', age: 16 }), pupil({ name: 'THREE', reg: 'R-103', age: 18 })];
 
@@ -51,7 +52,9 @@ describe('T069-AT03 roster import + credential lifecycle (SEC-17, SEC-29)', () =
     .attach('roster', buf, 'roster.xlsx');
 
   const login = (subject, password) => request(app).post('/api/v1/auth/login').send({ subject, password });
-  const exportCredentials = (token, id) => request(app).get(`/api/v1/admin/credentials/export/${id}`).set('Authorization', `Bearer ${token}`);
+  // the credential file is a binary .xlsx: collect the raw bytes instead of letting supertest guess a text/JSON parse
+  const exportCredentials = (token, id) => request(app).get(`/api/v1/admin/credentials/export/${id}`).set('Authorization', `Bearer ${token}`)
+    .buffer(true).parse((res, cb) => { const chunks = []; res.on('data', (c) => chunks.push(c)); res.on('end', () => cb(null, Buffer.concat(chunks))); });
 
   describe('validate mode', () => {
     it('AT-08 validation reports the roster without committing anything', async () => {
@@ -88,6 +91,14 @@ describe('T069-AT03 roster import + credential lifecycle (SEC-17, SEC-29)', () =
       expect(new Set(ids).size).toBe(3);
       ids.forEach((id) => expect(id).toMatch(/^STN-[0-9A-HJKMNP-TV-Z]{20}$/));
 
+      const details = await (await col('participant_pilot_details')).find({ participant_id: { $in: created.map((c) => c._id) } }).toArray();
+      expect(details).toHaveLength(3);
+      expect(details.map((d) => ({ name: d.full_name, dob: d.date_of_birth.toISOString().slice(0, 10), className: d.class_name, gender: d.gender }))).toEqual(expect.arrayContaining([
+        { name: 'ONE', dob: '2011-06-15', className: '9th-A', gender: 'Male' },
+        { name: 'TWO', dob: '2011-06-15', className: '9th-A', gender: 'Male' },
+        { name: 'THREE', dob: '2011-06-15', className: '9th-A', gender: 'Male' },
+      ]));
+
       const audit = await (await col('audit_logs')).find({ action_type: { $in: ['ROSTER_IMPORTED', 'CREDENTIAL_ISSUED'] }, target_entity: 'participants', target_id: { $in: created.map((c) => c._id) } }).toArray();
       expect(audit).toHaveLength(6);
     });
@@ -95,11 +106,14 @@ describe('T069-AT03 roster import + credential lifecycle (SEC-17, SEC-29)', () =
     it('AT-08/AT-27 the credential export contains IDs + temp passwords once and cannot be downloaded again', async () => {
       const first = await exportCredentials(admin.token, importId);
       expect(first.status).toBe(200);
-      expect(first.type).toBe('text/csv');
-      const lines = first.text.trim().split('\n');
-      expect(lines[0]).toBe('santulan_id,temporary_password');
-      expect(lines).toHaveLength(4);
-      rows = lines.slice(1).map((l) => { const [santulanId, pw] = l.split(','); return { santulanId, pw }; });
+      expect(first.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      expect(first.headers['content-disposition']).toMatch(/filename="santulan-credentials-.*\.xlsx"/);
+      const sheet = XLSX.read(first.body, { type: 'buffer' }).Sheets.Credentials;
+      const table = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      // Same headings as the roster template, plus the two credential columns.
+      expect(table[0]).toEqual(["Student's Name", 'Date of Birth', 'Gender', 'Age', 'Current Grade', 'Section/ Course', 'Reg. Number', 'Santulan ID', 'Temporary Password']);
+      expect(table).toHaveLength(4);
+      rows = table.slice(1).map((cells) => ({ santulanId: cells[7], pw: cells[8] }));
       rows.forEach((r) => expect(r.pw.length).toBeGreaterThanOrEqual(10));
 
       const second = await exportCredentials(admin.token, importId);
@@ -124,6 +138,12 @@ describe('T069-AT03 roster import + credential lifecycle (SEC-17, SEC-29)', () =
       expect(res.status).toBe(200);
       activatedToken = res.body.accessToken;
       expect(activatedToken).toBeTruthy();
+
+      const identification = await request(app).get('/api/v1/participants/pilot-details')
+        .set('Authorization', `Bearer ${activatedToken}`);
+      expect(identification.status).toBe(200);
+      expect(identification.body).toMatchObject({ fullName: 'ONE', className: '9th-A', gender: 'Male' });
+      expect(identification.body.dateOfBirth.slice(0, 10)).toBe('2011-06-15');
 
       const tempReuse = await login(rows[0].santulanId, rows[0].pw);
       expect(tempReuse.status).toBe(401); // the temp credential is gone (AT-27 replay rejected)

@@ -1,7 +1,7 @@
 /*
  * T068 — roster parsing and validation (AT-06, AT-07). The real sample workbook must parse to 194 rows and the two
  * age-12 rows must be refused BEFORE any commit; age-18 rows are counted as EMERGING_ADULT; duplicates and blank
- * required fields are errors; and the validator output never carries name/gender/nationality/city/state/UDISE.
+ * required fields are errors; and the validator carries required identification but drops unrelated legacy columns.
  *
  * Pure unit: no database. The workbook is read from docs/ (never committed on the backend tests directory).
  */
@@ -12,7 +12,7 @@ const { validate } = require('../../../src/services/admin/roster/rosterValidator
 
 const SAMPLE = path.join(__dirname, '..', '..', '..', '..', 'docs', 'Creative Minds Global School- required Students Info_014006.xlsx');
 
-const HEADER = ['Student\'s Name', 'Gender ', 'Age ', 'Nationality ', 'Current Grade', 'Section/ Course', 'Reg. Number', 'Institution Name', 'City', 'State', 'Institute Govt. ID/UDISE Code'];
+const HEADER = ['Student\'s Name', 'Date of Birth', 'Gender ', 'Age ', 'Nationality ', 'Current Grade', 'Section/ Course', 'Reg. Number', 'Institution Name', 'City', 'State', 'Institute Govt. ID/UDISE Code'];
 
 /** Builds a workbook buffer that mirrors the sample template exactly (title row + header row + data rows). */
 function workbook(rows) {
@@ -23,7 +23,7 @@ function workbook(rows) {
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
 
-const pupil = ({ name = 'A PUPIL', age = 15, grade = '9th-A', section = '', reg = 'REG-1' } = {}) => [name, 'Male', String(age), 'Indian', grade, section, reg, 'Test School', 'City', 'State', 'UDISE'];
+const pupil = ({ name = 'A PUPIL', dob = '2011-06-15', gender = 'Male', age = 15, grade = '9th-A', section = '', reg = 'REG-1' } = {}) => [name, dob, gender, String(age), 'Indian', grade, section, reg, 'Test School', 'City', 'State', 'UDISE'];
 
 describe('T068-AT06 roster workbook parsing', () => {
   it('AT-06 parses the sample roster workbook into 194 rows', () => {
@@ -50,13 +50,13 @@ describe('T068-AT06 roster workbook parsing', () => {
     expect(check.eligible).toEqual({ ADOLESCENT: 189, EMERGING_ADULT: 3 });
   });
 
-  it('AT-07 the validator drops name, gender, nationality, city, state and UDISE from its rows', () => {
+  it('AT-07 the validator keeps required identification and drops unrelated legacy columns', () => {
     const { rows } = parseRoster(workbook([pupil({ reg: 'R-1001' }), pupil({ reg: 'R-1002', age: 18 })]));
     const check = validate(rows);
     expect(check.ok).toBe(true);
     expect(check.rows).toHaveLength(2);
     for (const row of check.rows) {
-      expect(Object.keys(row).sort()).toEqual(['age', 'className', 'externalStudentId', 'section']);
+      expect(Object.keys(row).sort()).toEqual(['age', 'className', 'dateOfBirth', 'externalStudentId', 'fullName', 'gender', 'section']);
       expect(Object.values(row).filter((v) => typeof v === 'object' && v !== null)).toEqual([]);
     }
   });
@@ -76,6 +76,29 @@ describe('T068-AT07 roster validation rules', () => {
     const check = validate(rows);
     expect(check.errors.map((e) => e.code)).toEqual(['MISSING_REQUIRED', 'MISSING_REQUIRED']);
     expect(check.errors.map((e) => e.field)).toEqual(['Reg. Number', 'Current Grade']);
+  });
+
+  it('requires name, date of birth and gender for institutional identification', () => {
+    const { rows } = parseRoster(workbook([
+      pupil({ reg: 'R-NAME', name: '' }),
+      pupil({ reg: 'R-DOB', dob: '' }),
+      pupil({ reg: 'R-GENDER', gender: '' }),
+    ]));
+    const check = validate(rows);
+    expect(check.errors.map((e) => [e.field, e.code])).toEqual([
+      ["Student's Name", 'MISSING_REQUIRED'],
+      ['Date of Birth', 'MISSING_REQUIRED'],
+      ['Gender', 'MISSING_REQUIRED'],
+    ]);
+  });
+
+  it('rejects an invalid or future date of birth', () => {
+    const { rows } = parseRoster(workbook([
+      pupil({ reg: 'R-BAD-DATE', dob: '2026-02-30' }),
+      pupil({ reg: 'R-FUTURE-DATE', dob: '2999-01-01' }),
+    ]));
+    const check = validate(rows);
+    expect(check.errors.map((e) => e.code)).toEqual(['INVALID_DATE_OF_BIRTH', 'INVALID_DATE_OF_BIRTH']);
   });
 
   it('AT-07 a blank or non-numeric Age is an INVALID_AGE error', () => {

@@ -1,6 +1,7 @@
 /*
  * Roster commit service (spec 005 T075 / US4). After a CLEAN validate, registers one INSTITUTIONAL participant per row
- * in a single transaction (all-or-nothing): participant row + dev credential + audit rows either all persist or none do.
+ * in a single transaction (all-or-nothing): participant, identification, credential and audit rows either all persist
+ * or none do.
  * The dev identity provider's temporary credentials are inserted inside the same transaction, so a failure anywhere
  * rolls back the whole import. Plaintext passwords exist only in the in-memory export store (credentialExport.js).
  *
@@ -17,6 +18,7 @@ const identity = require('../../../models/repositories/identity');
 const devIdentity = require('../../../models/repositories/devIdentity');
 const { writeAudit } = require('../../audit/auditService');
 const rules = require('../../domain/registrationRules');
+const { buildPilotDetails } = require('../../domain/participantPilotDetailsRules');
 const { validate: validateRows } = require('./rosterValidator');
 const { store: storeCredentials } = require('./credentialExport');
 
@@ -61,6 +63,16 @@ async function commitRoster({ rows, institutionId, cohortId, adminUserId, correl
         authProvider: provider.PROVIDER, authProviderSubjectId: subject,
       });
       const participant = await identity.insertParticipant(tx, doc);
+      await identity.insertPilotDetails(tx, buildPilotDetails({
+        _id: uuidv4(),
+        participantId: participant.participantId,
+        body: {
+          fullName: row.fullName,
+          dateOfBirth: row.dateOfBirth,
+          className: row.className,
+          gender: row.gender,
+        },
+      }));
       await devIdentity.upsertTemporary(tx, provider.PROVIDER, subject, hash);
 
       const track = participant.assessmentTrack;
@@ -73,7 +85,11 @@ async function commitRoster({ rows, institutionId, cohortId, adminUserId, correl
         targetId: participant.participantId, newState: { track, must_change: true }, correlationId,
       });
 
-      committed.push({ participantId: participant.participantId, santulanId: participant.santulanId, temporaryPassword });
+      committed.push({
+        participantId: participant.participantId, santulanId: participant.santulanId, temporaryPassword,
+        fullName: row.fullName, dateOfBirth: row.dateOfBirth, gender: row.gender, age: row.age, className: row.className,
+        section: row.section, externalStudentId: row.externalStudentId,
+      });
     }
     return committed;
   }, { transaction: true });
@@ -87,7 +103,7 @@ async function commitRoster({ rows, institutionId, cohortId, adminUserId, correl
     }
   }
 
-  const importId = storeCredentials(result.map(({ santulanId, temporaryPassword }) => ({ santulanId, temporaryPassword })));
+  const importId = storeCredentials(result.map(({ participantId: _pid, ...rest }) => rest));
   return {
     importId,
     count: result.length,
