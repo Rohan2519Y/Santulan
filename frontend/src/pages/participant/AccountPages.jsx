@@ -9,7 +9,7 @@ import { ArrowLeft, FileText, Globe, Info, Lock, ShieldCheck, Users } from 'luci
 import styles from '../../styles/ui.module.css';
 import p from '../../styles/portal.module.css';
 import ImageSlot from '../../components/ImageSlot/ImageSlot';
-import { Breadcrumb, ButtonLink, CopyField, IconBadge, InfoNote, RailCard, Toggle } from '../../components/participantKit';
+import { Breadcrumb, ButtonLink, CopyField, IconBadge, RailCard, Toggle } from '../../components/participantKit';
 import Button from '../../components/Button/Button';
 import Field from '../../components/Field/Field';
 import Skeleton from '../../components/Skeleton/Skeleton';

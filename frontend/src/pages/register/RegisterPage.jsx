@@ -16,7 +16,7 @@
  * Copy is placeholder text flagged TODO(copy).
  */
 import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Info, Leaf, Lock, Mail, ShieldCheck, UserRound, Users } from 'lucide-react';
 import styles from '../../styles/ui.module.css';
 import s from '../../styles/site.module.css';
@@ -38,6 +38,17 @@ const CONSENT_CARDS = {
   ADULT_SELF_CONSENT: { title: 'Your consent', tag: 'Self-consent', text: 'You read and approve the consent form yourself before you can take part.' },
 };
 
+const GENDERS = ['Female', 'Male', 'Non-binary / another gender', 'Prefer not to say'];
+/** Whole years today from a YYYY-MM-DD date of birth (the server works it out the same way); null for a missing or future date. */
+function ageFromDob(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const now = new Date();
+  let years = now.getFullYear() - y;
+  if (now.getMonth() + 1 < mo || (now.getMonth() + 1 === mo && now.getDate() < d)) years -= 1;
+  return years < 0 ? null : years;
+}
 const isEligibleAge = (n) => Number.isInteger(n) && n >= 13 && n <= 25;
 
 /** The message on the left of each step (samples 03, 04, 08 of the original five-step design). */
@@ -86,10 +97,16 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { signIn } = useSession();
   const [step, setStep] = useState(1);
-  const [ageText, setAgeText] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [className, setClassName] = useState('');
+  const [gender, setGender] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [otpStage, setOtpStage] = useState(false); // step 1b: the code emailed to the address
+  const [otpCode, setOtpCode] = useState('');
+  const [emailToken, setEmailToken] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [route, setRoute] = useState(null);
   const [result, setResult] = useState(null);
@@ -105,7 +122,12 @@ export default function RegisterPage() {
   };
 
   const submitDetails = () => run(async () => {
-    const age = Number(ageText);
+    if (!fullName.trim()) throw new Error('Please enter your full name.');
+    if (!dateOfBirth) throw new Error('Please enter your date of birth.');
+    if (!className.trim()) throw new Error('Please enter your class or course.');
+    if (!gender) throw new Error('Please choose your gender.');
+    const age = ageFromDob(dateOfBirth);
+    if (age === null) throw new Error('Please enter a valid date of birth (not in the future).');
     if (!isEligibleAge(age)) {
       throw new Error('Santulan is for people aged 13 to 25, so we cannot register you right now. If you are unsure, please talk to someone you trust or visit the Support page.');
     }
@@ -113,17 +135,27 @@ export default function RegisterPage() {
     if (password !== confirmPassword) throw new Error('The two passwords do not match.');
     if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) throw new Error('Your password needs at least 10 characters, with letters and numbers.');
     const r = await api.routeAge(age);
-    setRoute(r); setStep(2);
+    setRoute(r);
+    await api.requestEmailOtp(email.trim().toLowerCase()); // always answers "sent"; the code goes to the address typed
+    setOtpCode(''); setOtpStage(true);
   });
 
+  const verifyCode = () => run(async () => {
+    if (!/^[0-9]{6}$/.test(otpCode.trim())) throw new Error('Please enter the 6-digit code from your email.');
+    const res = await api.verifyEmailOtp(email.trim().toLowerCase(), otpCode.trim());
+    setEmailToken(res.emailVerificationToken); setOtpStage(false); setStep(2);
+  });
+
+  const resendCode = () => run(async () => { await api.requestEmailOtp(email.trim().toLowerCase()); setOtpCode(''); });
+
   const createAccount = () => run(async () => {
-    const res = await api.registerOpen(Number(ageText), undefined, email.trim(), password, idempotencyKey.current);
+    const res = await api.registerOpen({ email: email.trim().toLowerCase(), password, emailVerificationToken: emailToken, fullName: fullName.trim(), dateOfBirth, className: className.trim(), gender }, idempotencyKey.current);
     signIn(res.accessToken);
     setResult(res); setStep(3);
   });
 
   const role = route ? (route.isMinor ? 'minor' : 'adult') : null;
-  const back = (to) => { setError(''); setStep(to); };
+  const back = (to) => { setError(''); setEmailToken(null); setOtpStage(false); setStep(to); };
   const eye = (
     <button type="button" className={styles.linkButton} style={{ textDecoration: 'none', minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
       aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword((v) => !v)}>
@@ -149,14 +181,36 @@ export default function RegisterPage() {
             )}
             {error && <div style={{ marginBottom: 'var(--sp-4)' }}><StatusMessage type="error" message={error} /></div>}
 
-            {step === 1 && (
+            {step === 1 && otpStage && (
+              <form className={s.authForm} onSubmit={(e) => { e.preventDefault(); verifyCode(); }}>
+                <button type="button" className={s.authBack} onClick={() => { setError(''); setOtpStage(false); }} disabled={busy}><ArrowLeft size={18} aria-hidden="true" />Back</button>
+                <div>
+                  <h1 className={s.authTitle}>Check your email</h1>
+                  <p className={s.authSub}>We sent a 6-digit code to <strong>{email.trim()}</strong>. It works for 10 minutes. Check your spam folder if you cannot see it.</p>
+                </div>
+                <Field size="lg" icon={Mail} label="6-digit code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456" value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))} />
+                <Button type="submit" size="lg" block disabled={busy}>Verify and continue <ArrowRight size={20} aria-hidden="true" /></Button>
+                <button type="button" className={styles.linkButton} onClick={resendCode} disabled={busy}>Send the code again</button>
+              </form>
+            )}
+
+            {step === 1 && !otpStage && (
               <form className={s.authForm} onSubmit={(e) => { e.preventDefault(); submitDetails(); }}>
                 <div>
                   <h1 className={s.authTitle}>Create Your Account</h1>
-                  <p className={s.authSub}>Tell us your age, and choose the email and password you&apos;ll sign in with.</p>
+                  <p className={s.authSub}>Tell us about yourself, and choose the email and password you&apos;ll sign in with.</p>
                 </div>
-                <Field size="lg" icon={UserRound} label="Age in years" type="number" inputMode="numeric" min="13" max="25" step="1" value={ageText} onChange={(e) => setAgeText(e.target.value)}
-                  hint="Enter your age as a whole number." />
+                <Field size="lg" icon={UserRound} label="Full name" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                <Field size="lg" icon={UserRound} label="Date of birth" type="date" autoComplete="bday" max={new Date().toISOString().slice(0, 10)} value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)}
+                  hint="Your age is worked out from this. Santulan is for ages 13 to 25." />
+                <Field size="lg" icon={UserRound} label="Class or course" placeholder="For example Class 10, or B.Sc 2nd year" value={className} onChange={(e) => setClassName(e.target.value)} />
+                <label className={styles.fieldLabel || undefined} style={{ display: 'block' }}>
+                  <span style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--sp-2)' }}>Gender</span>
+                  <select value={gender} onChange={(e) => setGender(e.target.value)} style={{ width: '100%', minHeight: 48, padding: '0 12px', borderRadius: 8, border: '1px solid #c9ccd6', background: '#fff', font: 'inherit' }}>
+                    <option value="">Choose one</option>
+                    {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </label>
                 <Field size="lg" icon={Mail} label="Email address" type="email" autoComplete="email" placeholder="yourname@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <Field size="lg" icon={Lock} trailing={eye} label="Password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)}
                   hint="At least 10 characters, with letters and numbers." />

@@ -17,7 +17,6 @@ const language = z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/).optional();
 
 // Strict: unknown keys (santulanId, participantId, scores, DB context, ...) are rejected, never ignored.
 const routeSchema = strictObject({ age });
-const openSchema = strictObject({ age, language, email: z.string().trim().toLowerCase().email(), password: z.string().min(1).max(200) });
 const institutionalSchema = strictObject({
   age, language,
   institutionId: z.string().uuid(),
@@ -75,6 +74,19 @@ const pilotDetailsSchema = strictObject({
   academicStream: z.enum(E.ACADEMIC_STREAM).optional(),
 });
 
+// OPEN registration: the age is no longer typed - it is worked out from the date of birth (server side, in whole years today).
+// The four compulsory personal details are saved with the account as the participant's pilot study details.
+const openSchema = strictObject({
+  language, email: z.string().trim().toLowerCase().email(), password: z.string().min(1).max(200), emailVerificationToken: z.string().min(10).max(2000),
+  fullName: z.string().trim().min(1).max(200), dateOfBirth, className: freeText, gender: freeText,
+});
+function ageFromDateOfBirth(value, today = new Date()) {
+  const [y, m, d] = value.split('-').map(Number);
+  let years = today.getUTCFullYear() - y;
+  if (today.getUTCMonth() + 1 < m || (today.getUTCMonth() + 1 === m && today.getUTCDate() < d)) years -= 1;
+  return years;
+}
+
 function idempotencyKey(req) {
   const key = req.headers['idempotency-key'];
   if (typeof key !== 'string' || key.length < 16 || key.length > 128) {
@@ -104,12 +116,15 @@ async function registerOpen(req, res, next) {
     const key = idempotencyKey(req);
     const provider = getProvider();
     const email = req.body.email; // already trimmed/lowercased by openSchema
+    // The address must have been proven first (POST /auth/email-otp/verify): the token names this exact email.
+    const proof = verifyPurposeToken(req.body.emailVerificationToken, 'email-verified');
+    if (proof.email !== email) throw new HttpError(401, 'EMAIL_NOT_VERIFIED', 'Please verify your email address first');
     if (provider) {
       const weak = provider.passwordProblem(req.body.password);
       if (weak) throw new HttpError(400, 'VALIDATION_ERROR', `The password needs ${weak}`);
     }
     const result = await register({
-      route: 'OPEN', age: req.body.age, language: req.body.language,
+      route: 'OPEN', age: ageFromDateOfBirth(req.body.dateOfBirth), language: req.body.language,
       authProvider: provider.PROVIDER, authProviderSubjectId: email,
       idempotencyKey: key, requestCorrelationId: req.correlationId,
     });
@@ -117,6 +132,10 @@ async function registerOpen(req, res, next) {
     if (!result.replay) {
       const created = await provider.createOwnPassword(email, req.body.password);
       if (!created.ok) throw new HttpError(400, 'VALIDATION_ERROR', `The password needs ${created.problem}`);
+      // The compulsory personal details travel with registration. A failure here never undoes the account: the profile gate asks again.
+      try {
+        await submitPilotDetails(result.participantId, { fullName: req.body.fullName, dateOfBirth: req.body.dateOfBirth, className: req.body.className, gender: req.body.gender }, req.correlationId);
+      } catch (err) { console.error(`registration: personal details not saved (${err.message})`); } // eslint-disable-line no-console
       extra = { accessToken: signToken({ sub: result.participantId, role: 'participant', participantId: result.participantId, pv: credentialVersion(created.updatedAt) }) };
     }
     send(res, result, extra);
@@ -192,7 +211,7 @@ async function pilotDetails(req, res, next) {
 
 module.exports = {
   routeSchema, openSchema, institutionalSchema, ageDeclarationSchema, profileSchema, pilotDetailsSchema,
-  resolveRoute, registerOpen, registerInstitutional, ageDeclaration, state,
+  resolveRoute, registerOpen, registerInstitutional, ageDeclaration, state, ageFromDateOfBirth,
   submitProfile: submitProfileHandler, profile,
   submitPilotDetails: submitPilotDetailsHandler, pilotDetails,
 };

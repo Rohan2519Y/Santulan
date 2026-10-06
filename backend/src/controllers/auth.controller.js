@@ -21,6 +21,8 @@ const { credentialVersion } = require('../services/identity/devProvider');
 const channel = z.enum(['email', 'mobile']);
 const requestOtpSchema = strictObject({ channel, identity: z.string().min(3).max(254) });
 const verifyOtpSchema = strictObject({ channel, identity: z.string().min(3).max(254), code: z.string().regex(/^[0-9]{6}$/) });
+const emailOtpRequestSchema = strictObject({ email: z.string().trim().toLowerCase().email() });
+const emailOtpVerifySchema = strictObject({ email: z.string().trim().toLowerCase().email(), code: z.string().regex(/^[0-9]{6}$/) });
 const loginSchema = strictObject({ subject: z.string().min(1).max(128), password: z.string().min(1).max(200) });
 const setPasswordSchema = strictObject({ newPassword: z.string().min(1).max(200) });
 const forgotPasswordSchema = strictObject({ email: z.string().trim().toLowerCase().email() });
@@ -71,6 +73,36 @@ async function verifyOtp(req, res, next) {
     const registrationToken = signToken({ sub: 'otp', purpose: 'age-declaration', authProvider: provider.OTP_PROVIDER, authProviderSubjectId: subject }, '30m');
     return res.json({ registered: false, registrationToken });
   } catch (err) { return next(err); }
+}
+
+/**
+ * OPEN registration, step 1: email a 6-digit code to the address being registered (the code is held in memory, single use,
+ * expires, attempt- and rate-limited - the dev provider's OTP store). Always answers 202 so it never reveals whether the address
+ * already has an account. Without Gmail OAuth configured (services/mail/mailer.js) the code is only logged, as before.
+ */
+async function requestEmailOtp(req, res, next) {
+  try {
+    const result = getProvider().requestOtp('email', req.body.email);
+    if (result.rateLimited) throw new HttpError(429, 'TOO_MANY_REQUESTS', 'Too many codes requested. Please try again later.');
+    if (result.sent && mailer.isConfigured()) {
+      mailer.sendMail({
+        to: req.body.email, subject: 'Your Santulan verification code',
+        text: `Your Santulan verification code is ${result._code}.
+
+It works for 10 minutes. If you did not ask for it, you can ignore this email.`,
+      }).catch((err) => console.error(`registration code email failed: ${err.message}`)); // eslint-disable-line no-console
+    }
+    res.status(202).json({ sent: true });
+  } catch (err) { next(err); }
+}
+
+/** OPEN registration, step 2: the right code proves the person controls the address; the answer is a 30-minute token that POST /registrations/open requires. */
+async function verifyEmailOtp(req, res, next) {
+  try {
+    const { ok } = getProvider().verifyOtp('email', req.body.email, req.body.code);
+    if (!ok) throw new HttpError(401, 'UNAUTHENTICATED', 'That code did not match or has expired');
+    res.json({ emailVerificationToken: signToken({ sub: req.body.email, purpose: 'email-verified', email: req.body.email }, '30m') });
+  } catch (err) { next(err); }
 }
 
 async function login(req, res, next) {
@@ -157,4 +189,4 @@ async function credentialReset(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { requestOtpSchema, verifyOtpSchema, loginSchema, setPasswordSchema, forgotPasswordSchema, requestOtp, verifyOtp, login, setPassword, forgotPassword, credentialReset };
+module.exports = { emailOtpRequestSchema, emailOtpVerifySchema, requestEmailOtp, verifyEmailOtp, requestOtpSchema, verifyOtpSchema, loginSchema, setPasswordSchema, forgotPasswordSchema, requestOtp, verifyOtp, login, setPassword, forgotPassword, credentialReset };

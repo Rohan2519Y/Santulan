@@ -45,6 +45,8 @@ const authThrottle = createRegistrationThrottle(config.registrationThrottle);
 // integrate with yet. Re-enable these two lines (and /participants/age-declaration below) once one is.
 // router.post('/auth/request-otp', authThrottle, validate(auth.requestOtpSchema), auth.requestOtp);
 // router.post('/auth/verify-otp', authThrottle, validate(auth.verifyOtpSchema), auth.verifyOtp);
+router.post('/auth/email-otp/request', authThrottle, validate(auth.emailOtpRequestSchema), auth.requestEmailOtp);
+router.post('/auth/email-otp/verify', authThrottle, validate(auth.emailOtpVerifySchema), auth.verifyEmailOtp);
 router.post('/auth/login', validate(auth.loginSchema), loginThrottle, auth.login);
 router.post('/auth/set-password', validate(auth.setPasswordSchema), auth.setPassword);
 router.post('/auth/forgot-password', authThrottle, validate(auth.forgotPasswordSchema), auth.forgotPassword);

@@ -106,6 +106,16 @@ New endpoint:
 |----------|---------|-------|
 | `POST /auth/forgot-password` | OPEN participants only, self-service password reset by email | body `{ email }`; always `202 {sent: true}` whether or not the email matches an OPEN participant, same "never reveal" pattern as `request-otp` (resolved via `findParticipantByAuthSubject`, since email already is the subject); issues a fresh **temporary** credential (`must_change: true`, same mechanism as the admin's `credential-reset`) and a `set-password`-purpose token embedded in a reset link; no real email provider exists, so the dev provider logs the link instead of sending it (`requestPasswordReset` in `devProvider.js`, shares the OTP code's dev-log callback - relabelled from `[dev identity] OTP` to the now-generic `[dev identity] code/link`); the link completes through the **existing, unchanged** `POST /auth/set-password` endpoint. Institutional participants and admins: silently no-op (`participationRoute !== 'OPEN'`), they still go through the admin-mediated `credential-reset`. |
 
+**Email verification at OPEN registration (added later):** the address must be proven before the account is created.
+
+| Endpoint | Purpose | Notes |
+|----------|---------|-------|
+| `POST /auth/email-otp/request` | emails a 6-digit code to the address being registered | body `{ email }`; always `202 {sent: true}` (never reveals whether the address already has an account); code held in memory by the identity provider, single use, 10-minute expiry, 5 attempts, 5 requests per hour per address (`429 TOO_MANY_REQUESTS` beyond that); sent by `services/mail/mailer.js` (Gmail API, OAuth2, `gmail.send` scope only) when configured, otherwise logged as in dev; behind the registration throttle |
+| `POST /auth/email-otp/verify` | proves control of the address | body `{ email, code }`; right code → `200 { emailVerificationToken }` (30-minute purpose token `email-verified`, naming that exact email); wrong or expired code → `401 UNAUTHENTICATED` |
+| `POST /registrations/open` | **changed**: body is now `{ language?, email, password, emailVerificationToken, fullName, dateOfBirth, className, gender }` - `age` is **removed** (a request that still sends it is rejected as an unknown key) | the age is worked out server-side from `dateOfBirth` in whole years today (the 13–25 eligibility rule still applies to that age); the four personal details are saved with the account as the participant's pilot study details (the same record `POST /participants/pilot-details` writes; an edit later is a new row), and a failure saving them never undoes the account - the profile gate asks again; the token's email must equal the body's `email`, else `401 EMAIL_NOT_VERIFIED` |
+
+The OPEN wizard therefore runs: full name + date of birth + class or course + gender + email + password → code emailed → enter the code → consent → done. The forgot-password email (above) and this code email use the same mailer. Existing OTP routes `request-otp` / `verify-otp` stay commented out; these are separate, email-only endpoints.
+
 Frontend consequence (not an API contract, noted for traceability): `RegisterPage.jsx` is now a 3-step wizard (age+email+password → consent → done, already signed in) instead of 5 (contact → OTP → age → consent → done); `LoginPage.jsx`'s single ID field accepts either a Santulan ID or an email, with two sign-in buttons calling the same `/auth/login` - one framed for self-registered (email) use, one explicitly labelled for institutional temporary-password use - since the backend does not distinguish between them either.
 
 ## 2. Changed endpoints
@@ -140,6 +150,7 @@ Frontend consequence (not an API contract, noted for traceability): `RegisterPag
 | `SELF_CONSENT_NOT_AVAILABLE` | 422 | **CR-006-13**: self-consent called by a minor's token; use the parent/guardian consent + assent flow instead |
 | `PARENT_CONSENT_NOT_APPLICABLE` | 422 | **CR-006-14**: minor-self-service called by an adult's token; use self-consent instead |
 | `COHORT_TOO_SMALL` / `MIXED_FORMS` / `MIXED_SAMPLE_REAL` / `NO_PARTICIPANTS` / `COHORT_REPORT_QA_FAILED` | 422 | cohort report refused (§1f-2) |
+| `EMAIL_NOT_VERIFIED` | 401 | OPEN registration with a missing or mismatched email-verification token (§1g) |
 | `PROTOCOL_UNAPPROVED` | 422 | existing code (consent governance), reused by self-consent and minor-self-service when the relevant consent type has no approved protocol configured |
 
 All other codes of 005 `api.md` §1 are unchanged. The frontend mapping for `SCALE_OUT_OF_RANGE` is updated to `OPTION_OUT_OF_RANGE` in the same change.

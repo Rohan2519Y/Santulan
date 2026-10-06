@@ -91,8 +91,11 @@ export const api = {
     call('/participants/age-declaration', { method: 'POST', body: { age }, token: registrationToken, headers: { 'Idempotency-Key': idempotencyKey } }),
   /** OPEN registration: the participant chooses their own email + password up front - no temporary password, no forced
    * change. Returns { santulanId, isMinor, requiredConsents, accessToken, ... } - already signed in. */
-  registerOpen: (age, language, email, password, idempotencyKey) =>
-    call('/registrations/open', { method: 'POST', body: { age, language, email, password }, token: null, headers: { 'Idempotency-Key': idempotencyKey } }),
+  registerOpen: (details, idempotencyKey) =>
+    call('/registrations/open', { method: 'POST', body: details, token: null, headers: { 'Idempotency-Key': idempotencyKey } }),
+  /** OPEN registration email check: a 6-digit code is emailed (always answers as sent), then verified for a short-lived token that registerOpen requires. */
+  requestEmailOtp: (email) => call('/auth/email-otp/request', { method: 'POST', body: { email }, token: null }),
+  verifyEmailOtp: (email, code) => call('/auth/email-otp/verify', { method: 'POST', body: { email, code }, token: null }),
   login: (subject, password) => call('/auth/login', { method: 'POST', body: { subject, password }, token: null }),
   setPassword: (setPasswordToken, newPassword) => call('/auth/set-password', { method: 'POST', body: { newPassword }, token: setPasswordToken }),
   /** OPEN participants only, by email (the email IS their login subject); always resolves (never reveals whether it matched anything), same pattern as the old requestOtp. */
