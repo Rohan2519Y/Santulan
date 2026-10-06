@@ -4,6 +4,7 @@ import { ParticipantShell } from './components/layouts';
 import { HomePage, AboutPage, GetStartedPage, SupportPage } from './pages/public/PublicPages';
 import RegisterPage from './pages/register/RegisterPage';
 import LoginPage from './pages/LoginPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/participant/DashboardPage';
 import AssessmentPage from './pages/participant/AssessmentPage';
 import ParticipantProfileGate from './pages/participant/ParticipantProfileGate';
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/support" element={<SupportPage />} />
           <Route path="/register/*" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/student" element={<RequireRole role="participant"><ParticipantLayout /></RequireRole>}>
             <Route index element={<DashboardPage />} />
             <Route path="validation-profile" element={<Navigate to="/student/profile" replace />} />

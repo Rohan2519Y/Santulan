@@ -19,6 +19,12 @@ module.exports = {
   internalApiKey: process.env.INTERNAL_API_KEY || '',
   // 'dev' adapter is refused in production (see identity/index.js).
   identityProvider: process.env.IDENTITY_PROVIDER || 'dev',
+  keycloak: {
+    baseUrl: (process.env.KEYCLOAK_BASE_URL || '').replace(/\/$/, ''),
+    realm: process.env.KEYCLOAK_REALM || 'santulan',
+    clientId: process.env.KEYCLOAK_CLIENT_ID || '',
+    clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || '',
+  },
   // Governed configuration paths; a missing file fails closed (nothing approved).
   consentProtocolsPath: process.env.CONSENT_PROTOCOLS_PATH || '',
   qualityPolicyPath: process.env.QUALITY_POLICY_PATH || '',
@@ -45,5 +51,11 @@ module.exports = {
     windowSeconds: Number(process.env.REGISTRATION_THROTTLE_WINDOW_SECONDS) || 3600,
     maxPerIp: Number(process.env.REGISTRATION_THROTTLE_MAX_PER_IP) || 20,
     maxPerDevice: Number(process.env.REGISTRATION_THROTTLE_MAX_PER_DEVICE) || 10,
+  },
+  // Failed password-login throttle. In-memory is suitable for a single pilot server.
+  loginThrottle: {
+    windowSeconds: Number(process.env.LOGIN_THROTTLE_WINDOW_SECONDS) || 900,
+    maxPerIp: Number(process.env.LOGIN_THROTTLE_MAX_PER_IP) || 30,
+    maxPerSubject: Number(process.env.LOGIN_THROTTLE_MAX_PER_SUBJECT) || 5,
   },
 };

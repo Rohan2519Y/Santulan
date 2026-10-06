@@ -346,4 +346,4 @@ async function writeUnifiedWorkbook(filePath, ctx) {
   return { sheets: written, totalBytes: fs.statSync(filePath).size };
 }
 
-module.exports = { writeUnifiedWorkbook, responseSheetName };
+module.exports = { writeUnifiedWorkbook, responseSheetName, missingState, reportableOf, kitAttemptStatus, reportStateOf, round2, REQUIRED_CONSENTS, DOMAIN_NAME };

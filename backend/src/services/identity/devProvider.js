@@ -89,9 +89,13 @@ function createDevProvider({ now = () => Date.now(), otpTtlMs = 10 * 60 * 1000, 
     /** Issues a new temporary credential; any previous secret stops working immediately. The plaintext is returned once. */
     async issueTemporaryCredential(subjectId) {
       const temp = generateTemporaryPassword();
-      const hash = await bcrypt.hash(temp, 10);
-      await asSystem((tx) => devIdentity.upsertTemporary(tx, PROVIDER, subjectId, hash));
+      await this.provisionTemporaryCredential(subjectId, temp);
       return temp;
+    },
+
+    async provisionTemporaryCredential(subjectId, password) {
+      const hash = await bcrypt.hash(password, 10);
+      await asSystem((tx) => devIdentity.upsertTemporary(tx, PROVIDER, subjectId, hash));
     },
 
     /** OPEN registration only: the participant's own chosen password, active immediately - no temporary credential, no

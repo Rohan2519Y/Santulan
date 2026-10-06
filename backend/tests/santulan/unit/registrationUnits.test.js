@@ -1,6 +1,6 @@
 const { resolveAgeRoute } = require('../../../src/services/registration/routing');
 const { generateSantulanId, SANTULAN_ID_PATTERN } = require('../../../src/services/registration/santulanId');
-const { createRegistrationThrottle, MemoryThrottleStore } = require('../../../src/middleware/throttle');
+const { createRegistrationThrottle, createLoginThrottle, MemoryThrottleStore } = require('../../../src/middleware/throttle');
 const { payloadHash } = require('../../../src/utils/idempotency');
 const { redact } = require('../../../src/middleware/http');
 
@@ -77,6 +77,38 @@ describe('registration throttle (AT-32, SEC-13/14/16/18)', () => {
     expect(store.hit('k', 1000, 0)).toBe(1);
     expect(store.hit('k', 1000, 500)).toBe(2);
     expect(store.hit('k', 1000, 1600)).toBe(1);
+  });
+});
+
+describe('password login throttle', () => {
+  const run = (mw, { ip = '1.1.1.1', subject = 'person@example.test' } = {}) => {
+    const req = { ip, body: { subject } };
+    const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; } };
+    let error = null;
+    mw(req, res, (e) => { error = e || null; });
+    return { error, req, res };
+  };
+
+  test('blocks a subject after repeated failed passwords while another subject may still sign in', () => {
+    const mw = createLoginThrottle({ windowSeconds: 900, maxPerIp: 20, maxPerSubject: 3 }, new MemoryThrottleStore());
+    for (let i = 0; i < 3; i += 1) {
+      const result = run(mw);
+      expect(result.error).toBeNull();
+      result.req.loginThrottle.fail();
+    }
+    const blocked = run(mw);
+    expect(blocked.error).toMatchObject({ status: 429, code: 'TOO_MANY_REQUESTS' });
+    expect(blocked.res.headers['Retry-After']).toBe('900');
+    expect(run(mw, { subject: 'other@example.test' }).error).toBeNull();
+  });
+
+  test('a successful sign-in clears its previous failed-attempt record', () => {
+    const mw = createLoginThrottle({ windowSeconds: 900, maxPerIp: 20, maxPerSubject: 2 }, new MemoryThrottleStore());
+    const first = run(mw);
+    first.req.loginThrottle.fail();
+    const success = run(mw);
+    success.req.loginThrottle.succeed();
+    expect(run(mw).error).toBeNull();
   });
 });
 

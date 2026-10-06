@@ -1,0 +1,13 @@
+{
+  "realm": "santulan",
+  "enabled": true,
+  "displayName": "Santulan Pilot",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "bruteForceProtected": true,
+  "passwordPolicy": "length(10) and digits(1) and upperCase(1) and lowerCase(1)",
+  "clients": []
+}

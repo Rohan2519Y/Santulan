@@ -176,6 +176,9 @@ MongoDB (`mongo/`) runs the same replica-set + least-privilege-role setup as `ba
 container with a generated keyfile. `backend/Dockerfile` and `frontend/Dockerfile` run the same app code as local dev; the
 only things that differ are the Mongo host/credentials, supplied by `docker-compose.yml`.
 
+For the controlled-pilot deployment checklist and the managed-identity-provider prerequisite, read
+[Pilot Deployment Guide](docs/PILOT_DEPLOYMENT.md).
+
 ---
 
 ## API surface

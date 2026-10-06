@@ -12,8 +12,9 @@
  */
 const { CFG, BAND_HIGH, BAND_LOW, MIN_ITEMS_PER_DOMAIN, ORDER, msState, ageBand } = require('./rules');
 const C = require('./content');
+const { pyRound } = require('../../../utils/pyNumber');
 
-const round1 = (x) => Math.round(x * 10) / 10;
+const round1 = (x) => pyRound(x, 1); // Python round(): an exact binary tie goes to the even digit
 const round6 = (x) => Math.round(x * 1e6) / 1e6;
 
 /**

@@ -5,6 +5,7 @@
 const config = require('../../config');
 const logger = require('../../utils/logger');
 const { createDevProvider } = require('./devProvider');
+const { createKeycloakProvider } = require('./keycloakProvider');
 
 let provider = null;
 
@@ -18,6 +19,10 @@ function getProvider() {
       // real email/SMS provider. Shared by requestOtp (code) and requestPasswordReset (link) - same reason, same gap.
       log: (channel, value) => { if (config.env === 'development') logger.info({ channel, value }, '[dev identity] code/link'); },
     });
+    return provider;
+  }
+  if (config.identityProvider === 'keycloak') {
+    provider = createKeycloakProvider();
     return provider;
   }
   throw new Error(`Unsupported IDENTITY_PROVIDER "${config.identityProvider}" (supply the managed provider adapter)`);

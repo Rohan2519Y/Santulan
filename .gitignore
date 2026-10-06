@@ -15,6 +15,5 @@ Thumbs.db
 *.swp
 
 # Secrets: track the .example templates, never the real values
-.env
-.env.*
 !.env.example
+docs/*

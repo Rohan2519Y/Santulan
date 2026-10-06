@@ -17,6 +17,15 @@ const { HttpError } = require('../errors');
 class MemoryThrottleStore {
   constructor() { this.hits = new Map(); }
 
+  /** Returns the number of hits currently inside the window. */
+  count(key, windowMs, now = Date.now()) {
+    const cutoff = now - windowMs;
+    const list = (this.hits.get(key) || []).filter((t) => t > cutoff);
+    if (list.length) this.hits.set(key, list);
+    else this.hits.delete(key);
+    return list.length;
+  }
+
   /** Records a hit and returns how many hits fall inside the window (including this one). */
   hit(key, windowMs, now = Date.now()) {
     const cutoff = now - windowMs;
@@ -25,6 +34,8 @@ class MemoryThrottleStore {
     this.hits.set(key, list);
     return list.length;
   }
+
+  clear(key) { this.hits.delete(key); }
 }
 
 function parseCookies(header = '') {
@@ -50,4 +61,33 @@ function createRegistrationThrottle({ windowSeconds, maxPerIp, maxPerDevice }, s
   };
 }
 
-module.exports = { createRegistrationThrottle, MemoryThrottleStore };
+function createLoginThrottle({ windowSeconds, maxPerIp, maxPerSubject }, store = new MemoryThrottleStore()) {
+  const windowMs = windowSeconds * 1000;
+
+  return function loginThrottle(req, res, next) {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    const subject = String(req.body?.subject || '').trim().toLowerCase();
+    const ipKey = `login:ip:${ip}`;
+    const subjectKey = subject ? `login:subject:${subject}` : null;
+    const blocked = store.count(ipKey, windowMs) >= maxPerIp
+      || (subjectKey && store.count(subjectKey, windowMs) >= maxPerSubject);
+
+    if (blocked) {
+      res.setHeader('Retry-After', String(windowSeconds));
+      return next(new HttpError(429, 'TOO_MANY_REQUESTS', 'Too many sign-in attempts. Please try again later.'));
+    }
+
+    req.loginThrottle = {
+      fail() {
+        store.hit(ipKey, windowMs);
+        if (subjectKey) store.hit(subjectKey, windowMs);
+      },
+      succeed() {
+        if (subjectKey) store.clear(subjectKey);
+      },
+    };
+    return next();
+  };
+}
+
+module.exports = { createRegistrationThrottle, createLoginThrottle, MemoryThrottleStore };

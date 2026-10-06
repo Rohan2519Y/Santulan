@@ -16,6 +16,7 @@ const qualityReview = require('../services/admin/qualityReviewService');
 const auditLog = require('../services/admin/auditLogService');
 const submissions = require('../services/admin/submissionService');
 const pilotReport = require('../services/reporting/pilotReport/pilotReportService');
+const cohortReport = require('../services/reporting/cohortReport/cohortReportService');
 const rules = require('../services/domain/adminRules');
 
 const wrap = (fn) => async (req, res, next) => { try { res.json(await fn(req)); } catch (err) { next(err); } };
@@ -67,7 +68,34 @@ const pilotReportPdf = async (req, res, next) => {
   }
 };
 
+const cohortReportSchema = strictObject({
+  institutionCode: z.string().trim().min(2).max(40), cohortCode: z.string().trim().min(2).max(40).optional(),
+  enrolled: z.number().int().min(1).max(100000).optional(), output: z.enum(['html', 'pdf', 'manifest']).optional(),
+});
+
+/** Draft institution cohort report from the ported pilot-kit-2 engine (src/services/reporting/cohortReport/). `output: 'manifest'`
+ * returns the JSON manifest (QA result and release blockers) instead of the PDF. */
+const cohortReportPdf = async (req, res, next) => {
+  try {
+    const { output = 'html', ...input } = req.body;
+    const r = await cohortReport.generate(actor(req), { ...input, output });
+    if (output === 'manifest') return res.json({ manifest: r.manifest, failures: r.failures, warnings: r.warnings });
+    if (r.failures.length) throw new HttpError(422, 'COHORT_REPORT_QA_FAILED', 'The cohort report failed its own checks and was not produced', { failures: r.failures });
+    if (output === 'html') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${r.fileName}"`);
+      return res.send(r.html);
+    }
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${r.fileName}"`);
+    return res.send(r.pdf);
+  } catch (err) {
+    return next(err);
+  }
+};
+
 module.exports = {
+  cohortReportSchema, cohortReportPdf,
   controlSchema, institutionCreateSchema, institutionUpdateSchema, cohortCreateSchema, cohortUpdateSchema, participantStatusSchema, flagReviewSchema,
   pilotReportPdf,
   getControl: wrap((req) => control.read(actor(req))),

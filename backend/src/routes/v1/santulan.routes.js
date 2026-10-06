@@ -9,7 +9,7 @@ const config = require('../../config');
 const { validate } = require('../../utils/validate');
 const { requireParticipantToken, requireActiveSuperAdmin, requireInternalOrSuperAdmin, requireParticipantOrPrivileged, requireInternal } = require('../../middleware/auth');
 const { correlation } = require('../../middleware/http');
-const { createRegistrationThrottle } = require('../../middleware/throttle');
+const { createRegistrationThrottle, createLoginThrottle } = require('../../middleware/throttle');
 const auth = require('../../controllers/auth.controller');
 const consent = require('../../controllers/consent.controller');
 const delivery = require('../../controllers/delivery.controller');
@@ -33,6 +33,7 @@ const router = Router();
 router.use(correlation);
 
 const registrationThrottle = createRegistrationThrottle(config.registrationThrottle);
+const loginThrottle = createLoginThrottle(config.loginThrottle);
 const rosterUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('roster');
 
 // --- Authentication (dev identity adapter, D-17)
@@ -44,7 +45,7 @@ const authThrottle = createRegistrationThrottle(config.registrationThrottle);
 // integrate with yet. Re-enable these two lines (and /participants/age-declaration below) once one is.
 // router.post('/auth/request-otp', authThrottle, validate(auth.requestOtpSchema), auth.requestOtp);
 // router.post('/auth/verify-otp', authThrottle, validate(auth.verifyOtpSchema), auth.verifyOtp);
-router.post('/auth/login', validate(auth.loginSchema), auth.login);
+router.post('/auth/login', validate(auth.loginSchema), loginThrottle, auth.login);
 router.post('/auth/set-password', validate(auth.setPasswordSchema), auth.setPassword);
 router.post('/auth/forgot-password', authThrottle, validate(auth.forgotPasswordSchema), auth.forgotPassword);
 router.post('/admin/participants/:id/credential-reset', requireActiveSuperAdmin, auth.credentialReset);
@@ -148,6 +149,7 @@ router.get('/admin/submissions/:id', requireActiveSuperAdmin, admin.submissionDe
 router.get('/admin/submissions/:id/responses', requireActiveSuperAdmin, admin.submissionResponses);
 router.get('/admin/submissions/:id/responses/export', requireActiveSuperAdmin, admin.exportSubmissionResponses);
 router.get('/admin/attempts/:id/pilot-report', requireActiveSuperAdmin, admin.pilotReportPdf);
+router.post('/admin/cohort-reports', requireActiveSuperAdmin, validate(admin.cohortReportSchema), admin.cohortReportPdf);
 
 // --- Research export (BUILD 08 section 10)
 router.post('/research-exports', requireActiveSuperAdmin, validate(researchExports.requestSchema), researchExports.request);

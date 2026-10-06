@@ -102,7 +102,7 @@ async function resolveRoute(req, res, next) {
 async function registerOpen(req, res, next) {
   try {
     const key = idempotencyKey(req);
-    const provider = config.identityProvider === 'dev' ? getProvider() : null;
+    const provider = getProvider();
     const email = req.body.email; // already trimmed/lowercased by openSchema
     if (provider) {
       const weak = provider.passwordProblem(req.body.password);
@@ -110,11 +110,11 @@ async function registerOpen(req, res, next) {
     }
     const result = await register({
       route: 'OPEN', age: req.body.age, language: req.body.language,
-      authProvider: provider ? provider.PROVIDER : null, authProviderSubjectId: provider ? email : null,
+      authProvider: provider.PROVIDER, authProviderSubjectId: email,
       idempotencyKey: key, requestCorrelationId: req.correlationId,
     });
     let extra = {};
-    if (provider && !result.replay) {
+    if (!result.replay) {
       const created = await provider.createOwnPassword(email, req.body.password);
       if (!created.ok) throw new HttpError(400, 'VALIDATION_ERROR', `The password needs ${created.problem}`);
       extra = { accessToken: signToken({ sub: result.participantId, role: 'participant', participantId: result.participantId, pv: credentialVersion(created.updatedAt) }) };
@@ -129,13 +129,13 @@ async function registerInstitutional(req, res, next) {
     const key = idempotencyKey(req);
     // Institutional participants sign in with Santulan ID + a one-time temporary password from the identity provider (AT-27).
     // The provider subject is derived from the idempotency key so a replay presents the identical payload.
-    const provider = config.identityProvider === 'dev' ? getProvider() : null;
-    const authProviderSubjectId = provider ? crypto.createHash('sha256').update(`institutional:${req.actor.adminUserId}:${key}`).digest('hex') : null;
+    const provider = getProvider();
+    const authProviderSubjectId = crypto.createHash('sha256').update(`institutional:${req.actor.adminUserId}:${key}`).digest('hex');
     const result = await register({
       route: 'INSTITUTIONAL', age: a, language: l, institutionId, cohortId, externalStudentId,
-      authProvider: provider ? provider.PROVIDER : null, authProviderSubjectId, idempotencyKey: key, requestCorrelationId: req.correlationId,
+      authProvider: provider.PROVIDER, authProviderSubjectId, idempotencyKey: key, requestCorrelationId: req.correlationId,
     });
-    const extra = provider && !result.replay ? { temporaryPassword: await provider.issueTemporaryCredential(authProviderSubjectId) } : {};
+    const extra = !result.replay ? { temporaryPassword: await provider.issueTemporaryCredential(authProviderSubjectId) } : {};
     send(res, result, extra);
   } catch (err) { next(err); }
 }

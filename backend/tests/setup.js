@@ -13,5 +13,7 @@ process.env.INTERNAL_API_KEY = 'test-internal-key';
 // High limits so the API suite is not throttled; the throttle itself is unit-tested with small limits.
 process.env.REGISTRATION_THROTTLE_MAX_PER_IP = '100000';
 process.env.REGISTRATION_THROTTLE_MAX_PER_DEVICE = '100000';
+process.env.LOGIN_THROTTLE_MAX_PER_IP = '100000';
+process.env.LOGIN_THROTTLE_MAX_PER_SUBJECT = '100000';
 // Test-only approved consent protocols: identifiers and method codes, no legal text (the real file is governed config).
 process.env.CONSENT_PROTOCOLS_PATH = require('path').resolve(__dirname, 'santulan/fixtures/consent-protocols.json');

@@ -2,12 +2,26 @@
 # additional, separate way to run the same code. Copy .env.example to .env (repo root - Compose loads it
 # automatically) before running `./docker.sh start`.
 services:
+  # Local identity-server foundation for the controlled pilot. It is deliberately localhost-only; production must run
+  # Keycloak behind HTTPS with a real database and hostname configuration (see docs/PILOT_DEPLOYMENT.md).
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.0
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?set this in .env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set this in .env}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./keycloak:/opt/keycloak/data/import:ro
+
   mongo:
     build: ./mongo
     volumes:
       - mongo_data:/data/db
     ports:
-      - "27018:27017"
+      - "127.0.0.1:${MONGODB_PORT:-27018}:27017"
     environment:
       SANTULAN_MIGRATOR_PASSWORD: ${SANTULAN_MIGRATOR_PASSWORD:?set this in .env}
       SANTULAN_RUNTIME_PASSWORD: ${SANTULAN_RUNTIME_PASSWORD:?set this in .env}
@@ -65,7 +79,23 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set this in .env}
       JWT_EXPIRES_IN: 2h
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      IDENTITY_PROVIDER: dev
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
+      IDENTITY_PROVIDER: ${IDENTITY_PROVIDER:-dev}
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-santulan}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-santulan-backend}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
+      CONSENT_PROTOCOLS_PATH: ${CONSENT_PROTOCOLS_PATH:-}
+      EXPORT_DIR: /app/exports
+      SCORING_PIPELINE: ${SCORING_PIPELINE:-}
+      REPORT_WORKER: ${REPORT_WORKER:-}
+      EXPORT_WORKER: ${EXPORT_WORKER:-}
+      MAIL_ID: ${MAIL_ID:-}
+      CLIENT_ID: ${CLIENT_ID:-}
+      CLIENT_SECRET: ${CLIENT_SECRET:-}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN:-}
+    volumes:
+      - export_data:/app/exports
     ports:
       - "${BACKEND_PORT:-8000}:8000"
 
@@ -80,4 +110,6 @@ services:
       - "${FRONTEND_PORT:-3000}:80"
 
 volumes:
+  keycloak_data:
   mongo_data:
+  export_data:

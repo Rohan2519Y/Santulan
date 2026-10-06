@@ -7,6 +7,7 @@
  * provider authenticates; the participant/admin is then resolved from the (provider, subject) pair stored canonically.
  */
 const { z } = require('zod');
+const mailer = require('../services/mail/mailer');
 const { HttpError } = require('../errors');
 const { strictObject } = require('../middleware/http');
 const store = require('../models/db');
@@ -80,7 +81,11 @@ async function login(req, res, next) {
     const subject = await credentialSubject(provider, /^stn-/i.test(typed) ? typed.toUpperCase() : typed);
     const auth = await provider.authenticate(subject, password);
     const who = auth.ok ? await resolveSubject(provider.PROVIDER, subject) : null;
-    if (!auth.ok || !who) throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid Santulan ID or password');
+    if (!auth.ok || !who) {
+      req.loginThrottle?.fail();
+      throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid Santulan ID or password');
+    }
+    req.loginThrottle?.succeed();
     if (auth.mustChange) {
       return res.json({ mustSetPassword: true, setPasswordToken: signToken({ sub: subject, purpose: 'set-password', subject }, '15m') });
     }
@@ -120,6 +125,18 @@ async function forgotPassword(req, res, next) {
       const token = signToken({ sub: email, purpose: 'set-password', subject: email }, '15m');
       const link = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
       await provider.requestPasswordReset(email, link);
+      // Real email when Gmail OAuth is configured (services/mail/mailer.js); otherwise the dev provider's log line is all there is.
+      // A mail failure never changes the response: the endpoint must not reveal whether the address exists.
+      if (mailer.isConfigured()) {
+        mailer.sendMail({
+          to: email, subject: 'Reset your Santulan password',
+          text: `Use this link to set a new password (it works for 15 minutes):
+
+${link}
+
+If you did not ask for this, you can ignore this email.`,
+        }).catch((err) => console.error(`forgot-password email failed: ${err.message}`)); // eslint-disable-line no-console
+      }
     }
     res.status(202).json({ sent: true });
   } catch (err) { next(err); }

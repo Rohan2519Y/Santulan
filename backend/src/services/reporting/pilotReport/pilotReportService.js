@@ -10,9 +10,25 @@ const { randomUUID } = require('crypto');
 const { HttpError } = require('../../../errors');
 const store = require('../../../models/db');
 const { buildStudentFromAttempt } = require('./fromAttempt');
+const { chromium } = require('playwright');
 const { renderReport } = require('./renderer');
 
 const sa = (actor) => store.superAdminScope(actor.adminUserId);
+
+// Load control, same approach as the cohort report: one report at a time, and one shared Chromium that closes itself when idle
+// (so there is no browser start-up per click and no idle memory held). The report output is unchanged.
+const IDLE_MS = 60 * 1000;
+let browserPromise = null; let idleTimer = null; let chain = Promise.resolve();
+const sharedBrowser = () => {
+  if (!browserPromise) browserPromise = chromium.launch().then((b) => { b.on('disconnected', () => { browserPromise = null; }); return b; });
+  return browserPromise;
+};
+const scheduleClose = () => {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(async () => { const p = browserPromise; browserPromise = null; if (p) { try { await (await p).close(); } catch (e) { /* already closed */ } } }, IDLE_MS);
+  idleTimer.unref();
+};
+const oneAtATime = (fn) => { const run = chain.then(fn, fn); chain = run.catch(() => {}); return run; };
 
 /** Generates a draft PDF for one attempt. Returns { file, reportId }. Throws 422 if the attempt has no consent (REN-19). */
 async function generateForAttempt(actor, attemptId) {
@@ -21,7 +37,9 @@ async function generateForAttempt(actor, attemptId) {
   if (!student.consent_ok) throw new HttpError(422, 'CONSENT_NOT_VERIFIED', 'This participant does not have verified consent; no report can be generated (REN-19)');
 
   const outdir = path.join(os.tmpdir(), `santulan-pilot-report-${randomUUID()}`);
-  const { pdfPath } = await renderReport(student, { outdir, final: false, pdf: true });
+  const { pdfPath } = await oneAtATime(async () => {
+    try { return await renderReport(student, { outdir, final: false, pdf: true, browserInstance: await sharedBrowser() }); } finally { scheduleClose(); }
+  });
   return { file: pdfPath, reportId: student.report_id };
 }
 

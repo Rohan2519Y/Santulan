@@ -24,6 +24,7 @@ export const IMAGE_SLOTS = {
   registerStep4: '/images/registerStep4.png',       // screen 07: person looking at the view
   registerStep5: '/images/registerStep5.png',       // screen 08: books and a plant
   loginHero: '/images/loginHero.png',           // screen 09: building with trees
+  forgotPasswordHero: '/images/forgotPasswordHero.png', // password reset page: campus study space
 
   // Signed-in pages
   dashboardHero: '/images/dashboardHero.png',       // screen 10: person with a backpack at the top-right of the dashboard

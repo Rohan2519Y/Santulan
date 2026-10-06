@@ -42,12 +42,26 @@ async function commitRoster({ rows, institutionId, cohortId, adminUserId, correl
   } catch (err) {
     throw new HttpError(503, 'ROSTER_UNAVAILABLE', 'No credential provider is available to issue temporary credentials');
   }
+  const usesDevCredentialStore = provider.PROVIDER === 'santulan-dev';
 
   // Temporary passwords and their bcrypt hashes are prepared BEFORE the transaction (hashing is slow; a transaction must stay short).
   const prepared = await Promise.all(check.rows.map(async (row) => {
     const temporaryPassword = `${crypto.randomBytes(9).toString('base64url').replace(/[^A-Za-z0-9]/g, '').slice(0, 11)}7`;
-    return { row, subject: subjectFor(institutionId, row.externalStudentId), temporaryPassword, hash: await bcrypt.hash(temporaryPassword, 10) };
+    return { row, subject: subjectFor(institutionId, row.externalStudentId), temporaryPassword, hash: usesDevCredentialStore ? await bcrypt.hash(temporaryPassword, 10) : null };
   }));
+
+  const provisioned = [];
+  if (!usesDevCredentialStore) {
+    try {
+      for (const entry of prepared) {
+        await provider.provisionTemporaryCredential(entry.subject, entry.temporaryPassword);
+        provisioned.push(entry.subject);
+      }
+    } catch (err) {
+      await Promise.allSettled(provisioned.map((subject) => provider.revoke(subject)));
+      throw new HttpError(503, 'ROSTER_UNAVAILABLE', 'The credential provider could not create roster credentials');
+    }
+  }
 
   const once = () => store.withScope(store.systemScope(), async (tx) => {
     const scope = await identity.findActiveScope(tx, institutionId, cohortId);
@@ -73,7 +87,7 @@ async function commitRoster({ rows, institutionId, cohortId, adminUserId, correl
           gender: row.gender,
         },
       }));
-      await devIdentity.upsertTemporary(tx, provider.PROVIDER, subject, hash);
+      if (usesDevCredentialStore) await devIdentity.upsertTemporary(tx, provider.PROVIDER, subject, hash);
 
       const track = participant.assessmentTrack;
       await writeAudit(tx, {
@@ -95,12 +109,17 @@ async function commitRoster({ rows, institutionId, cohortId, adminUserId, correl
   }, { transaction: true });
 
   let result = null;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS && !result; attempt += 1) {
-    try {
-      result = await once();
-    } catch (err) {
-      if (!isSantulanIdCollision(err) || attempt === MAX_ATTEMPTS) throw err; // only an ID collision retries the whole import
+  try {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS && !result; attempt += 1) {
+      try {
+        result = await once();
+      } catch (err) {
+        if (!isSantulanIdCollision(err) || attempt === MAX_ATTEMPTS) throw err; // only an ID collision retries the whole import
+      }
     }
+  } catch (err) {
+    if (!usesDevCredentialStore) await Promise.allSettled(provisioned.map((subject) => provider.revoke(subject)));
+    throw err;
   }
 
   const importId = storeCredentials(result.map(({ participantId: _pid, ...rest }) => rest));

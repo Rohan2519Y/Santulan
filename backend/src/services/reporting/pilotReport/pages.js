@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { ORDER, CFG } = require('./rules');
 const C = require('./content');
+const { pyFixed } = require('../../../utils/pyNumber');
 
 const TEMPLATES = path.join(__dirname, 'templates');
 const read = (name) => fs.readFileSync(path.join(TEMPLATES, name), 'utf8');
@@ -70,15 +71,15 @@ function radarSvg(m, width = 490) {
   const cx = 210; const cy = 210; const R = 140; const n = 7;
   const ang = Array.from({ length: n }, (_, i) => ((-90 + (i * 360) / n) * Math.PI) / 180);
   const pt = (i, v) => { const r = (R * (v - 1)) / 4; return [cx + r * Math.cos(ang[i]), cy + r * Math.sin(ang[i])]; };
-  const fmt = (p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`;
+  const fmt = (p) => `${pyFixed(p[0], 1)},${pyFixed(p[1], 1)}`;
 
   const out = [`<svg viewBox="-70 20 560 400" width="${width}" height="${(width * 400) / 560}" role="img" aria-label="Radar chart of seven areas. Scale 1 to 5. Areas without enough data are shown as dashed lines." style="font-family:'Plus Jakarta Sans',sans-serif">`];
   out.push('<g fill="none" stroke="#D3CEE8" stroke-width="1">');
   for (const v of [2, 3, 4, 5]) out.push(`<polygon points="${Array.from({ length: n }, (_, i) => fmt(pt(i, v))).join(' ')}"/>`);
-  ORDER.forEach((k, i) => { if (m.d[k].scored) { const [x, y] = pt(i, 5); out.push(`<line x1="210" y1="210" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`); } });
+  ORDER.forEach((k, i) => { if (m.d[k].scored) { const [x, y] = pt(i, 5); out.push(`<line x1="210" y1="210" x2="${pyFixed(x, 1)}" y2="${pyFixed(y, 1)}"/>`); } });
   out.push('</g>');
-  ORDER.forEach((k, i) => { if (!m.d[k].scored) { const [x, y] = pt(i, 5); out.push(`<line x1="210" y1="210" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="4 4"/>`); } });
-  out.push(`<g fill="#6B7280" font-size="9">${[2, 3, 4, 5].map((v) => `<text x="214" y="${(cy - (R * (v - 1)) / 4 - 4).toFixed(0)}">${v}</text>`).join('')}</g>`);
+  ORDER.forEach((k, i) => { if (!m.d[k].scored) { const [x, y] = pt(i, 5); out.push(`<line x1="210" y1="210" x2="${pyFixed(x, 1)}" y2="${pyFixed(y, 1)}" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="4 4"/>`); } });
+  out.push(`<g fill="#6B7280" font-size="9">${[2, 3, 4, 5].map((v) => `<text x="214" y="${pyFixed(cy - (R * (v - 1)) / 4 - 4, 0)}">${v}</text>`).join('')}</g>`);
 
   const P = {};
   ORDER.forEach((k, i) => { if (m.d[k].scored) P[i] = pt(i, m.d[k].raw); });
@@ -99,7 +100,7 @@ function radarSvg(m, width = 490) {
       }
     }
   }
-  out.push(`<g fill="#2E2A6B" stroke="#FFFFFF" stroke-width="2">${Object.values(P).map((p) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="5.5"/>`).join('')}</g>`);
+  out.push(`<g fill="#2E2A6B" stroke="#FFFFFF" stroke-width="2">${Object.values(P).map((p) => `<circle cx="${pyFixed(p[0], 1)}" cy="${pyFixed(p[1], 1)}" r="5.5"/>`).join('')}</g>`);
 
   ORDER.forEach((k, i) => {
     const d = m.d[k];
@@ -110,11 +111,11 @@ function radarSvg(m, width = 490) {
     const lines = []; let cur = '';
     for (const w of words) { if (cur.length + w.length + 1 > 17 && cur) { lines.push(cur); cur = w; } else cur = `${cur} ${w}`.trim(); }
     lines.push(cur);
-    const sub = d.scored ? d.mean.toFixed(1) : 'Not enough data yet';
+    const sub = d.scored ? pyFixed(d.mean, 1) : 'Not enough data yet';
     const allL = [...lines, sub];
     const y0 = Math.abs(c) >= 0.3 ? ay - ((allL.length - 1) * 14) / 2 : (Math.sin(ang[i]) < 0 ? ay - allL.length * 14 + 6 : ay + 8);
     const col = d.scored ? '#1E2350' : '#4B5563';
-    const t = allL.map((x, j) => `<text x="${ax.toFixed(1)}" y="${(y0 + j * 14).toFixed(1)}" text-anchor="${anchor}" font-size="12" font-weight="${j === allL.length - 1 ? 500 : 800}" fill="${col}">${E(x)}</text>`).join('');
+    const t = allL.map((x, j) => `<text x="${pyFixed(ax, 1)}" y="${pyFixed(y0 + j * 14, 1)}" text-anchor="${anchor}" font-size="12" font-weight="${j === allL.length - 1 ? 500 : 800}" fill="${col}">${E(x)}</text>`).join('');
     out.push(t);
   });
   out.push('</svg>');
@@ -156,7 +157,7 @@ const STATUS = { MS01: 'Complete', MS02: 'Early estimate', MS03: 'Not enough dat
 
 function pSnapshot(m, no) {
   const DOM = require('./rules').DOM;
-  const rows = ORDER.map((k) => `<tr><td>${E(DOM[k].name)}</td><td style="width:90px">${m.d[k].scored ? m.d[k].mean.toFixed(1) : '–'}</td><td style="width:170px">${E(STATUS[m.d[k].state])}</td></tr>`).join('');
+  const rows = ORDER.map((k) => `<tr><td>${E(DOM[k].name)}</td><td style="width:90px">${m.d[k].scored ? pyFixed(m.d[k].mean, 1) : '–'}</td><td style="width:170px">${E(STATUS[m.d[k].state])}</td></tr>`).join('');
   const cards = ['<div class="card" style="background:#F1EEFB"><b class="k" style="color:#5A4BA8">The dots</b><div>Each dot is the average of your answers in one capability. Further out means a higher average.</div></div>'];
   const early = ORDER.filter((k) => m.d[k].state === 'MS02');
   const none = ORDER.filter((k) => !m.d[k].scored);
@@ -215,7 +216,7 @@ function blockHtml(m, k) {
   const d = m.d[k];
   let chips; let h;
   if (d.scored) {
-    chips = `<span class="chip">Average ${d.mean.toFixed(1)}</span>${d.state === 'MS02' ? '<span class="chip e">Early estimate</span>' : ''}`;
+    chips = `<span class="chip">Average ${pyFixed(d.mean, 1)}</span>${d.state === 'MS02' ? '<span class="chip e">Early estimate</span>' : ''}`;
     h = `<div class="lb">WHAT YOUR ANSWERS SUGGEST</div><p>${E(pat(m, k))}${d.state === 'MS02' ? ' A few answers were skipped, so treat this as a first look.' : ''}</p>`;
     h += `<div class="lb q">ASK YOURSELF</div><p>${E(C.DOM[k].ask)}</p>`;
     if (m.rel.action) h += `<div class="lb t">TRY THIS</div><p>${E(C.DOM[k].steps[0])}</p>`;
@@ -341,7 +342,7 @@ function pChange(m, no) {
     if (a.scored && ['MS01', 'MS02'].includes(msState(Math.round(ps * 1e6) / 1e6))) {
       const dv = Math.round((a.raw - pv.mean) * 10) / 10;
       const word = Math.abs(dv) < CHANGE_EPS ? 'about the same' : (dv < 0.6 && dv > 0 ? 'a little higher' : dv > -0.6 && dv < 0 ? 'a little lower' : dv > 0 ? 'higher' : 'lower');
-      rows.push(`<tr><td>${E(DOM[k].name)}</td><td>${pv.mean.toFixed(1)}</td><td>${a.raw.toFixed(1)}</td><td>${word}</td></tr>`);
+      rows.push(`<tr><td>${E(DOM[k].name)}</td><td>${pyFixed(pv.mean, 1)}</td><td>${pyFixed(a.raw, 1)}</td><td>${word}</td></tr>`);
     } else {
       rows.push(`<tr><td>${E(DOM[k].name)}</td><td>–</td><td>–</td><td>Not enough data to compare</td></tr>`);
     }
@@ -464,7 +465,7 @@ function document(m, pages) {
 }
 
 module.exports = {
-  FONTS, CSS, logo, footer, draftTag, page, icon, cl, radarSvg, fmtDate,
+  E, FONTS, CSS, logo, footer, draftTag, page, icon, cl, radarSvg, fmtDate,
   planPages, build, document, packDetails, blockHtml,
   pToc, pAreas, pSnapshot, pStrengths, pExplore, pRoadmap, coverPage, staticPage, pClosing, pFocus, pPlan, pChange, pHold, pInvalid,
 };

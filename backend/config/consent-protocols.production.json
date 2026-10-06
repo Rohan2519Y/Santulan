@@ -1,0 +1,20 @@
+[
+  {
+    "protocolVersion": "SANTULAN-CONSENT-1.0",
+    "consentType": "PARENT_GUARDIAN_CONSENT",
+    "contentHash": "9296433165d7e8d8984c693af8109cdb59aeea5f85f468dda16f30697a0ba2b1",
+    "allowedVerificationMethods": ["STUDENT_ATTESTED_FOR_PARENT"]
+  },
+  {
+    "protocolVersion": "SANTULAN-CONSENT-1.0",
+    "consentType": "STUDENT_ASSENT",
+    "contentHash": "9296433165d7e8d8984c693af8109cdb59aeea5f85f468dda16f30697a0ba2b1",
+    "allowedVerificationMethods": ["SELF_ATTESTED"]
+  },
+  {
+    "protocolVersion": "SANTULAN-CONSENT-1.0",
+    "consentType": "ADULT_SELF_CONSENT",
+    "contentHash": "9296433165d7e8d8984c693af8109cdb59aeea5f85f468dda16f30697a0ba2b1",
+    "allowedVerificationMethods": ["SELF_ATTESTED"]
+  }
+]

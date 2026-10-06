@@ -210,9 +210,13 @@ const qs = (filters = {}) => {
 };
 
 /** Fetches a file with the bearer token and saves it (a plain link cannot carry the token). Never shows a server path. */
-async function saveFile(path, fallbackName, failure) {
+async function saveFile(path, fallbackName, failure, body = null) {
   let res;
-  try { res = await fetch(`${API_BASE}${path}`, { headers: authHeader(), credentials: 'include' }); } catch (err) {
+  try {
+    res = await fetch(`${API_BASE}${path}`, body
+      ? { method: 'POST', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify(body), credentials: 'include' }
+      : { headers: authHeader(), credentials: 'include' });
+  } catch (err) {
     throw new ApiError('We could not reach the server. Please check your connection and try again.', { code: 'NETWORK_ERROR' });
   }
   if (!res.ok) {
@@ -264,6 +268,9 @@ export const adminApi = {
   submissionResponses: (attemptId) => call(`/admin/submissions/${attemptId}/responses`),
   downloadSubmissionResponses: (attemptId) => saveFile(`/admin/submissions/${attemptId}/responses/export`, `santulan-answers-${attemptId}.csv`, 'The answers could not be exported.'),
   /** Draft PDF from the ported pilot-kit report engine (separate from the platform's own in-app report). */
+  /** Draft institution cohort report downloaded as a PDF (super admin only). `enrolled` is optional and only feeds the participation rate. */
+  downloadCohortReport: ({ institutionCode, cohortCode, enrolled }) => saveFile('/admin/cohort-reports', `santulan-cohort-report-${institutionCode}-${cohortCode}.pdf`, 'The cohort report could not be generated.',
+    { institutionCode, cohortCode, output: 'pdf', ...(enrolled ? { enrolled } : {}) }),
   downloadPilotReportPdf: (attemptId) => saveFile(`/admin/attempts/${attemptId}/pilot-report`, `santulan-pilot-report-${attemptId}.pdf`, 'The pilot report could not be generated.'),
   qualityFlags: (filters) => call(`/admin/quality-flags${qs(filters)}`),
   reviewFlag: (flagId, disposition, note) => call(`/admin/quality-flags/${flagId}`, { method: 'PATCH', body: { disposition, ...(note ? { note } : {}) } }),

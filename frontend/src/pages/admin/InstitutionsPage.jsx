@@ -28,6 +28,10 @@ export default function InstitutionsPage() {
   const [form, setForm] = useState(EMPTY);
   const [archive, setArchive] = useState(null); // { kind, target }
   const [working, setWorking] = useState(false);
+  const [reportBusy, setReportBusy] = useState(null); // cohortId whose draft report is being prepared
+  const [reportDialog, setReportDialog] = useState(null); // { institution, cohort }
+  const [enrolledCount, setEnrolledCount] = useState('');
+  const [reportProblem, setReportProblem] = useState('');
   const [problem, setProblem] = useState(null);
 
   const open = (next, values) => { setProblem(null); setForm(values); setDialog(next); };
@@ -68,6 +72,31 @@ export default function InstitutionsPage() {
     } catch (err) { setProblem(err.message); } finally { setWorking(false); }
   };
 
+  const openCohortReport = (institution, cohort) => {
+    setEnrolledCount('');
+    setReportProblem('');
+    setReportDialog({ institution, cohort });
+  };
+
+  /** Draft cohort report PDF. It refuses (with the reason) under 10 reportable students; the enrolled count is optional. */
+  const cohortReport = async (e) => {
+    e.preventDefault();
+    const value = enrolledCount.trim();
+    if (value && !/^[1-9]\d*$/.test(value)) {
+      setReportProblem('Enter a whole number greater than zero, or leave this field empty.');
+      return;
+    }
+    const { institution, cohort } = reportDialog;
+    const enrolled = value ? Number(value) : undefined;
+    setReportBusy(cohort.cohortId);
+    setReportProblem('');
+    try {
+      await adminApi.downloadCohortReport({ institutionCode: institution.institutionCode, cohortCode: cohort.cohortCode, enrolled });
+      toast.push({ type: 'success', message: 'Draft cohort report downloaded as a PDF. Check it before it is shared.' });
+      setReportDialog(null);
+    } catch (err) { setReportProblem(err.message); } finally { setReportBusy(null); }
+  };
+
   const institutions = data.data ? data.data.institutions : [];
   const children = (parentId) => institutions.filter((i) => (i.parentInstitutionId || null) === parentId);
 
@@ -92,6 +121,7 @@ export default function InstitutionsPage() {
               <span className={styles.mono}>{c.cohortCode}</span>
               <StatusPill tone={TONE[c.status]} label={c.status.charAt(0) + c.status.slice(1).toLowerCase()} />
               <span className={styles.rowActions}>
+                {c.status !== 'ARCHIVED' && <Button type="button" variant="secondary" disabled={reportBusy === c.cohortId} onClick={() => openCohortReport(i, c)} aria-label={`Download the draft cohort report (PDF) for ${c.cohortName}`}>{reportBusy === c.cohortId ? 'Preparing…' : 'Cohort report'}</Button>}
                 <Button type="button" variant="secondary" onClick={() => open({ kind: 'cohort', mode: 'edit', target: c }, { ...EMPTY_COHORT, cohortName: c.cohortName, academicYear: c.academicYear || '', developmentalBand: c.developmentalBand || '', educationStage: c.educationStage || '' })} aria-label={`Edit cohort ${c.cohortName}`}>Edit</Button>
                 {c.status !== 'ARCHIVED' && <Button type="button" variant="secondary" onClick={() => { setProblem(null); setArchive({ kind: 'cohort', target: c }); }} aria-label={`Archive cohort ${c.cohortName}`}>Archive</Button>}
               </span>
@@ -159,6 +189,41 @@ export default function InstitutionsPage() {
               <Button type="button" variant="secondary" onClick={() => setDialog(null)}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={working}>{working ? 'Working…' : 'Save'}</Button>
             </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!reportDialog}
+        onClose={() => !reportBusy && setReportDialog(null)}
+        title="Prepare cohort report"
+        description="Add the total enrolled students to include a participation rate. Leave it blank when that figure is not available."
+        footer={(
+          <>
+            <Button type="button" variant="secondary" onClick={() => setReportDialog(null)} disabled={!!reportBusy}>Cancel</Button>
+            <Button type="submit" form="cohort-report-form" variant="primary" disabled={!!reportBusy}>{reportBusy ? 'Preparing…' : 'Download report'}</Button>
+          </>
+        )}
+      >
+        {reportDialog && (
+          <form id="cohort-report-form" className={styles.dialogForm} onSubmit={cohortReport}>
+            <p className={styles.muted}><strong>{reportDialog.institution.institutionName}</strong><br />{reportDialog.cohort.cohortName}</p>
+            <label className={styles.filterField} htmlFor="cohort-enrolled-count">
+              Total students enrolled <span className={styles.muted}>(optional)</span>
+              <input
+                id="cohort-enrolled-count"
+                data-autofocus
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={enrolledCount}
+                onChange={(event) => { setEnrolledCount(event.target.value); setReportProblem(''); }}
+                placeholder="For example, 42"
+                aria-describedby="cohort-enrolled-help"
+              />
+            </label>
+            <p id="cohort-enrolled-help" className={styles.muted}>This number is used only to calculate the participation rate in the report.</p>
+            {reportProblem && <StatusMessage type="error" message={reportProblem} />}
           </form>
         )}
       </Modal>

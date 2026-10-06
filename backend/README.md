@@ -98,6 +98,7 @@ dedicated local replica-set instance a developer would (`scripts/mongo-local.js 
 | `SESSION_INACTIVITY_MINUTES`, `SCORING_PIPELINE`, `REPORT_WORKER`, `EXPORT_WORKER` | gated workers (off unless set) |
 | `EXPORT_DIR` | protected storage for research exports (default `backend/exports`, git-ignored) |
 | `REGISTRATION_THROTTLE_*` | OPEN-registration throttle limits |
+| `LOGIN_THROTTLE_*` | failed password-login throttle limits (single-process pilot) |
 
 ## The four release switches
 
@@ -122,11 +123,17 @@ implications + an actual email/SMS provider), not just a new endpoint.
 
 `src/middleware/throttle.js` is an in-memory sliding window keyed by IP and by a signed device cookie. It is applied only to
 the OTP flow and OPEN registration (`POST /registrations/open`, `POST /auth/request-otp`, `POST /auth/verify-otp`,
-`POST /participants/age-declaration`) — never to `/auth/login`, `/cohorts/import` or admin routes. **A shared store is a deployment
+`POST /participants/age-declaration`) — not to `/cohorts/import` or admin routes. Password login uses its separate
+failed-attempt limiter described below. **A shared store is a deployment
 prerequisite** when more than one API instance runs; the in-memory version only protects a single process. This is already an
 extension point, not a rewrite: `createRegistrationThrottle(limits, store)` takes any object implementing `hit(key, windowMs, now?)`
 as its second argument (see the `ThrottleStore` comment in the file) — a Redis-backed store implementing that one method is a
 drop-in replacement, nothing else in the file or its callers needs to change.
+
+Password login has a separate failed-attempt throttle, keyed by the entered Santulan ID/email and IP address. It does not
+change successful login behavior: a valid password clears that account's temporary failure record. The default is five failed
+attempts per account in 15 minutes and 30 per IP address. It uses the same in-memory store, so it is appropriate for one
+pilot API process; a shared store is needed before scaling to multiple processes.
 
 ## Operational considerations for scaling past a single instance
 

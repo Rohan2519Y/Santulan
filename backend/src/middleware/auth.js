@@ -63,7 +63,7 @@ function requireParticipantToken(req, res, next) {
       const row = await sessionCheck().participantSession(req.user.participantId);
       if (!row || row.status !== 'ACTIVE') throw new HttpError(403, 'FORBIDDEN', 'Participant is not active');
       // Credential-version revocation (SEC-29 / T072): a token minted before a password reset or suspension is dead.
-      if (req.user.pv && sessionCheck().currentVersion(row) !== req.user.pv) throw new HttpError(403, 'FORBIDDEN', 'Session revoked. Please sign in again.');
+      if (req.user.pv && await sessionCheck().currentVersion(row) !== req.user.pv) throw new HttpError(403, 'FORBIDDEN', 'Session revoked. Please sign in again.');
       req.actor = { scope: 'PARTICIPANT', participantId: req.user.participantId };
       return next();
     } catch (e) {

@@ -7,6 +7,7 @@ const store = require('../../models/db');
 const identity = require('../../models/repositories/identity');
 const devIdentity = require('../../models/repositories/devIdentity');
 const { credentialVersion } = require('./devProvider');
+const { getProvider } = require('./index');
 
 /** { status, authProvider, authProviderSubjectId, credential } for a participant, or null. */
 async function participantSession(participantId) {
@@ -19,9 +20,12 @@ async function participantSession(participantId) {
 }
 
 /** The credential-version fingerprint a valid `pv` claim must equal (only an active, non-temporary credential has one). */
-function currentVersion(session) {
+async function currentVersion(session) {
   const c = session.credential;
-  return c && c.status === 'active' && !c.mustChange ? credentialVersion(c.updatedAt) : null;
+  if (c) return c.status === 'active' && !c.mustChange ? credentialVersion(c.updatedAt) : null;
+  if (!session.authProvider || !session.authProviderSubjectId) return null;
+  const updatedAt = await getProvider().credentialUpdatedAt(session.authProviderSubjectId);
+  return updatedAt ? credentialVersion(updatedAt) : null;
 }
 
 async function adminSession(adminUserId) {
