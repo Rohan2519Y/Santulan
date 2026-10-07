@@ -89,7 +89,12 @@ npm run db:verify                      # structural and integrity checks (exit n
 
 ### Dev login credentials
 
-The dev seeder creates three synthetic login accounts (development only; no personal data; it refuses production). Login is
+**Local use only.** These are fixed, published passwords for a local database. The seeder runs only when `APP_ENV` is `development`
+or `test` and refuses staging and production. For a real deployment create the first admin with
+`node scripts/create-admin.js --subject <login subject>` (see the script header), and check any database for leftover dev
+accounts with `node scripts/check-dev-accounts.js`.
+
+The dev seeder creates three synthetic login accounts (development only; no personal data). Login is
 `POST /api/v1/auth/login` with `{ "subject": "<login id>", "password": "<password>" }`.
 
 | Account | Login id (`subject`) | Password |

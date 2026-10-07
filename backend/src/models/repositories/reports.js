@@ -42,6 +42,21 @@ async function sectionsOf(tx, reportId) {
   return (await tx.c.report_sections.find({ report_id: reportId }, { sort: { display_order: 1 } })).map(SEC);
 }
 
+/**
+ * Sets is_released_to_participant on every section of a report that is not already at `value` (the one field the access layer lets
+ * change after insert). One section at a time: the data layer has no multi-document update, and a report has a few dozen sections at most.
+ * Returns how many sections changed.
+ */
+async function setSectionsReleased(tx, reportId, value) {
+  const sections = await tx.c.report_sections.find({ report_id: reportId, is_released_to_participant: !value });
+  let changed = 0;
+  for (const s of sections) {
+    const r = await tx.c.report_sections.updateOne({ _id: s._id }, { $set: { is_released_to_participant: value } });
+    changed += r.modified;
+  }
+  return changed;
+}
+
 async function sectionCount(tx, reportId) { return tx.c.report_sections.count({ report_id: reportId }); }
 
-module.exports = { getReport, getByAttempt, insertReport, moveReport, insertSections, sectionsOf, sectionCount, fromReport: R, fromSection: SEC };
+module.exports = { getReport, getByAttempt, insertReport, moveReport, insertSections, sectionsOf, setSectionsReleased, sectionCount, fromReport: R, fromSection: SEC };

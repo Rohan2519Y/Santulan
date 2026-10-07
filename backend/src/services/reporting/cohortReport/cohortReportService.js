@@ -6,6 +6,7 @@
  */
 const { HttpError } = require('../../../errors');
 const store = require('../../../models/db');
+const { writeAudit } = require('../../audit/auditService');
 const { loadCohortTables } = require('./fromDatabase');
 const { generateCohortReport, CohortRefusal } = require('./cohortReport');
 
@@ -15,13 +16,18 @@ let chain = Promise.resolve();
 const oneAtATime = (fn) => { const run = chain.then(fn, fn); chain = run.catch(() => {}); return run; };
 
 /** @returns {Promise<{pdf: Buffer|null, manifest: object, failures: string[], warnings: string[], fileName: string}>} */
-async function generate(actor, { institutionCode, cohortCode = null, enrolled = null, output = 'html' }) {
+async function generate(actor, { institutionCode, cohortCode = null, enrolled = null, output = 'html' }, correlationId = null) {
   const loaded = await store.withScope(sa(actor), (tx) => loadCohortTables(tx, institutionCode, cohortCode));
   // html / manifest: text work only, no browser (the HTML is the exact document the PDF is printed from). pdf: starts Chromium.
   const withBrowser = output === 'pdf';
   try {
     const run = () => generateCohortReport(loaded.tables, { institution: institutionCode, cohort: cohortCode, enrolled, sha: loaded.sha, final: false, pdf: withBrowser, layout: false }); // the layout was verified identical to the kit's; the PDF path loads the page once
     const r = await (withBrowser ? oneAtATime(run) : run());
+    // G-23: every cohort report that is produced is audited: who, which institution / cohort, what was asked for, how many students it covers.
+    await store.withScope(sa(actor), (tx) => writeAudit(tx, {
+      actorType: 'ADMIN', actorId: actor.adminUserId, actionType: 'COHORT_REPORT_EXPORTED', targetEntity: loaded.cohort ? 'cohorts' : 'institutions', targetId: loaded.cohort ? loaded.cohort._id : loaded.institution._id,
+      newState: { output, students: r.manifest.students, failures: r.failures.length }, correlationId,
+    }), { transaction: true });
     return { html: r.html, pdf: r.pdf, manifest: r.manifest, failures: r.failures, warnings: r.warnings, fileName: `${r.manifest.report_id}.${withBrowser ? 'pdf' : 'html'}` };
   } catch (err) {
     if (err instanceof CohortRefusal) throw new HttpError(422, err.code, err.message);

@@ -107,7 +107,7 @@ export default function ParticipantsPage() {
         </Panel>
 
         {temp && (
-          <StatusMessage type="warning" message={`Temporary credential for ${temp.santulanId}: ${temp.value}. It is shown once; the previous credential no longer works.`} />
+          <StatusMessage type="warning" live={false} message={`Temporary credential for ${temp.santulanId}: ${temp.value}. It is shown once; the previous credential no longer works.`} />
         )}
 
         <Panel title="Participants" flush>

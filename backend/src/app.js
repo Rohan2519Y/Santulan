@@ -4,8 +4,12 @@ const config = require('./config');
 const { errorHandler } = require('./errors');
 const santulanRoutes = require('./routes/v1/santulan.routes');
 const store = require('./models/db');
+const { securityHeaders, noStore } = require('./middleware/security');
 
 const app = express();
+app.disable('x-powered-by');
+app.use(securityHeaders());
+app.use('/api', noStore);
 
 app.use(
   cors({

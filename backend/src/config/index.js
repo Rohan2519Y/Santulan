@@ -11,6 +11,8 @@ module.exports = {
   mongodbTestDb: process.env.MONGODB_TEST_DB || 'santulan_qual',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '2h',
+  // Key for the keyed hash that makes roster login subjects unguessable (G-38). Falls back to the JWT secret when not set separately.
+  subjectKey: process.env.SUBJECT_KEY || process.env.JWT_SECRET || 'dev-secret-change-me',
   // Comma-separated list of allowed browser origins for the frontend dev
   // server (default covers CRA's default port). Supertest/API-client callers
   // are unaffected - CORS is a browser-enforced preflight check only.

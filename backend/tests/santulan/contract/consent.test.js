@@ -18,17 +18,21 @@ const key = () => `idem-${f.u()}-${f.u()}`;
 afterAll(async () => { await f.cleanupFixtures(); await closeClient(); await H.closeAll(); });
 const col = async (name) => (await f.db()).collection(name);
 
+// A participant with NO consent rows (the consent flow under test creates them). Inserted directly: open registration now needs a
+// verified email, a name and a date of birth, none of which this suite is about.
 async function participant(age) {
-  const res = await api().post('/api/v1/registrations/open').set('Idempotency-Key', key()).send({ age });
-  expect(res.status).toBe(201);
-  const pid = (await (await col('participants')).findOne({ santulan_id: res.body.santulanId }))._id;
-  return { pid, token: f.participantToken(pid) };
+  const made = await f.participant(age, { consents: false });
+  return { pid: made.participantId, token: made.token };
 }
 const bearer = (t) => ({ Authorization: `Bearer ${t}` });
+// G-17: only a signed-in SUPER_ADMIN may verify a consent; the shared internal key no longer can.
+let ADMIN = null;
+const adminHeaders = () => bearer(ADMIN.token);
+beforeAll(async () => { ADMIN = await f.admin(); });
 const rows = async (pid) => (await col('consents')).countDocuments({ participant_id: pid });
 const create = (body, headers = INTERNAL) => api().post('/api/v1/consents').set(headers).send({ protocolVersion: PROTO, ...body });
 const gate = (p) => api().get('/api/v1/consents/gate').set(bearer(p.token));
-const verify = (id, verificationMethod = 'TEST_METHOD_A', headers = INTERNAL) => api().post(`/api/v1/consents/${id}/verify`).set(headers).send({ verificationMethod });
+const verify = (id, verificationMethod = 'TEST_METHOD_A', headers = null) => api().post(`/api/v1/consents/${id}/verify`).set(headers || adminHeaders()).send({ verificationMethod });
 
 describe('requirements and gate are derived from the stored age (T04-001…004, 027)', () => {
   test('a minor needs parent consent and student assent; an adult needs self-consent only; nothing is created', async () => {
@@ -54,7 +58,8 @@ describe('minor: both records VERIFIED open the gate, and the gate never creates
     expect((await create({ participantId: p.pid, consentType: 'STUDENT_ASSENT', giverRelationship: 'SELF' }, bearer(p.token))).status).toBe(403);
     expect((await verify(assent.consentId, 'TEST_METHOD_A', bearer(p.token))).status).toBe(403);
     expect((await verify(assent.consentId, 'TEST_METHOD_A', {})).status).toBe(401);
-    expect((await verify(assent.consentId, 'TEST_METHOD_A', { 'X-Internal-Api-Key': 'wrong' })).status).toBe(403);
+    expect((await verify(assent.consentId, 'TEST_METHOD_A', { 'X-Internal-Api-Key': 'wrong' })).status).toBe(401);
+    expect((await verify(assent.consentId, 'TEST_METHOD_A', INTERNAL)).status).toBe(401); // G-17: even the right internal key cannot verify
 
     // PENDING -> VERIFIED is refused; the row stays PENDING
     const skip = await verify(assent.consentId);
@@ -147,7 +152,7 @@ describe('verification method is an approved code, never evidence (T04-023…026
     await verify(c.consentId, 'TEST_METHOD_A');
     const audits = (await (await col('audit_logs')).find({ target_id: c.consentId }).sort({ occurred_at: 1, action_type: 1 }).toArray()).map((a) => ({ action_type: a.action_type, actor_type: a.actor_type, s: JSON.stringify(a.new_state) }));
     expect(audits.map((a) => a.action_type)).toEqual(['CONSENT_CREATED', 'CONSENT_GRANTED', 'CONSENT_VERIFIED']);
-    expect(audits.map((a) => a.actor_type)).toEqual(['SYSTEM', 'PARTICIPANT', 'SYSTEM']);
+    expect(audits.map((a) => a.actor_type)).toEqual(['SYSTEM', 'PARTICIPANT', 'ADMIN']); // G-17: the verify step is now done, and recorded, by a named admin
     expect(JSON.stringify(audits)).not.toMatch(/@|[0-9]{6}|token|otp/i);
   });
 });

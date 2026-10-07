@@ -96,6 +96,9 @@ describe('the claims scanner is a pure module with positive tests for every rule
 
 describe('authentic pipeline output on the scratch database (SEC-25, SC-020)', () => {
   test('SEC-25 an authentic scored report (snapshot content and API JSON) carries no prohibited claim', async () => {
+    // G-04: the student sees nothing until an admin releases the report; release it (as the admin endpoint does) before reading it
+    const reviewer = await f.admin();
+    await require('../../../src/services/reporting/reportService').releaseReport(reportId, { actorId: reviewer.adminUserId, correlationId: null });
     const shown = await get(`/reports/${reportId}`, ownerP);
     expect(shown.status).toBe(200);
     expect(shown.body.sections.map((s) => s.type)).toEqual(['PROFILE']);

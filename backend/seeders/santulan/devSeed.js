@@ -25,7 +25,10 @@ async function ensureCredential(tx, subject, password, reset) {
  * @returns {Promise<Array<{who:string, login:string, password:string|null}>>}
  */
 async function seedDev({ adminSubject, participants, passwords, reset = false }) {
-  if ((process.env.APP_ENV || 'development') === 'production') throw new Error('The dev seeders must never run in production');
+  // G-15: the fixed dev passwords exist for a local database only. Anything other than development or test (staging, production,
+  // a typo) is refused, not just "production". An unset APP_ENV still means a local run, so local use is unchanged.
+  const appEnv = process.env.APP_ENV || 'development';
+  if (!['development', 'test'].includes(appEnv)) throw new Error(`The dev seeders run only when APP_ENV is development or test (it is "${appEnv}"). Use scripts/create-admin.js to create a real admin.`);
   const out = [];
   await store.withScope(store.systemScope(), async (tx) => {
     let admin = await identity.findAdminByAuthSubject(tx, PROVIDER, adminSubject);

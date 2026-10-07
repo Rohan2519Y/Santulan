@@ -24,7 +24,9 @@ async function currentVersion(session) {
   const c = session.credential;
   if (c) return c.status === 'active' && !c.mustChange ? credentialVersion(c.updatedAt) : null;
   if (!session.authProvider || !session.authProviderSubjectId) return null;
-  const updatedAt = await getProvider().credentialUpdatedAt(session.authProviderSubjectId);
+  const provider = getProvider();
+  if (typeof provider.credentialUpdatedAt !== 'function') return null; // the dev provider keeps its versions in the credential row read above
+  const updatedAt = await provider.credentialUpdatedAt(session.authProviderSubjectId);
   return updatedAt ? credentialVersion(updatedAt) : null;
 }
 

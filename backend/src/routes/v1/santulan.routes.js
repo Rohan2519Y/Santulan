@@ -49,6 +49,7 @@ router.post('/auth/email-otp/request', authThrottle, validate(auth.emailOtpReque
 router.post('/auth/email-otp/verify', authThrottle, validate(auth.emailOtpVerifySchema), auth.verifyEmailOtp);
 router.post('/auth/login', validate(auth.loginSchema), loginThrottle, auth.login);
 router.post('/auth/set-password', validate(auth.setPasswordSchema), auth.setPassword);
+router.post('/auth/reset-password', authThrottle, validate(auth.setPasswordSchema), auth.resetPassword);
 router.post('/auth/forgot-password', authThrottle, validate(auth.forgotPasswordSchema), auth.forgotPassword);
 router.post('/admin/participants/:id/credential-reset', requireActiveSuperAdmin, auth.credentialReset);
 
@@ -109,7 +110,9 @@ router.post('/consents/self-consent', requireParticipantToken, validate(consent.
 // temporary stand-in until a real parent/guardian portal exists. An adult is refused by the service.
 router.post('/consents/minor-self-service', requireParticipantToken, validate(consent.emptySchema), consent.minorSelfService);
 router.post('/consents/:id/grant', requireParticipantOrPrivileged, validate(consent.emptySchema), consent.grant);
-router.post('/consents/:id/verify', requireInternalOrSuperAdmin, validate(consent.verifySchema), consent.verify);
+// G-17: only a signed-in SUPER_ADMIN may mark a consent VERIFIED. The shared internal key no longer can (it is one static secret with no
+// identity, so the audit row could not say who verified); the engines never need to.
+router.post('/consents/:id/verify', requireActiveSuperAdmin, validate(consent.verifySchema), consent.verify);
 router.post('/consents/:id/withdraw', requireParticipantOrPrivileged, validate(consent.emptySchema), consent.withdraw);
 
 // --- Assessment delivery (BUILD 05). Participant token only; delivery stops at SUBMITTED.
@@ -151,6 +154,10 @@ router.get('/admin/submissions/:id', requireActiveSuperAdmin, admin.submissionDe
 router.get('/admin/submissions/:id/responses', requireActiveSuperAdmin, admin.submissionResponses);
 router.get('/admin/submissions/:id/responses/export', requireActiveSuperAdmin, admin.exportSubmissionResponses);
 router.get('/admin/attempts/:id/pilot-report', requireActiveSuperAdmin, admin.pilotReportPdf);
+// G-04: an admin reviews a finished in-app report and releases it to the student (or takes it back). Audited.
+router.get('/admin/attempts/:id/report-status', requireActiveSuperAdmin, admin.reportStatus);
+router.post('/admin/reports/:id/release', requireActiveSuperAdmin, validate(admin.emptyBodySchema), admin.releaseReport);
+router.post('/admin/reports/:id/hold', requireActiveSuperAdmin, validate(admin.emptyBodySchema), admin.holdReport);
 router.post('/admin/cohort-reports', requireActiveSuperAdmin, validate(admin.cohortReportSchema), admin.cohortReportPdf);
 
 // --- Research export (BUILD 08 section 10)

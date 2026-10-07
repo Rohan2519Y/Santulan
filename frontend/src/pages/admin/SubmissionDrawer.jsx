@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Send, Undo2 } from 'lucide-react';
 import { adminApi } from '../../services/santulanApi';
 import Modal from '../../components/Modal/Modal';
+import Button from '../../components/Button/Button';
 import StatusPill from '../../components/StatusPill/StatusPill';
 import StatusMessage from '../../components/StatusMessage/StatusMessage';
 import EmptyState from '../../components/EmptyState/EmptyState';
@@ -24,6 +26,22 @@ export default function SubmissionDrawer({ submission, onClose }) {
   const [exportError, setExportError] = useState(null);
   const [pdfWorking, setPdfWorking] = useState(false);
   const [pdfError, setPdfError] = useState(null);
+  const [release, setRelease] = useState({ status: 'loading', info: null, error: null });
+  const [releasing, setReleasing] = useState(false);
+  const loadRelease = () => adminApi.reportStatus(submission.attemptId)
+    .then((info) => setRelease({ status: 'ready', info, error: null }))
+    .catch((err) => setRelease({ status: 'error', info: null, error: err.message }));
+  useEffect(() => { loadRelease(); }, [submission.attemptId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [confirm, setConfirm] = useState(null); // 'release' | 'hold' | null: which action the confirmation dialog is asking about
+  const runRelease = async () => {
+    const info = release.info; const action = confirm;
+    setReleasing(true);
+    try {
+      if (action === 'release') await adminApi.releaseReport(info.reportId); else await adminApi.holdReport(info.reportId);
+      setConfirm(null);
+      await loadRelease();
+    } catch (err) { setConfirm(null); setRelease({ status: 'ready', info, error: err.message }); } finally { setReleasing(false); }
+  };
   useEffect(() => {
     let cancelled = false;
     adminApi.submission(submission.attemptId)
@@ -109,6 +127,29 @@ export default function SubmissionDrawer({ submission, onClose }) {
             {pdfError && <StatusMessage type="error" message={pdfError} />}
           </section>
 
+          <section aria-labelledby="sub-release">
+            <h3 id="sub-release" className={styles.itemHead}>Release to the student</h3>
+            {release.status === 'loading' && <div aria-busy="true"><Skeleton height={40} /></div>}
+            {release.status === 'error' && <StatusMessage type="error" message={release.error} />}
+            {release.status === 'ready' && !release.info.exists && <p className={styles.muted}>No report has been made for this submission yet.</p>}
+            {release.status === 'ready' && release.info.exists && !release.info.needsRelease && (
+              <p className={styles.muted}>This is a neutral notice (under review or not eligible). It needs no release and the student already sees it.</p>
+            )}
+            {release.status === 'ready' && release.info.needsRelease && (
+              <div className={styles.stack}>
+                <p className={styles.muted}>
+                  {release.info.released
+                    ? 'This report has been released. The student can see it (the release switches still decide which parts show).'
+                    : 'DRAFT: this report is finished but the student cannot see it yet. They are told it is being checked. Check the draft PDF above, then release it.'}
+                </p>
+                {release.info.released
+                  ? <button type="button" className={styles.linkButton} onClick={() => setConfirm('hold')} disabled={releasing}>{releasing ? 'Working…' : 'Take back from the student'}</button>
+                  : <button type="button" className={styles.linkButton} onClick={() => setConfirm('release')} disabled={releasing}>{releasing ? 'Releasing…' : 'Release to the student'}</button>}
+                {release.error && <StatusMessage type="error" message={release.error} />}
+              </div>
+            )}
+          </section>
+
           <section aria-labelledby="sub-answers">
             <h3 id="sub-answers" className={styles.itemHead}>Answers</h3>
             <div className={styles.stack}>
@@ -147,6 +188,38 @@ export default function SubmissionDrawer({ submission, onClose }) {
           </section>
         </div>
       )}
+      <Modal
+        open={Boolean(confirm)}
+        onClose={() => { if (!releasing) setConfirm(null); }}
+        title={confirm === 'release' ? 'Release this report?' : 'Take this report back?'}
+        footer={(
+          <>
+            <Button type="button" variant="secondary" onClick={() => setConfirm(null)} disabled={releasing} data-autofocus>Cancel</Button>
+            <Button type="button" variant="primary" onClick={runRelease} disabled={releasing}>
+              {releasing ? 'Working…' : (confirm === 'release' ? 'Release to the student' : 'Take it back')}
+            </Button>
+          </>
+        )}
+      >
+        <div style={{ display: 'flex', gap: 'var(--sp-4)', alignItems: 'flex-start', padding: 'var(--sp-3) 0' }}>
+          <span aria-hidden="true" style={{ flexShrink: 0, width: 48, height: 48, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--c-brand-soft)', color: 'var(--c-brand)' }}>
+            {confirm === 'release' ? <Send size={24} /> : <Undo2 size={24} />}
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 'var(--fs-body, 16px)', lineHeight: 1.6, color: 'var(--c-ink-strong)' }}>
+              {confirm === 'release'
+                ? 'The student will be able to see their report as soon as you confirm. Please check the draft PDF first.'
+                : 'The student will see "being checked" again until you release it.'}
+            </p>
+            <p style={{ margin: 'var(--sp-2) 0 0', fontSize: 14, lineHeight: 1.5, color: 'var(--c-ink-muted)' }}>
+              {confirm === 'release' ? 'You can take it back at any time. Nothing is deleted either way.' : 'Nothing is deleted. You can release it again whenever you are ready.'}
+            </p>
+            <p style={{ margin: 'var(--sp-4) 0 0', padding: 'var(--sp-2) var(--sp-3)', borderRadius: 8, background: 'var(--c-surface)', border: '1px solid var(--c-line)', fontSize: 14, color: 'var(--c-ink-strong)' }}>
+              Student: <strong>{submission.santulanId || 'this participant'}</strong>
+            </p>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 }

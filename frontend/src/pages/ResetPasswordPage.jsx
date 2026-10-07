@@ -3,7 +3,7 @@
  * the same short-lived set-password token a forced password change already uses, so it is sent to the same endpoint
  * (POST /auth/set-password). On success the server signs the person in, exactly as after a first-time password change.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Lock } from 'lucide-react';
 import styles from '../styles/ui.module.css';
@@ -22,7 +22,10 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const { signIn, session } = useSession();
   const [params] = useSearchParams();
-  const token = params.get('token');
+  // G-37: read the token once, then take it out of the address bar so it does not stay in the browser history or get copied with the URL.
+  const tokenRef = useRef(params.get('token'));
+  const token = tokenRef.current;
+  useEffect(() => { if (window.location.search) window.history.replaceState(null, '', window.location.pathname); }, []);
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
@@ -36,7 +39,7 @@ export default function ResetPasswordPage() {
     if (newPassword.length < 10 || !/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) { setError('Your new password needs at least 10 characters, with letters and numbers.'); return; }
     setBusy(true);
     try {
-      const res = await api.setPassword(token, newPassword);
+      const res = await api.resetPassword(token, newPassword);
       signIn(res.accessToken);
       const role = JSON.parse(atob(res.accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role;
       navigate(HOME_BY_ROLE[role] || '/student', { replace: true });

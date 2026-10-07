@@ -17,6 +17,7 @@
 const fs = require('fs');
 const ExcelJS = require('exceljs');
 const { escapeCell } = require('../domain/exportRules');
+const { participantResearchId } = require('./researchIdentity');
 const framework = require('../../../seeders/santulan/reference/framework.json');
 
 const DOMAIN_NAME = Object.fromEntries(framework.domains.map((d) => [d.code, d.name]));
@@ -28,6 +29,9 @@ const cellValue = (value) => {
   return escapeCell(value);
 };
 const row = (values) => values.map(cellValue);
+// G-10: the workbook never carries the login id. Every sheet keys a participant by the governed research pseudonym (PR-nnnnnn), the same one
+// the de-identified research export uses, so the named IDENTITY sheet is no longer a lookup table from names to sign-in ids.
+const rid = (p) => participantResearchId(p.santulan_id);
 const responseSheetName = (n) => `ITEM_RESPONSES_LONG_${String(n).padStart(2, '0')}`;
 
 const HEADER_FONT = { bold: true };
@@ -112,11 +116,11 @@ async function writeUnifiedWorkbook(filePath, ctx) {
   const closeStreamingSheet = (raw, name, n) => { raw.commit(); written.push({ name, rows: n }); };
 
   // ---- load everything (pilot/synthetic scale only - this writer is never given a full-population attempt list) ----
-  const attempts = await tx.c.assessment_attempts.find({ _id: { $in: attemptIds } });
+  let attempts = await tx.c.assessment_attempts.find({ _id: { $in: attemptIds } });
   // PARTICIPANTS/IDENTITY also cover participants with no attempt at all (e.g. consent still pending) - the kit's own
   // generator needs to see them to refuse with a reason, not just silently omit them.
   const participantIds = [...new Set([...attempts.map((a) => a.participant_id), ...extraParticipantIds])];
-  const participants = await tx.c.participants.find({ _id: { $in: participantIds } });
+  let participants = await tx.c.participants.find({ _id: { $in: participantIds } });
   const institutions = await tx.c.institutions.find({ _id: { $in: [...new Set(participants.map((p) => p.institution_id).filter(Boolean))] } });
   const cohorts = await tx.c.cohorts.find({ _id: { $in: [...new Set(participants.map((p) => p.cohort_id).filter(Boolean))] } });
   const consents = await tx.c.consents.find({ participant_id: { $in: participantIds } });
@@ -143,6 +147,11 @@ async function writeUnifiedWorkbook(filePath, ctx) {
     const own = consentsByParticipant.get(participantId) || [];
     return required.every((t) => own.some((c) => c.consent_type === t && c.status === 'VERIFIED')) ? 'VERIFIED' : 'PENDING';
   };
+
+  // G-10: only participants who are not WITHDRAWN and whose required consents are all VERIFIED are exported - this file carries names and scores.
+  const eligible = new Set(participants.filter((p) => p.status !== 'WITHDRAWN' && consentStatusOf(p._id, p.assessment_track) === 'VERIFIED').map((p) => p._id));
+  participants = participants.filter((p) => eligible.has(p._id));
+  attempts = attempts.filter((a) => eligible.has(a.participant_id));
 
   // ---- README ----
   {
@@ -184,7 +193,7 @@ async function writeUnifiedWorkbook(filePath, ctx) {
       const inst = institutionById.get(p.institution_id);
       const coh = cohortById.get(p.cohort_id);
       addRow(ws, row([
-        p.santulan_id, inst ? inst.institution_code : null, coh ? coh.cohort_code : null, p.participation_route,
+        rid(p), inst ? inst.institution_code : null, coh ? coh.cohort_code : null, p.participation_route,
         p.assessment_track, p.developmental_band, p.administration_language, consentStatusOf(p._id, p.assessment_track), p.status, p.created_at,
       ]));
     }
@@ -200,7 +209,7 @@ async function writeUnifiedWorkbook(filePath, ctx) {
       const inst = institutionById.get(p.institution_id);
       const fullName = d ? d.full_name : null;
       const firstName = fullName ? fullName.trim().split(/\s+/)[0] : null;
-      addRow(ws, row([p.santulan_id, fullName, firstName, d ? d.class_name : null, inst ? inst.institution_name : null]));
+      addRow(ws, row([rid(p), fullName, firstName, d ? d.class_name : null, inst ? inst.institution_name : null]));
     }
     close(ws, 'IDENTITY', participants.length);
   }
@@ -247,13 +256,13 @@ async function writeUnifiedWorkbook(filePath, ctx) {
       const at = a.submitted_at || a.completed_at || a.created_at;
       if (!scoredAt || at > scoredAt) scoredAt = at;
       domainRows.push(row([
-        a._id, p.santulan_id, domainCode, DOMAIN_NAME[domainCode] || null, mean, itemsExpected, itemsAnswered, held.length,
+        a._id, rid(p), domainCode, DOMAIN_NAME[domainCode] || null, mean, itemsExpected, itemsAnswered, held.length,
         missingShare, state, reportableOf(state), a.scoring_version || 'domain-mean-v1', at,
       ]));
     }
 
     attemptRows.push(row([
-      p.santulan_id, a._id, track, set.version_label, a.age_years_at_attempt, a.developmental_band_at_attempt,
+      rid(p), a._id, track, set.version_label, a.age_years_at_attempt, a.developmental_band_at_attempt,
       kitAttemptStatus(a.status), a.submitted_at, totalExpected, totalAnswered,
       totalExpected ? round2(totalAnswered / totalExpected) : 0, totalExpected - totalAnswered, null, null, null,
       reportStateOf(a.status), null, a.scoring_version || 'domain-mean-v1', scoredAt,
@@ -302,14 +311,14 @@ async function writeUnifiedWorkbook(filePath, ctx) {
       const it = coreItems.find((i) => i._id === r.item_id);
       if (!it) continue;
       irWs.addRow(row([
-        r._id, p.santulan_id, a._id, set.configuration, set.version_label, it.item_code, it.domain_code, it.subdomain_code,
+        r._id, rid(p), a._id, set.configuration, set.version_label, it.item_code, it.domain_code, it.subdomain_code,
         r.response_value, 'NO', r.response_version, r.is_current, r.answered_at, r.response_time_ms,
       ])).commit();
       irRows += 1;
     }
     for (const it of coreItems) {
       if (answered.has(it._id)) continue;
-      irWs.addRow(row([null, p.santulan_id, a._id, set.configuration, set.version_label, it.item_code, it.domain_code, it.subdomain_code, null, 'YES', null, null, null, null])).commit();
+      irWs.addRow(row([null, rid(p), a._id, set.configuration, set.version_label, it.item_code, it.domain_code, it.subdomain_code, null, 'YES', null, null, null, null])).commit();
       irRows += 1;
     }
   }

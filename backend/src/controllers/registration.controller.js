@@ -135,7 +135,7 @@ async function registerOpen(req, res, next) {
       // The compulsory personal details travel with registration. A failure here never undoes the account: the profile gate asks again.
       try {
         await submitPilotDetails(result.participantId, { fullName: req.body.fullName, dateOfBirth: req.body.dateOfBirth, className: req.body.className, gender: req.body.gender }, req.correlationId);
-      } catch (err) { console.error(`registration: personal details not saved (${err.message})`); } // eslint-disable-line no-console
+      } catch (err) { console.error(`registration: personal details not saved (${err.code || err.name})`); } // eslint-disable-line no-console -- code only, never the message (it can echo submitted values)
       extra = { accessToken: signToken({ sub: result.participantId, role: 'participant', participantId: result.participantId, pv: credentialVersion(created.updatedAt) }) };
     }
     send(res, result, extra);

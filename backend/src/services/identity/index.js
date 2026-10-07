@@ -6,6 +6,7 @@ const config = require('../../config');
 const logger = require('../../utils/logger');
 const { createDevProvider } = require('./devProvider');
 const { createKeycloakProvider } = require('./keycloakProvider');
+const mailer = require('../mail/mailer');
 
 let provider = null;
 
@@ -14,10 +15,9 @@ function getProvider() {
   if (config.identityProvider === 'dev') {
     if (config.env === 'production') throw new Error('The dev identity provider must not be used in production');
     provider = createDevProvider({
-      // logger.info (not debug): this must stay visible under the default log level, exactly as the console.log it replaces
-      // was always visible - a local developer needs to see the OTP code or password-reset link to proceed without a
-      // real email/SMS provider. Shared by requestOtp (code) and requestPasswordReset (link) - same reason, same gap.
-      log: (channel, value) => { if (config.env === 'development') logger.info({ channel, value }, '[dev identity] code/link'); },
+      // Codes and reset links are secrets (G-14): they are logged only when APP_ENV is explicitly "development" AND real email is not
+      // configured, so a local developer without a mailer can still proceed. With the mailer on, or in any other environment, nothing is logged.
+      log: (channel, value) => { if (config.env === 'development' && !mailer.isConfigured()) logger.info({ channel, devSecret: value }, '[dev identity] code/link (local development only)'); },
     });
     return provider;
   }

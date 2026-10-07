@@ -1,5 +1,6 @@
 const app = require('./app');
 const config = require('./config');
+const { assertSafeConfig } = require('./config/startupChecks');
 const logger = require('./utils/logger');
 const store = require('./models/db');
 const { verifyOpenSets } = require('./services/questionsets/verifyFrozenSets');
@@ -9,6 +10,14 @@ const reportWorker = require('./jobs/workers/reportWorker');
 const exportWorker = require('./jobs/workers/exportWorker');
 
 async function main() {
+  // Fail closed (G-14): the shipped defaults (assumed APP_ENV, placeholder JWT secret, empty internal key) must not run a deployment.
+  try {
+    assertSafeConfig(process.env, config).forEach((w) => logger.warn(w));
+  } catch (err) {
+    logger.error(err.message);
+    process.exit(1);
+  }
+
   // Fail closed (G-17): refuse to serve unless the store is the replica set, we are the runtime user and the model matches.
   try {
     const ready = await store.assertStoreReady();

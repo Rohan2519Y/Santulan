@@ -17,6 +17,7 @@ const auditLog = require('../services/admin/auditLogService');
 const submissions = require('../services/admin/submissionService');
 const pilotReport = require('../services/reporting/pilotReport/pilotReportService');
 const cohortReport = require('../services/reporting/cohortReport/cohortReportService');
+const reportService = require('../services/reporting/reportService');
 const rules = require('../services/domain/adminRules');
 
 const wrap = (fn) => async (req, res, next) => { try { res.json(await fn(req)); } catch (err) { next(err); } };
@@ -57,7 +58,7 @@ const flagReviewSchema = strictObject({ disposition: z.enum(['DISMISSED', 'CONFI
 const pilotReportPdf = async (req, res, next) => {
   let file = null;
   try {
-    const result = await pilotReport.generateForAttempt(actor(req), idParam(req, 'Attempt'));
+    const result = await pilotReport.generateForAttempt(actor(req), idParam(req, 'Attempt'), req.correlationId);
     file = result.file;
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${result.reportId}.pdf"`);
@@ -67,6 +68,8 @@ const pilotReportPdf = async (req, res, next) => {
     next(err);
   }
 };
+
+const emptyBodySchema = strictObject({});
 
 const cohortReportSchema = strictObject({
   institutionCode: z.string().trim().min(2).max(40), cohortCode: z.string().trim().min(2).max(40).optional(),
@@ -95,7 +98,11 @@ const cohortReportPdf = async (req, res, next) => {
 };
 
 module.exports = {
-  cohortReportSchema, cohortReportPdf,
+  emptyBodySchema, cohortReportSchema, cohortReportPdf,
+  // G-04: review-and-release of a student's in-app report (nothing a student sees until an admin releases it).
+  reportStatus: wrap((req) => reportService.reportStatusForAttempt(idParam(req, 'Attempt'))),
+  releaseReport: wrap((req) => reportService.releaseReport(idParam(req, 'Report'), { actorId: actor(req).adminUserId, correlationId: req.correlationId })),
+  holdReport: wrap((req) => reportService.holdReport(idParam(req, 'Report'), { actorId: actor(req).adminUserId, correlationId: req.correlationId })),
   controlSchema, institutionCreateSchema, institutionUpdateSchema, cohortCreateSchema, cohortUpdateSchema, participantStatusSchema, flagReviewSchema,
   pilotReportPdf,
   getControl: wrap((req) => control.read(actor(req))),

@@ -22,7 +22,8 @@ async function loadCohortTables(tx, institutionCode, cohortCode = null) {
     if (!cohort) throw new HttpError(404, 'NOT_FOUND', 'Cohort not found');
     pq.cohort_id = cohort._id;
   }
-  const participants = await tx.c.participants.find(pq);
+  // G-23: a SUSPENDED participant is not part of a cohort report. (WITHDRAWN stays in the data so the model can count and log them out.)
+  const participants = (await tx.c.participants.find(pq)).filter((p) => p.status !== 'SUSPENDED');
   const participantIds = participants.map((p) => p._id);
   const cohorts = await tx.c.cohorts.find({ _id: { $in: [...new Set(participants.map((p) => p.cohort_id).filter(Boolean))] } });
   const cohortById = new Map(cohorts.map((c) => [c._id, c]));

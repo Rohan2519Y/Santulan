@@ -122,12 +122,25 @@ function createDevProvider({ now = () => Date.now(), otpTtlMs = 10 * 60 * 1000, 
       await asSystem((tx) => devIdentity.disableCredential(tx, PROVIDER, subjectId));
     },
 
-    /** Dev-only "forgot password" email: issues a new temporary credential (same as an admin credential-reset) and logs
-     * the reset link instead of actually sending it - no real email provider exists yet (see services/identity/index.js).
-     * The link's token is the same set-password purpose token a forced password change already uses, so the existing
-     * POST /auth/set-password endpoint completes the reset unchanged. */
+    /** The credential's current version (updated_at in ms), or null when the subject has no active credential. A reset link records it. */
+    async credentialStamp(subjectId) {
+      const row = await asSystem((tx) => devIdentity.findCredential(tx, PROVIDER, subjectId));
+      return row && row.status === 'active' ? new Date(row.updatedAt).getTime() : null;
+    },
+
+    /** Redeems a reset link: sets the new password only if the credential is still the version the link was issued for.
+     * Nothing about the account changes when a reset is merely REQUESTED (G-13); the link is single use because this write moves the version. */
+    async resetPassword(subjectId, newPassword, expectedStamp) {
+      const problem = passwordProblem(newPassword);
+      if (problem) return { ok: false, problem };
+      const hash = await bcrypt.hash(newPassword, 10);
+      const r = await asSystem((tx) => devIdentity.replaceIfVersion(tx, PROVIDER, subjectId, hash, expectedStamp));
+      return { ok: r.ok, problem: r.ok ? null : 'this reset link has expired or was already used', updatedAt: r.updatedAt };
+    },
+
+    /** Dev-only: logs the reset link (a real mailer sends it - see the controller). It changes nothing: the old password keeps
+     * working until the link is redeemed, so a stranger asking for a reset cannot lock the real owner out. */
     async requestPasswordReset(subjectId, link) {
-      await this.issueTemporaryCredential(subjectId);
       log('email', link);
     },
   };

@@ -78,7 +78,7 @@ module.exports = {
   exportUnified: async (req, res, next) => {
     let file = null;
     try {
-      const result = await unifiedExport.generateForSet(req.actor, setId(req));
+      const result = await unifiedExport.generateForSet(req.actor, setId(req), req.correlationId);
       file = result.file;
       const fileTag = `${result.versionLabel}-r${result.revision}`.replace(/[^A-Za-z0-9_-]/g, '');
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

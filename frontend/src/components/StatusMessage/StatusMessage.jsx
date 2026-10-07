@@ -15,9 +15,11 @@ const ALERT_TYPES = new Set(['error', 'warning']);
  * FR-004: every status is color + icon + text label - never color alone.
  * `message` is required so a StatusMessage can never render icon-only.
  */
-export default function StatusMessage({ type = 'info', message, children, className = '' }) {
+export default function StatusMessage({ type = 'info', message, children, className = '', live = true }) {
   const Icon = ICONS[type] || Info;
-  const role = ALERT_TYPES.has(type) ? 'alert' : 'status';
+  // `live={false}` renders a plain, non-announcing block: used where the text is a secret (a temporary password) that a screen
+  // reader must not read out unprompted (audit gap G-43).
+  const role = !live ? undefined : (ALERT_TYPES.has(type) ? 'alert' : 'status');
 
   return (
     <div className={`${styles.message} ${styles[type]} ${className}`.trim()} role={role}>

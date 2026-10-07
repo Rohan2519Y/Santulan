@@ -97,6 +97,8 @@ export const api = {
   requestEmailOtp: (email) => call('/auth/email-otp/request', { method: 'POST', body: { email }, token: null }),
   verifyEmailOtp: (email, code) => call('/auth/email-otp/verify', { method: 'POST', body: { email, code }, token: null }),
   login: (subject, password) => call('/auth/login', { method: 'POST', body: { subject, password }, token: null }),
+  /** Redeems the emailed reset link (OPEN participants): the link's token is the bearer; single use. */
+  resetPassword: (resetToken, newPassword) => call('/auth/reset-password', { method: 'POST', body: { newPassword }, token: resetToken }),
   setPassword: (setPasswordToken, newPassword) => call('/auth/set-password', { method: 'POST', body: { newPassword }, token: setPasswordToken }),
   /** OPEN participants only, by email (the email IS their login subject); always resolves (never reveals whether it matched anything), same pattern as the old requestOtp. */
   forgotPassword: (email) => call('/auth/forgot-password', { method: 'POST', body: { email }, token: null }),
@@ -274,6 +276,10 @@ export const adminApi = {
   /** Draft institution cohort report downloaded as a PDF (super admin only). `enrolled` is optional and only feeds the participation rate. */
   downloadCohortReport: ({ institutionCode, cohortCode, enrolled }) => saveFile('/admin/cohort-reports', `santulan-cohort-report-${institutionCode}-${cohortCode}.pdf`, 'The cohort report could not be generated.',
     { institutionCode, cohortCode, output: 'pdf', ...(enrolled ? { enrolled } : {}) }),
+  /** Review and release of a student's in-app report (audit gap G-04): nothing is visible to the student until it is released. */
+  reportStatus: (attemptId) => call(`/admin/attempts/${attemptId}/report-status`),
+  releaseReport: (reportId) => call(`/admin/reports/${reportId}/release`, { method: 'POST', body: {} }),
+  holdReport: (reportId) => call(`/admin/reports/${reportId}/hold`, { method: 'POST', body: {} }),
   downloadPilotReportPdf: (attemptId) => saveFile(`/admin/attempts/${attemptId}/pilot-report`, `santulan-pilot-report-${attemptId}.pdf`, 'The pilot report could not be generated.'),
   qualityFlags: (filters) => call(`/admin/quality-flags${qs(filters)}`),
   reviewFlag: (flagId, disposition, note) => call(`/admin/quality-flags/${flagId}`, { method: 'PATCH', body: { disposition, ...(note ? { note } : {}) } }),

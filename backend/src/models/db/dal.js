@@ -11,7 +11,7 @@
 const { getDb } = require('./client');
 const { withTransaction } = require('./transactions');
 const { mapStoreError } = require('./errors');
-const { ACCESS, RESEARCH_VIEWS } = require('./access');
+const { ACCESS, PARTICIPANT_MAY_UPDATE, RESEARCH_VIEWS } = require('./access');
 const { isScope, isPrivileged, SCOPES } = require('./scope');
 const { HttpError } = require('../../errors');
 
@@ -147,6 +147,11 @@ class ScopedCollection {
     const allowed = this.rule.update;
     if (!allowed) throw forbidden(`${this.name} is append-only`);
     if (!isPrivileged(s) && this.rule.kind === 'privileged') throw forbidden();
+    if (s.actorScope === SCOPES.PARTICIPANT) { // G-39: deny by default for a student session; only listed collections and fields
+      const mayUpdate = PARTICIPANT_MAY_UPDATE[this.name];
+      if (!mayUpdate) throw forbidden(`A participant cannot update ${this.name}`);
+      for (const body of Object.values(update)) for (const f of Object.keys(body)) if (!mayUpdate.includes(f)) throw forbidden(`A participant cannot update field ${f} of ${this.name}`);
+    }
     for (const [op, body] of Object.entries(update)) {
       if (op !== '$set' && op !== '$inc') throw forbidden(`Update operator ${op} is not permitted`);
       for (const f of Object.keys(body)) if (!allowed.includes(f)) throw forbidden(`Field ${f} of ${this.name} cannot be updated`);

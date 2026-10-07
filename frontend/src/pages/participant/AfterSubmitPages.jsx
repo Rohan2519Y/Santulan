@@ -20,12 +20,15 @@ import { api } from '../../services/santulanApi';
 export const STAGES = ['Answers received', 'Checking your responses', 'Preparing your report', 'Report ready'];
 
 /** Maps real attempt (and optional report) state to the stepper position, or to a terminal notice. */
-export function stageFor(status, reportStatus = null) {
+export const RELEASE_WAIT_NOTICE = 'Your report is ready. The Santulan team is checking it before it is shared with you, and it will appear here.';
+
+/** `released` is false while a finished report has not yet been released by an admin (audit gap G-04): it is not "ready" for the student. */
+export function stageFor(status, reportStatus = null, released = true) {
   if (status === 'QUALITY_HOLD') return { terminal: 'held' };
   if (status === 'INVALID') return { terminal: 'invalid' };
   if (status === 'EXPIRED') return { terminal: 'expired' };
   if (reportStatus === 'FAILED_RETRYABLE') return { index: 2, notice: 'Still preparing your report' };
-  if (status === 'REPORT_READY') return { index: 3, done: true };
+  if (status === 'REPORT_READY') return released ? { index: 3, done: true } : { index: 2, notice: RELEASE_WAIT_NOTICE, waitingRelease: true };
   if (status === 'SCORED' || status === 'SCORING') return { index: 2 };
   if (status === 'SUBMITTED') return { index: 1 };
   return { index: 0 };
@@ -89,9 +92,14 @@ export function GeneratingReportPage({ pollMs = 5000 }) {
       try {
         const reg = await api.registrationState();
         const model = reg.attempt ? await api.attempt(reg.attempt.attemptId) : null;
+        let released = true;
+        if (model && model.status === 'REPORT_READY') {
+          // A finished report only counts as ready once an admin has released it; if we cannot tell, do not say it is ready.
+          try { released = Boolean(model.reportId) && (await api.report(model.reportId)).released !== false; } catch (e) { released = false; }
+        }
         if (stopped) return;
-        setState(stageFor(model ? model.status : null)); setError('');
-        if (model && ['SUBMITTED', 'SCORING', 'SCORED'].includes(model.status)) timer = setTimeout(poll, pollMs);
+        setState(stageFor(model ? model.status : null, null, released)); setError('');
+        if (model && (['SUBMITTED', 'SCORING', 'SCORED'].includes(model.status) || (model.status === 'REPORT_READY' && !released))) timer = setTimeout(poll, model.status === 'REPORT_READY' ? pollMs * 6 : pollMs);
       } catch (err) { if (!stopped) { setError(err.message); timer = setTimeout(poll, pollMs * 2); } }
     };
     poll();

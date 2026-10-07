@@ -46,8 +46,19 @@ async function upsertPermanent(tx, provider, subjectId, secretHash) {
   return { updatedAt: now };
 }
 
+/** Sets a new permanent password only if the credential is still exactly the version a reset link was issued for (updated_at unchanged).
+ * The write itself moves updated_at, so the same link cannot be used twice, and any password change since issuing voids it. */
+async function replaceIfVersion(tx, provider, subjectId, secretHash, expectedUpdatedAtMs) {
+  const now = new Date();
+  const r = await tx.c.dev_identity_credentials.updateOne(
+    { provider, subject_id: subjectId, status: 'active', updated_at: new Date(expectedUpdatedAtMs) },
+    { $set: { secret_hash: secretHash, must_change: false, updated_at: now } },
+  );
+  return { ok: r.modified === 1, updatedAt: r.modified === 1 ? now : null };
+}
+
 async function disableCredential(tx, provider, subjectId) {
   await tx.c.dev_identity_credentials.updateOne({ provider, subject_id: subjectId }, { $set: { status: 'disabled', updated_at: new Date() } });
 }
 
-module.exports = { findCredential, upsertTemporary, replaceTemporary, upsertPermanent, disableCredential };
+module.exports = { findCredential, upsertTemporary, replaceTemporary, replaceIfVersion, upsertPermanent, disableCredential };

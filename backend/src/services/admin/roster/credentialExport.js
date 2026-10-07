@@ -29,6 +29,12 @@ function store(rows, now = Date.now()) {
   return importId;
 }
 
+/** True while an unexpired, unconsumed export exists; consumes nothing (so a download can be audited before the entry is taken). */
+function peek(importId) {
+  purge();
+  return exports_.has(importId);
+}
+
 /** Returns and removes the credentials for one download; null when unknown, expired or already consumed. */
 function take(importId) {
   purge();
@@ -72,4 +78,4 @@ async function toXlsx(rows) {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
-module.exports = { store, take, toXlsx, DEFAULT_TTL_MS };
+module.exports = { store, peek, take, toXlsx, DEFAULT_TTL_MS };

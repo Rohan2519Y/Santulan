@@ -12,7 +12,12 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { HttpError } = require('../errors');
 
-const signToken = (claims, expiresIn = config.jwtExpiresIn) => jwt.sign(claims, config.jwtSecret, { expiresIn });
+// The algorithm is pinned on both sides (G-14/G-36): a token signed any other way, including "none", is never accepted.
+const JWT_ALGORITHM = 'HS256';
+// Issuer and audience (G-36): a token minted for some other service that happens to share the secret is not accepted here.
+const JWT_ISSUER = 'santulan-api';
+const JWT_AUDIENCE = 'santulan';
+const signToken = (claims, expiresIn = config.jwtExpiresIn) => jwt.sign(claims, config.jwtSecret, { expiresIn, algorithm: JWT_ALGORITHM, issuer: JWT_ISSUER, audience: JWT_AUDIENCE });
 
 function readBearer(req) {
   const [scheme, token] = (req.headers.authorization || '').split(' ');
@@ -22,7 +27,7 @@ function readBearer(req) {
 
 function verify(token) {
   try {
-    return jwt.verify(token, config.jwtSecret);
+    return jwt.verify(token, config.jwtSecret, { algorithms: [JWT_ALGORITHM], issuer: JWT_ISSUER, audience: JWT_AUDIENCE });
   } catch (err) {
     throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired token');
   }
@@ -63,7 +68,10 @@ function requireParticipantToken(req, res, next) {
       const row = await sessionCheck().participantSession(req.user.participantId);
       if (!row || row.status !== 'ACTIVE') throw new HttpError(403, 'FORBIDDEN', 'Participant is not active');
       // Credential-version revocation (SEC-29 / T072): a token minted before a password reset or suspension is dead.
-      if (req.user.pv && await sessionCheck().currentVersion(row) !== req.user.pv) throw new HttpError(403, 'FORBIDDEN', 'Session revoked. Please sign in again.');
+      // G-36: a token WITHOUT pv used to skip this check. Now a participant who has an active credential must present the matching pv;
+      // only a participant with no credential at all (synthetic test fixtures) is checked on status alone, as before.
+      const current = await sessionCheck().currentVersion(row);
+      if (current !== null ? req.user.pv !== current : Boolean(req.user.pv)) throw new HttpError(403, 'FORBIDDEN', 'Session revoked. Please sign in again.');
       req.actor = { scope: 'PARTICIPANT', participantId: req.user.participantId };
       return next();
     } catch (e) {

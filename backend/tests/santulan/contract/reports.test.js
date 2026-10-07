@@ -13,6 +13,15 @@ const audit = async (targetId) => (await (await H.admin()).collection('audit_log
 const reportRow = async (id) => (await H.admin()).collection('reports').findOne({ _id: id });
 const count = async (coll, filter) => (await H.admin()).collection(coll).countDocuments(filter);
 
+// G-04: a finished (REPORT_READY) report is invisible to the student until an admin releases it. Tests that read report CONTENT release
+// it first through the same service the admin endpoint uses; the release flow itself is tested in 'release and hold' below.
+let reviewer = null;
+const releasedGet = async (reportId, who) => {
+  reviewer = reviewer || await f.admin();
+  await reportService.releaseReport(reportId, { actorId: reviewer.adminUserId, correlationId: null }).catch(() => {});
+  return get(`/reports/${reportId}`, who);
+};
+
 beforeAll(async () => { await p.openAdolescentSet(); });
 beforeEach(() => P.approveWording(p.currentSet().setId));
 afterEach(async () => { await clearRules(); await p.resetSwitches(); });
@@ -69,7 +78,7 @@ describe('the participant retrieval gate and controlled retry (AT-18, RC-09, RC-
     expect(await count('assessment_attempts', { participant_id: a.p.participantId })).toBe(1);
     expect(await count('response_events', { attempt_id: a.id, event_type: 'REPORT_RETRY' })).toBe(1);
     expect(await audit(failed.reportId)).toEqual(expect.arrayContaining(['REPORT_FAILED', 'REPORT_RETRIED', 'REPORT_GENERATED'])); // RC-12
-    const ok = await get(`/reports/${failed.reportId}`, a.p);
+    const ok = await releasedGet(failed.reportId, a.p);
     expect(ok.status).toBe(200);
     expect(ok.body.state).toBe('REPORT_READY');
     expect(ok.body.sections[0]).toMatchObject({ type: 'PROFILE', locale: 'en', order: 1 });
@@ -189,7 +198,7 @@ describe('content boundaries (BUILD 07 section 8, B07-026..033)', () => {
     await approveRules(['C1', 'C2'].map((d) => ({ domain: d, state: 'S1', layer: 'MEANING', text: `Meaning of ${d}.` })));
     const a = await scoredAttempt({ s2: false });
     const made = await generate(a.id);
-    const shown = (await get(`/reports/${made.body.reportId}`, a.p)).body;
+    const shown = (await releasedGet(made.body.reportId, a.p)).body;
     expect(shown.sections.map((s) => s.type)).toEqual(['PROFILE']);
     const profile = JSON.parse(shown.sections[0].content);
     expect(profile.domains).toHaveLength(7);
@@ -207,7 +216,7 @@ describe('content boundaries (BUILD 07 section 8, B07-026..033)', () => {
     })[layer] });
     const a = await scoredAttempt({ s2: true });
     const made = await generate(a.id);
-    const shown = (await get(`/reports/${made.body.reportId}`, a.p)).body;
+    const shown = (await releasedGet(made.body.reportId, a.p)).body;
     const layers = ['MEANING', 'PATTERN', 'STRENGTH', 'GROWTH'];
     expect(shown.sections.map((s) => [s.type, s.domain || null])).toEqual([['PROFILE', null], ...p.DOMAINS.flatMap((d) => layers.map((l) => [l, d]))]);
     expect(shown.sections.map((s) => s.order)).toEqual(shown.sections.map((_, i) => i + 1));
@@ -225,7 +234,7 @@ describe('content boundaries (BUILD 07 section 8, B07-026..033)', () => {
     const a = await scoredAttempt({ s2: true, value: (i) => (i.domainCode === 'C1' ? null : 3) });
     const made = await generate(a.id);
     expect(made.body.state).toBe('REPORT_READY');
-    const shown = (await get(`/reports/${made.body.reportId}`, a.p)).body;
+    const shown = (await releasedGet(made.body.reportId, a.p)).body;
     const profile = JSON.parse(shown.sections[0].content);
     const c1 = profile.domains.find((d) => d.code === 'C1');
     expect(c1).toMatchObject({ display: 'NOT_ENOUGH_DATA', score: null, completeness: null });
@@ -270,9 +279,87 @@ describe('content boundaries (BUILD 07 section 8, B07-026..033)', () => {
     const hidden = (await get(`/reports/${made.body.reportId}`, a.p)).body;
     expect(hidden.sections.map((s) => s.type)).not.toContain('PRIORITY');
     await p.setSwitch('developmentRelease', true);
-    const released = (await get(`/reports/${made.body.reportId}`, a.p)).body;
+    const released = (await releasedGet(made.body.reportId, a.p)).body;
     expect(released.sections.filter((s) => s.type === 'PRIORITY').map((s) => s.domain)).toEqual(['C1', 'C2']);
     await p.setSwitch('developmentRelease', false);
     expect((await get(`/reports/${made.body.reportId}`, a.p)).body.sections.map((s) => s.type)).not.toContain('PRIORITY');
+  });
+});
+
+describe('G-04 review and release: a finished report is invisible to the student until an admin releases it', () => {
+  test('hidden by default, released by an admin (audited), refused twice, and can be held back again', async () => {
+    const a = await scoredAttempt({ s2: true });
+    const made = await generate(a.id);
+    expect(made.body.state).toBe('REPORT_READY');
+    const id = made.body.reportId;
+    const admin = await f.admin();
+
+    // the student gets the report shell and no content, and the admin screen is told it needs a decision
+    const before = (await get(`/reports/${id}`, a.p)).body;
+    expect(before).toMatchObject({ reportId: id, state: 'REPORT_READY', released: false, sections: [] });
+    const status = (await get(`/admin/attempts/${a.id}/report-status`, admin)).body;
+    expect(status).toMatchObject({ exists: true, reportId: id, needsRelease: true, released: false, releasedCount: 0 });
+
+    // nobody but a signed-in super admin can release: not the student, not a missing credential, not the internal key
+    expect((await post(`/admin/reports/${id}/release`, a.p, {})).status).toBe(403);
+    expect((await api().post(`/api/v1/admin/reports/${id}/release`).send({})).status).toBe(401);
+    expect((await internal('post', `/admin/reports/${id}/release`, {})).status).toBe(401);
+
+    const rel = await post(`/admin/reports/${id}/release`, admin, {});
+    expect(rel.status).toBe(200);
+    expect(rel.body).toMatchObject({ reportId: id, released: true });
+    const after = (await get(`/reports/${id}`, a.p)).body;
+    expect(after.released).toBe(true);
+    expect(after.sections.map((s) => s.type)).toContain('PROFILE');
+    const rows = await (await H.admin()).collection('audit_logs').find({ target_id: id, action_type: 'REPORT_RELEASED' }).toArray();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ actor_type: 'ADMIN', actor_id: admin.adminUserId });
+
+    expect((await post(`/admin/reports/${id}/release`, admin, {})).body.error.code).toBe('ALREADY_RELEASED');
+
+    // taken back: the student is back to "being checked"
+    expect((await post(`/admin/reports/${id}/hold`, admin, {})).status).toBe(200);
+    expect((await get(`/reports/${id}`, a.p)).body).toMatchObject({ released: false, sections: [] });
+    expect((await post(`/admin/reports/${id}/hold`, admin, {})).body.error.code).toBe('NOT_RELEASED');
+    expect(await audit(id)).toEqual(expect.arrayContaining(['REPORT_RELEASED', 'REPORT_HELD']));
+  });
+
+  test('a report is not released for a participant whose consent is no longer verified', async () => {
+    const a = await scoredAttempt({ s2: true });
+    const made = await generate(a.id);
+    const admin = await f.admin();
+    await (await H.admin()).collection('consents').updateMany({ participant_id: a.p.participantId }, { $set: { status: 'WITHDRAWN', withdrawn_at: new Date() } });
+    const res = await post(`/admin/reports/${made.body.reportId}/release`, admin, {});
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('CONSENT_NOT_VERIFIED');
+    expect((await get(`/reports/${made.body.reportId}`, a.p)).status).toBe(404); // G-09: with consent gone the student cannot read it at all
+  });
+
+  test('G-09 withdrawing consent after a release hides the report at once, and no report is generated without verified consent', async () => {
+    const a = await scoredAttempt({ s2: true });
+    const made = await generate(a.id);
+    const admin = await f.admin();
+    expect((await post(`/admin/reports/${made.body.reportId}/release`, admin, {})).status).toBe(200);
+    expect((await get(`/reports/${made.body.reportId}`, a.p)).status).toBe(200);
+    await (await H.admin()).collection('consents').updateMany({ participant_id: a.p.participantId }, { $set: { status: 'WITHDRAWN', withdrawn_at: new Date() } });
+    const hidden = await get(`/reports/${made.body.reportId}`, a.p);
+    expect(hidden.status).toBe(404);
+    expect(hidden.body.error.code).toBe('REPORT_NOT_READY');
+
+    const b = await scoredAttempt({ s2: true });
+    await (await H.admin()).collection('consents').updateMany({ participant_id: b.p.participantId }, { $set: { status: 'WITHDRAWN', withdrawn_at: new Date() } });
+    const refused = await generate(b.id);
+    expect(refused.status).toBe(422);
+    expect(refused.body.error.code).toBe('CONSENT_NOT_VERIFIED');
+  });
+
+  test('the neutral under-review notice is not held back: it needs no release', async () => {
+    const a = await terminalAttempt('QUALITY_HOLD');
+    const made = await generate(a.id);
+    const view = (await get(`/reports/${made.body.reportId}`, a.p)).body;
+    expect(view.state).toBe('UNDER_REVIEW');
+    expect(view.sections).toHaveLength(1);
+    const admin = await f.admin();
+    expect((await post(`/admin/reports/${made.body.reportId}/release`, admin, {})).status).toBe(409);
   });
 });

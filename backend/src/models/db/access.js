@@ -54,9 +54,24 @@ const ACCESS = {
   dev_identity_credentials: { kind: 'privileged', update: ['secret_hash', 'must_change', 'status', 'updated_at'] },
 };
 
+/*
+ * What a PARTICIPANT-scope session may update, deny by default (audit gap G-39, student side). A collection or field that is not listed
+ * here cannot be updated under a participant scope at all, whatever `ACCESS.update` allows for the privileged scopes. So a later mistake
+ * in a route can never let a student verify their own consent, change their status, or touch a report or any privileged collection.
+ * Consents are deliberately absent: they are written under the SYSTEM scope only (consentService.js).
+ */
+const PARTICIPANT_MAY_UPDATE = {
+  assessment_attempts: ['status', 'session_count', 'started_at', 'submitted_at', 'completed_at', 'last_activity_at', 'lock_version'],
+  responses: ['is_current'],
+  growth_plans: ['status', 'updated_at'],
+  growth_priorities: ['participant_selected', 'priority_text'],
+  growth_goals: ['goal_text', 'cue', 'response', 'fallback_action', 'frequency', 'review_date', 'status', 'updated_at'],
+  growth_actions: ['action_text'],
+};
+
 const RESEARCH_VIEWS = [
   'v_research_participants', 'v_research_attempts', 'v_research_item_responses', 'v_research_domain_scores',
   'v_research_quality_flags', 'v_research_response_events', 'v_research_assessment_versions', 'v_research_cohorts',
 ];
 
-module.exports = { ACCESS, RESEARCH_VIEWS };
+module.exports = { ACCESS, PARTICIPANT_MAY_UPDATE, RESEARCH_VIEWS };

@@ -106,6 +106,15 @@ New endpoint:
 |----------|---------|-------|
 | `POST /auth/forgot-password` | OPEN participants only, self-service password reset by email | body `{ email }`; always `202 {sent: true}` whether or not the email matches an OPEN participant, same "never reveal" pattern as `request-otp` (resolved via `findParticipantByAuthSubject`, since email already is the subject); issues a fresh **temporary** credential (`must_change: true`, same mechanism as the admin's `credential-reset`) and a `set-password`-purpose token embedded in a reset link; no real email provider exists, so the dev provider logs the link instead of sending it (`requestPasswordReset` in `devProvider.js`, shares the OTP code's dev-log callback - relabelled from `[dev identity] OTP` to the now-generic `[dev identity] code/link`); the link completes through the **existing, unchanged** `POST /auth/set-password` endpoint. Institutional participants and admins: silently no-op (`participationRoute !== 'OPEN'`), they still go through the admin-mediated `credential-reset`. |
 
+**Forgot-password no longer changes the account until the link is used (audit gap G-13):** previously `POST /auth/forgot-password` issued a temporary credential at once, so anyone who knew an email could lock that student out. Now requesting a reset changes nothing - the old password keeps working. The emailed link carries a 15-minute `reset-password` token that names the credential version (`ua`, the credential's `updated_at`) it was issued for.
+
+| Endpoint | Purpose | Notes |
+|----------|---------|-------|
+| `POST /auth/forgot-password` | **changed**: sends the link only | still `202 {sent: true}` whatever the address; no credential is touched; an address with no active credential gets the same answer and no email |
+| `POST /auth/reset-password` | redeems the emailed link | `Authorization: Bearer <reset token>`, body `{ newPassword }`; the new password is stored only if the credential is still at the version in the token (one conditional write that also moves the version), so the link works **once** and any password change since issuing voids it → otherwise `401 UNAUTHENTICATED` "expired or already used"; weak password → `400 VALIDATION_ERROR`; success returns `{ accessToken }` like `set-password` |
+
+`POST /auth/set-password` is unchanged and still serves the temporary-credential (institutional) first-login flow. The frontend `/reset-password` page now calls `reset-password`.
+
 **Email verification at OPEN registration (added later):** the address must be proven before the account is created.
 
 | Endpoint | Purpose | Notes |
@@ -117,6 +126,66 @@ New endpoint:
 The OPEN wizard therefore runs: full name + date of birth + class or course + gender + email + password → code emailed → enter the code → consent → done. The forgot-password email (above) and this code email use the same mailer. Existing OTP routes `request-otp` / `verify-otp` stay commented out; these are separate, email-only endpoints.
 
 Frontend consequence (not an API contract, noted for traceability): `RegisterPage.jsx` is now a 3-step wizard (age+email+password → consent → done, already signed in) instead of 5 (contact → OTP → age → consent → done); `LoginPage.jsx`'s single ID field accepts either a Santulan ID or an email, with two sign-in buttons calling the same `/auth/login` - one framed for self-registered (email) use, one explicitly labelled for institutional temporary-password use - since the backend does not distinguish between them either.
+
+## 1h. Start-up safety checks and secret logging (audit gap G-14)
+
+No endpoint changes; behaviour of the process around them.
+
+- **Start-up refusal** (`src/config/startupChecks.js`, called first thing in `server.js`): the server stops, listing every problem, unless `APP_ENV` is set on purpose to `development`, `test`, `staging` or `production` (it is no longer assumed to be `development`). In `staging` and `production` it also refuses a missing, placeholder (`dev-secret-change-me`, `change-me-in-production`, …) or shorter-than-32-character `JWT_SECRET`, and a missing or shorter-than-24-character `INTERNAL_API_KEY`; in `production` it also refuses `IDENTITY_PROVIDER=dev`. In `development` and `test` the same weaknesses are logged as warnings only, so local work is not blocked.
+- **No secrets in logs:** the dev identity provider's one-time codes and reset links are logged only when `APP_ENV` is `development` **and** real email is not configured (`services/mail/mailer.js`). With the mailer on, or in any other environment, nothing is logged.
+- **JWT algorithm pinned to HS256** when signing and verifying; tokens using `none` or any other algorithm are rejected (`401`).
+- **docker-compose:** `BACKEND_APP_ENV` has no default any more (`${BACKEND_APP_ENV:?…}`), so a stack cannot start unlabelled.
+
+**Admin bootstrap (audit gap G-15, scoped by the owner):** the local dev logins and their fixed passwords are unchanged, but the dev seeders now run only when `APP_ENV` is `development` or `test` (staging, production and any typo are refused; an unset value still means a local run). A real deployment gets its first admin from `backend/scripts/create-admin.js --subject <login> [--provider keycloak|dev]`: with Keycloak it only links the identity (the password lives in Keycloak); with the dev provider (never production) it prints a one-time temporary password once. It refuses an existing subject, requires `APP_ENV` to be set, and writes an `ADMIN_CREATED` audit row. `backend/scripts/check-dev-accounts.js` is a read-only listing of leftover `dev-` / `ps-dev-` accounts in any database (exit 1 when found). **No authenticator-app / MFA step was added** - an explicit decision by the owner; the README marks the fixed passwords as local only.
+
+**Access and logging hardening (audit gaps G-17, G-36, G-37, G-38, G-39, G-43, G-44, G-45):**
+
+| Gap | Change |
+|-----|--------|
+| G-17 | `POST /consents/:id/verify` is now **SUPER_ADMIN only** (was: the shared internal key or an admin). The internal key can still create consents and run the engines, but it can no longer mark a consent VERIFIED, so every verification is attributed to a named admin (`ADMIN` in the audit row). |
+| G-36 | Every token carries `iss: santulan-api` and `aud: santulan` and is verified against them (existing sessions end at deploy; everyone signs in again). A participant who has an active credential must present the matching `pv` claim - a token without one no longer skips the revocation check. A participant with no credential at all (synthetic test fixtures only) is checked on status as before. **Student side only for now; admin tokens still carry no `pv` (G-16/G-36 admin part stay open).** |
+| G-37 | The reset-link token is removed from the address bar as soon as the page reads it; `Referrer-Policy: no-referrer` is set by the API (helmet), the frontend `index.html` and nginx, so the token cannot leak in a Referer header. (The link was made single-use under G-13.) |
+| G-38 | New roster logins use a keyed hash (HMAC-SHA256, key `SUBJECT_KEY`, falling back to `JWT_SECRET`) of institution + Reg. Number instead of a plain hash, so the login subject cannot be computed from two values an outsider can know. A repeat import is still refused: also recognised by Reg. Number within the institution, so rosters imported before the change cannot get a second account. Existing students' stored subjects are unchanged. |
+| G-39 | **Student side only for now.** Under a participant scope the data layer's `updateOne` is deny-by-default: only `PARTICIPANT_MAY_UPDATE` collections and fields (attempt progress fields, `responses.is_current`, growth plan/priority/goal/action fields) can be updated. Participants cannot update consents, participants, reports or any privileged collection, whatever a route passes in. The privileged scopes keep their existing per-field rules. |
+| G-43 | Credential export: a missing or already-downloaded export is `404` with **no** audit row; a real download is audited before the entry is taken (so a failed audit leaves it retryable); `Cache-Control: no-store`. Every `/api` response is now `no-store`. The admin page shows a temporary credential in a non-announcing block (no `role=alert`), so a screen reader does not read it out. Passwords already forced a change at first login. |
+| G-44 | The logger redacts passwords, tokens and authorization headers in every environment. The dev code/link is logged under `devSecret` only in `development` while real email is off. Error logs for registration details and for email failures no longer echo messages or addresses. |
+| G-45 | `helmet` on the API (CSP `default-src 'none'`, `frame-ancestors 'none'`, X-Frame-Options DENY, nosniff, HSTS, `no-referrer`), `x-powered-by` removed, `no-store` on all API responses (PDFs included). Frontend: nginx sends CSP, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy and `no-store` on the app shell (HSTS line is provided commented out until TLS is in place); Docker build disables source maps and **fails when `REACT_APP_API_BASE` is not given** (compose no longer defaults it to localhost). |
+
+Tests changed with this: `consent.test.js` verifies as an admin and builds participants directly (the old test registered through the removed age-only body); the SEC-30 test needed a comment in `wordingService.js` reworded. Known still-failing (not caused by this): `registration.test.js` and `auth.test.js` OTP cases, written for the age-only open registration and the commented-out OTP routes.
+
+Not covered by this change (still open in the audit): admin tokens' `pv`/revocation and admin logout (G-16, G-36 admin part), the same participant-style write allow-list for admin and institution scopes (G-39 admin part), and G-37's opaque-token redesign.
+
+## 1i. Review and release of the in-app report (audit gap G-04)
+
+A finished in-app report (`REPORT_READY`) is **no longer visible to the student until an admin releases it.** No schema change: the existing
+`report_sections.is_released_to_participant` field (the one field that may change after insert) carries the decision, and the existing
+audit trail records who and when. The release switches (`developmentRelease`, the score layers) still decide which layers may show *after* release.
+
+- **Generation:** every section of a `REPORT_READY` report is stored with `is_released_to_participant = false` (the content hash is unchanged). The neutral T11 / T12 notices are still created released: they carry no results and need no review.
+- **Student read, `GET /reports/{id}`:** only released sections are returned. For a `REPORT_READY` report the response gains `released: boolean`; `false` means "finished, being checked" and `sections` is empty. T11 / T12 responses keep their previous shape. The student screens show "being checked" instead of "ready" while `released` is false, and keep polling.
+- **New admin endpoints (active SUPER_ADMIN only; the internal key and participant tokens are refused):**
+
+| Endpoint | Purpose | Notes |
+|----------|---------|-------|
+| `GET /admin/attempts/{id}/report-status` | the release state for the review screen | `{ exists, reportId, state, reportType, sectionCount, releasedCount, needsRelease, released }`; `needsRelease` is true only for `REPORT_READY` |
+| `POST /admin/reports/{id}/release` | release the report to the student | body `{}`; only a `REPORT_READY` report (`409 INVALID_STATE` otherwise); **refused with `422 CONSENT_NOT_VERIFIED` when the participant's consent gate is not open**; a second release is `409 ALREADY_RELEASED`; writes audit `REPORT_RELEASED` (actor `ADMIN` + id, time, section count) |
+| `POST /admin/reports/{id}/hold` | take a released report back | body `{}`; sections return to unreleased; `409 NOT_RELEASED` if it was not released; audit `REPORT_HELD` |
+
+- **Admin screen:** the submission drawer has a "Release to the student" section: it says DRAFT while unreleased, points at the draft PDF to check first, asks for confirmation, and offers "Take back from the student" once released.
+- **Existing reports:** reports generated *before* this change are already released and stay visible; use the hold endpoint (or the drawer button) to take one back.
+- Error codes added: `ALREADY_RELEASED` (409), `NOT_RELEASED` (409); `CONSENT_NOT_VERIFIED` (422, already used by the PDF endpoint) is reused. Tests: `reports.test.js` (three new cases; content reads release first), `claims.test.js`.
+
+## 1j. Consent re-check, named export and PDF audit (audit gaps G-09, G-10, G-23)
+
+Scope decided by the owner: a student's own consent (the existing self-attested route) is enough for now, and all data is real, so there is no test-data flag. These changes therefore keep `status = VERIFIED` as the consent test and do not add a test/demo guard.
+
+| Gap | Change |
+|-----|--------|
+| G-09 | The in-app report path re-checks the participant's consent gate (every required consent VERIFIED, none withdrawn) at **generation** (`POST /internal/attempts/{id}/report` and the worker: `422 CONSENT_NOT_VERIFIED`, and the worker's queue skips such attempts quietly), at **release** (§1i) and on **every read**: `GET /reports/{id}` is `404 REPORT_NOT_READY` once consent is withdrawn, even for an already-released report. |
+| G-10 | The named (unified) export `GET /admin/question-sets/{id}/unified-export`: writes an audit row `UNIFIED_EXPORT_GENERATED` (admin, question set, attempt count) **before** producing the file; every sheet keys a participant by the governed research pseudonym `PR-nnnnnn` (the same one the de-identified research export uses), never the login id; participants who are `WITHDRAWN` or whose required consents are not all VERIFIED, and their attempts, are left out; the temporary file is written to `EXPORT_DIR` when set (else the OS temp folder) with owner-only permissions and is still deleted after sending. |
+| G-23 | Cohort report: `SUSPENDED` participants are excluded (`WITHDRAWN` already was); every cohort PDF/HTML produced is audited (`COHORT_REPORT_EXPORTED`: admin, cohort or institution, output, student count). Per-student pilot PDF: audited before it is made (`PILOT_REPORT_EXPORTED`: admin, attempt). The test-data (SAMPLE) guard is **not** added: the platform has no test status and the owner states all data is real. |
+
+Not changed: how consent is verified (self-attested consent still counts, G-03), and the pseudonym key (still derived from the JWT secret, G-41). Tests: `reports.test.js` (G-09 cases added, 21 tests).
 
 ## 2. Changed endpoints
 

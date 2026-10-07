@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { HttpError } = require('../../../errors');
+const config = require('../../../config');
 const { getProvider } = require('../../identity');
 const store = require('../../../models/db');
 const identity = require('../../../models/repositories/identity');
@@ -22,8 +23,10 @@ const { buildPilotDetails } = require('../../domain/participantPilotDetailsRules
 const { validate: validateRows } = require('./rosterValidator');
 const { store: storeCredentials } = require('./credentialExport');
 
-const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
-const subjectFor = (institutionId, externalStudentId) => sha256(`institutional:${institutionId}:${externalStudentId}`);
+// G-38: the login subject is a keyed hash (HMAC with a server-side key), not a plain hash of two values an outsider can know - the school's
+// id and a registration number. It stays deterministic per (institution, Reg. Number) so a repeat import is still recognised, but it cannot
+// be computed without the key. Subjects created before this change are stored on the participant and keep working.
+const subjectFor = (institutionId, externalStudentId) => crypto.createHmac('sha256', config.subjectKey).update(`institutional:${institutionId}:${externalStudentId}`).digest('hex');
 const MAX_ATTEMPTS = 5;
 
 const isSantulanIdCollision = (err) => err && err.code === 'DUPLICATE_IDENTITY' && err.cause && /santulan_id/.test(err.cause.message || '');
@@ -69,7 +72,10 @@ async function commitRoster({ rows, institutionId, cohortId, adminUserId, correl
 
     const committed = [];
     for (const { row, subject, temporaryPassword, hash } of prepared) {
-      const prior = await identity.findParticipantByAuthSubject(tx, provider.PROVIDER, subject);
+      // Recognised by subject (this import scheme) or by the registration number in the same institution (rosters imported before the
+      // subject became keyed), so changing the scheme can never create a second account for the same pupil.
+      const prior = await identity.findParticipantByAuthSubject(tx, provider.PROVIDER, subject)
+        || await tx.c.participants.findOne({ institution_id: institutionId, external_student_id: row.externalStudentId });
       if (prior) throw new HttpError(422, 'ALREADY_IMPORTED', `Reg. Number ${row.externalStudentId} is already importable from a previous roster`, { reg: row.externalStudentId });
 
       const doc = rules.buildParticipant({

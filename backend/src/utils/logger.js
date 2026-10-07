@@ -9,5 +9,9 @@ const config = require('../config');
 
 module.exports = pino({
   level: config.env === 'test' ? 'silent' : config.logLevel,
+  // G-44: credentials never reach a log line, in any environment, even if a caller passes the whole object. (The one deliberate
+  // exception - a local developer reading a one-time code or reset link - logs under the key `devSecret`, only in development and only
+  // while real email is off; see services/identity/index.js.)
+  redact: { paths: ['password', 'newPassword', 'token', 'accessToken', 'refreshToken', 'temporaryPassword', 'secret', 'emailVerificationToken', '*.password', '*.newPassword', '*.token', '*.accessToken', '*.temporaryPassword', '*.emailVerificationToken', 'req.headers.authorization', 'headers.authorization'], censor: '[redacted]' },
   transport: config.env === 'production' ? undefined : { target: 'pino-pretty', options: { colorize: true, translateTime: 'HH:MM:ss', ignore: 'pid,hostname' } },
 });

@@ -2,7 +2,7 @@
  * Admin UI path for governed report wording (interpretation_rules), alongside the existing CLI path (scripts/wording-load.js).
  * Reuses that script's pure validation/id helpers (ruleCode, ruleId, DOMAINS/BANDS/STATES/LAYERS) so the two paths can never
  * drift apart on what a valid rule looks like, but writes through the normal application store (SUPER_ADMIN scope, the
- * runtime credential) instead of the migrator credential the script uses - src/ never reads MONGODB_URI_ADMIN (SEC-30).
+ * runtime credential) instead of the migrator credential the script uses - src/ never reads the admin connection string (SEC-30).
  *
  * The engine still never writes prose: this only lets an admin do, through the UI, exactly what the script already does -
  * add a DRAFT rule, then approve it - with the same DRAFT -> APPROVED one-way lifecycle and the same uniqueness rules

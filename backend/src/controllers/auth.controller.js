@@ -90,7 +90,7 @@ async function requestEmailOtp(req, res, next) {
         text: `Your Santulan verification code is ${result._code}.
 
 It works for 10 minutes. If you did not ask for it, you can ignore this email.`,
-      }).catch((err) => console.error(`registration code email failed: ${err.message}`)); // eslint-disable-line no-console
+      }).catch((err) => console.error(`registration code email failed: ${String(err.message).replace(/[^\s@]+@[^\s@]+/g, '[email]')}`)); // eslint-disable-line no-console
     }
     res.status(202).json({ sent: true });
   } catch (err) { next(err); }
@@ -140,6 +140,22 @@ async function setPassword(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/** Redeems an emailed reset link: sets the new password only while the credential is unchanged since the link was issued (single use). */
+async function resetPassword(req, res, next) {
+  try {
+    const [, token] = (req.headers.authorization || '').split(' ');
+    const { subject, ua } = verifyPurposeToken(token || '', 'reset-password');
+    const provider = getProvider();
+    const weak = provider.passwordProblem(req.body.newPassword);
+    if (weak) throw new HttpError(400, 'VALIDATION_ERROR', `The new password needs ${weak}`);
+    const result = await provider.resetPassword(subject, req.body.newPassword, ua);
+    if (!result.ok) throw new HttpError(401, 'UNAUTHENTICATED', 'This reset link has expired or was already used');
+    const who = await resolveSubject(provider.PROVIDER, subject);
+    if (!who) throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid token');
+    res.json({ accessToken: sessionFor(who, pvFor(result.updatedAt)) });
+  } catch (err) { next(err); }
+}
+
 /**
  * OPEN participants only: self-service "forgot password", by email - email is literally the provider subject OPEN
  * participants register and log in with (registerOpen in registration.controller.js), so this is a direct
@@ -154,7 +170,10 @@ async function forgotPassword(req, res, next) {
     const email = req.body.email; // already trimmed/lowercased by forgotPasswordSchema
     const participant = await store.withScope(store.systemScope(), (tx) => identity.findParticipantByAuthSubject(tx, provider.PROVIDER, email));
     if (participant && participant.participationRoute === 'OPEN' && participant.status === 'ACTIVE') {
-      const token = signToken({ sub: email, purpose: 'set-password', subject: email }, '15m');
+      const stamp = await provider.credentialStamp(email);
+      if (stamp === null) return res.status(202).json({ sent: true }); // no active credential: nothing to reset, same answer
+      // The link is a reset token naming the credential version it was issued for; requesting it changes nothing (G-13).
+      const token = signToken({ sub: email, purpose: 'reset-password', subject: email, ua: stamp }, '15m');
       const link = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
       await provider.requestPasswordReset(email, link);
       // Real email when Gmail OAuth is configured (services/mail/mailer.js); otherwise the dev provider's log line is all there is.
@@ -167,7 +186,7 @@ async function forgotPassword(req, res, next) {
 ${link}
 
 If you did not ask for this, you can ignore this email.`,
-        }).catch((err) => console.error(`forgot-password email failed: ${err.message}`)); // eslint-disable-line no-console
+        }).catch((err) => console.error(`forgot-password email failed: ${String(err.message).replace(/[^\s@]+@[^\s@]+/g, '[email]')}`)); // eslint-disable-line no-console
       }
     }
     res.status(202).json({ sent: true });
@@ -189,4 +208,4 @@ async function credentialReset(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { emailOtpRequestSchema, emailOtpVerifySchema, requestEmailOtp, verifyEmailOtp, requestOtpSchema, verifyOtpSchema, loginSchema, setPasswordSchema, forgotPasswordSchema, requestOtp, verifyOtp, login, setPassword, forgotPassword, credentialReset };
+module.exports = { emailOtpRequestSchema, emailOtpVerifySchema, requestEmailOtp, verifyEmailOtp, requestOtpSchema, verifyOtpSchema, loginSchema, setPasswordSchema, forgotPasswordSchema, requestOtp, verifyOtp, login, setPassword, resetPassword, forgotPassword, credentialReset };

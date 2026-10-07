@@ -82,15 +82,16 @@ export default function ResultsPage() {
   if (!report && view.status === 'QUALITY_HOLD') return <StatusMessage type="neutral" message="Your responses are being reviewed." />;
   if (!report && view.status === 'INVALID') return <StatusMessage type="neutral" message="This attempt could not be processed for a report." />;
 
-  const profile = report && report.state === 'REPORT_READY' ? profileOf(report) : null;
+  const awaitingRelease = Boolean(report) && report.state === 'REPORT_READY' && report.released === false; // G-04: finished, but an admin has not released it yet
+  const profile = report && report.state === 'REPORT_READY' && !awaitingRelease ? profileOf(report) : null;
   return (
     <div className={styles.pageGrid}>
       <div className={p.page}>
         <Breadcrumb items={[{ label: 'Home', to: '/student' }, { label: 'Your results' }]} />
         <h1 className={p.pageTitle}>Your results</h1>
         {!profile ? (
-          <RailCard tone="sky" title="Not ready yet">
-            <p>There is nothing to show yet. We will make your report available here when it is ready. <Link className={styles.pageLink} to="/student/generating">See progress</Link></p>
+          <RailCard tone="sky" title={awaitingRelease ? 'Being checked' : 'Not ready yet'}>
+            <p>{awaitingRelease ? 'Your report is ready. The Santulan team is checking it before it is shared with you, and it will appear here.' : 'There is nothing to show yet. We will make your report available here when it is ready.'} <Link className={styles.pageLink} to="/student/generating">See progress</Link></p>
           </RailCard>
         ) : (
           <>

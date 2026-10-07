@@ -72,7 +72,7 @@ services:
         condition: service_healthy
     environment:
       APP_PORT: 8000
-      APP_ENV: ${BACKEND_APP_ENV:-development}
+      APP_ENV: ${BACKEND_APP_ENV:?set BACKEND_APP_ENV in .env (development, staging or production) - it is no longer assumed}
       MONGODB_URI_RUNTIME: mongodb://santulan_runtime:${SANTULAN_RUNTIME_PASSWORD:?set this in .env}@mongo:27017/santulan?replicaSet=rs0&authSource=santulan
       MONGODB_DB: santulan
       MONGODB_TEST_DB: santulan_qual
@@ -103,7 +103,7 @@ services:
     build:
       context: ./frontend
       args:
-        REACT_APP_API_BASE: ${REACT_APP_API_BASE:-http://localhost:8000/api/v1}
+        REACT_APP_API_BASE: ${REACT_APP_API_BASE:?set REACT_APP_API_BASE in .env (the public API address)}
     depends_on:
       - backend
     ports:

@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <link rel="icon" type="image/png" href="%PUBLIC_URL%/images/logoMark.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Never send this page's address as a Referer: the reset-password link carries a token in its query string (audit gap G-37). -->
+    <meta name="referrer" content="no-referrer" />
     <meta name="theme-color" content="#064d91" />
     <meta
       name="description"

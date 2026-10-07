@@ -8,8 +8,12 @@ COPY package*.json ./
 # npm install tolerates that instead of requiring a lock-file regeneration as part of the Docker build.
 RUN npm install
 COPY . .
-ARG REACT_APP_API_BASE=http://localhost:8000/api/v1
+# No default API address (G-45): a build that forgets it must fail, not ship a bundle pointing at localhost.
+ARG REACT_APP_API_BASE
 ENV REACT_APP_API_BASE=$REACT_APP_API_BASE
+# Source maps would publish the readable source of the app with the bundle.
+ENV GENERATE_SOURCEMAP=false
+RUN test -n "$REACT_APP_API_BASE" || (echo "REACT_APP_API_BASE build arg is required" && exit 1)
 RUN npm run build
 
 FROM nginx:alpine

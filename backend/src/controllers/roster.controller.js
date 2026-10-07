@@ -10,7 +10,7 @@ const { writeAudit } = require('../services/audit/auditService');
 const { parseRoster } = require('../services/admin/roster/rosterParser');
 const { validate: validateRows } = require('../services/admin/roster/rosterValidator');
 const { commitRoster } = require('../services/admin/roster/rosterCommitService');
-const { take, toXlsx } = require('../services/admin/roster/credentialExport');
+const { peek, take, toXlsx } = require('../services/admin/roster/credentialExport');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -54,7 +54,9 @@ async function importRoster(req, res, next) {
 /** One-time download of the temporary credentials for a committed import. 404 once consumed or expired. */
 async function exportCredentials(req, res, next) {
   try {
-    // Audit FIRST: if the export cannot be audited it must not consume the entry (the operator may retry).
+    // G-43: an export that does not exist (expired, already downloaded) is a 404 with NO audit row; only a download that is really about
+    // to happen is audited. The audit still comes BEFORE the entry is taken: if it cannot be written the entry stays and the admin can retry.
+    if (!peek(req.params.importId)) throw new HttpError(404, 'NOT_FOUND', 'That credential export is unavailable or was already downloaded');
     await store.withScope(store.systemScope(), (tx) => writeAudit(tx, {
       actorType: 'ADMIN', actorId: req.actor.adminUserId, actionType: 'CREDENTIAL_EXPORTED',
       targetEntity: 'roster_imports', newState: { import_id: req.params.importId },
@@ -62,6 +64,7 @@ async function exportCredentials(req, res, next) {
     }), { transaction: true });
     const rows = take(req.params.importId);
     if (!rows) throw new HttpError(404, 'NOT_FOUND', 'That credential export is unavailable or was already downloaded');
+    res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="santulan-credentials-${req.params.importId}.xlsx"`);
     return res.send(await toXlsx(rows));
